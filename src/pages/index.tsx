@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-type Step = 'company' | 'story' | 'brand' | 'generating' | 'done'
+type Step = 'company' | 'story' | 'purpose' | 'brand' | 'generating' | 'done'
 
 interface FormData {
   company: string
   oneLiner: string
+  industry: string
+  stage: string
+  realStory: string
   problem: string
   solution: string
   howItWorks: string
@@ -14,6 +17,8 @@ interface FormData {
   competition: string
   team: string
   ask: string
+  audience: string
+  goal: string
   founderName: string
   founderRole: string
   location: string
@@ -29,27 +34,47 @@ interface FormData {
 }
 
 const FONTS = [
-  'Barlow Condensed',
-  'Inter',
-  'Outfit',
-  'Space Grotesk',
-  'DM Sans',
-  'Syne',
-  'Raleway',
-  'Montserrat',
-  'Bebas Neue',
-  'Plus Jakarta Sans',
+  'Inter', 'DM Sans', 'Space Grotesk', 'Outfit', 'Syne',
+  'Barlow Condensed', 'Raleway', 'Montserrat', 'Bebas Neue', 'Plus Jakarta Sans',
+]
+
+const INDUSTRIES = [
+  'Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise',
+  'Developer Tools', 'Consumer', 'Education', 'Other',
+]
+
+const STAGES = ['Pre-seed', 'Seed', 'Series A', 'Series B+', 'Bootstrapped']
+const AUDIENCES = ['Seed VC', 'Series A', 'Angel', 'Strategic', 'Internal']
+const GOALS = [
+  { id: 'Raise', title: 'Raise capital', desc: 'Pitch to an investor.' },
+  { id: 'Partner', title: 'Partner', desc: 'Land a strategic partner.' },
+  { id: 'Hire', title: 'Hire', desc: 'Recruit a key role.' },
+  { id: 'Sell', title: 'Sell', desc: 'Customer or board pitch.' },
 ]
 
 const empty: FormData = {
-  company: '', oneLiner: '', problem: '', solution: '',
-  howItWorks: '', traction: '', market: '', businessModel: '',
-  competition: '', team: '', ask: '',
+  company: '', oneLiner: '', industry: '', stage: 'Pre-seed',
+  realStory: '', problem: '', solution: '', howItWorks: '',
+  traction: '', market: '', businessModel: '', competition: '', team: '', ask: '',
+  audience: 'Seed VC', goal: 'Raise',
   founderName: '', founderRole: '', location: '', domain: '',
   demoUrl: '', demoDescription: '',
-  accentColor: '#00e5c3', bgColor: '#06080d',
-  fontHeading: 'Barlow Condensed', fontBody: 'DM Sans',
+  accentColor: '#0F1115', bgColor: '#06080d',
+  fontHeading: 'Inter', fontBody: 'Inter',
   isDark: true, vercelToken: '',
+}
+
+const STEP_LABELS: Record<string, string> = {
+  company: 'Step 1 of 4',
+  story: 'Step 2 of 4',
+  purpose: 'Step 3 of 4',
+  brand: 'Step 4 of 4',
+  generating: '',
+  done: '',
+}
+
+const STEP_PROGRESS: Record<string, number> = {
+  company: 25, story: 50, purpose: 75, brand: 100,
 }
 
 export default function Home() {
@@ -59,11 +84,16 @@ export default function Home() {
   const [generatedContent, setGeneratedContent] = useState<any>(null)
   const [deployUrl, setDeployUrl] = useState('')
   const [error, setError] = useState('')
-  const [deployMode, setDeployMode] = useState<'vercel' | 'download' | null>(null)
+  const [deployMode, setDeployMode] = useState<'vercel' | null>(null)
   const [isRefining, setIsRefining] = useState(false)
   const [isRefined, setIsRefined] = useState(false)
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
+
+  // Sync accent color to CSS variable so buttons/progress update live
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', form.accentColor)
+  }, [form.accentColor])
 
   async function generate() {
     setStep('generating')
@@ -94,7 +124,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           html: generatedHtml,
-          projectName: `${form.company}-pitchdeck`,
+          projectName: `${form.company.toLowerCase().replace(/\s+/g, '-')}-pitchdeck`,
           vercelToken: form.vercelToken,
         }),
       })
@@ -110,10 +140,7 @@ export default function Home() {
     const res = await fetch('/api/download', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        html: generatedHtml,
-        filename: `${form.company}-pitchdeck`,
-      }),
+      body: JSON.stringify({ html: generatedHtml, filename: `${form.company}-pitchdeck` }),
     })
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
@@ -145,272 +172,315 @@ export default function Home() {
     }
   }
 
-  const Field = ({ label, name, type = 'text', placeholder = '', rows = 0 }: any) => (
-    <div style={{ marginBottom: 20 }}>
-      <label style={{ display: 'block', fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, textTransform: 'uppercase', color: '#7a8fa8', marginBottom: 6 }}>{label}</label>
-      {rows > 0
-        ? <textarea rows={rows} value={(form as any)[name]} onChange={e => set(name, e.target.value)} placeholder={placeholder} style={textareaStyle} />
-        : <input type={type} value={(form as any)[name]} onChange={e => set(name, e.target.value)} placeholder={placeholder} style={inputStyle} />
-      }
-    </div>
-  )
-
   if (step === 'generating') {
     return (
-      <div style={shellStyle}>
-        <div style={cardStyle}>
-          <div style={{ textAlign: 'center', padding: '60px 40px' }}>
-            <div style={{ fontSize: 48, marginBottom: 24, animation: 'spin 1.5s linear infinite', display: 'inline-block' }}>◐</div>
-            <h2 style={{ fontFamily: 'monospace', fontSize: 14, letterSpacing: 3, textTransform: 'uppercase', color: '#00e5c3', marginBottom: 8 }}>Generating your deck</h2>
-            <p style={{ color: '#7a8fa8', fontSize: 14 }}>Claude is crafting your cinematic pitch...</p>
-          </div>
+      <div className="sd-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="sd-spinner" style={{ fontSize: 40, display: 'block', marginBottom: 20 }}>◐</div>
+          <div style={{ fontSize: 14, color: 'var(--ink-muted)', marginBottom: 6 }}>Generating your deck…</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-muted)', opacity: 0.6 }}>Claude is crafting your cinematic pitch</div>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
 
   if (step === 'done') {
     return (
-      <div style={shellStyle}>
-        <div style={{ ...cardStyle, maxWidth: 640 }}>
-          <div style={{ marginBottom: 32 }}>
-            <div style={tagStyle}>✓ Deck ready</div>
-            <h1 style={headingStyle}>{form.company} pitch deck</h1>
-            <p style={{ color: '#7a8fa8', fontSize: 14, lineHeight: 1.6 }}>Your cinematic pitch deck is ready. Deploy it to Vercel or download and self-host.</p>
+      <div className="sd-shell">
+        <header className="sd-header">
+          <div className="sd-logo">
+            <div className="sd-logo-mark" />
+            <span className="sd-logo-name">SignalDeck</span>
           </div>
+        </header>
+        <div className="sd-main">
+          <div className="sd-card" style={{ maxWidth: 560 }}>
+            <h1 className="sd-card-title">Your deck is ready</h1>
+            <p className="sd-card-subtitle">{form.company} pitch deck — cinematic, investor-grade, and yours.</p>
 
-          {error && <div style={errorStyle}>{error}</div>}
+            {error && <div className="sd-error">{error}</div>}
 
-          {deployUrl && (
-            <div style={{ background: 'rgba(0,229,195,0.08)', border: '1px solid rgba(0,229,195,0.2)', borderRadius: 12, padding: '16px 20px', marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, color: '#00e5c3', marginBottom: 6, textTransform: 'uppercase' }}>Deployed</div>
-              <a href={deployUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#eef2f7', fontSize: 14, wordBreak: 'break-all' }}>{deployUrl}</a>
-            </div>
-          )}
+            {deployUrl && (
+              <div className="sd-success-row" style={{ marginBottom: 20 }}>
+                <div className="sd-success-label">Deployed</div>
+                <a href={deployUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 14, color: 'var(--accent)', wordBreak: 'break-all' }}>{deployUrl}</a>
+              </div>
+            )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <button onClick={download} style={btnPrimaryStyle}>Download HTML</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button className="sd-btn-primary" onClick={download}>Download HTML</button>
 
-            {!isRefined && !isRefining && (
-              <button onClick={refineWithGpt} style={{ ...btnSecondaryStyle, borderColor: '#6366f1', color: '#a5b4fc' }}>
-                ✦ Refine copy with GPT-4o →
+              {!isRefined && !isRefining && (
+                <button className="sd-refine-btn" onClick={refineWithGpt}>
+                  ✦ Sharpen copy with GPT-4o
+                </button>
+              )}
+
+              {isRefining && (
+                <div className="sd-refined-badge" style={{ color: '#6366f1', background: '#f5f3ff' }}>
+                  <span className="sd-spinner">◐</span>
+                  GPT-4o is critiquing and sharpening your copy…
+                </div>
+              )}
+
+              {isRefined && (
+                <div className="sd-refined-badge">
+                  ✓ Copy sharpened by GPT-4o pitch coach
+                </div>
+              )}
+
+              {!deployMode && (
+                <button className="sd-btn-secondary" onClick={() => setDeployMode('vercel')}>
+                  Deploy to Vercel →
+                </button>
+              )}
+
+              {deployMode === 'vercel' && !deployUrl && (
+                <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 20, border: '1px solid var(--line)' }}>
+                  <label className="sd-field">
+                    <span className="sd-label">Vercel API Token</span>
+                    <input className="sd-input" type="password" value={form.vercelToken}
+                      onChange={e => set('vercelToken', e.target.value)}
+                      placeholder="Get yours at vercel.com/account/tokens" />
+                  </label>
+                  <button className="sd-btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
+                    onClick={deployToVercel}>
+                    Push to Vercel
+                  </button>
+                </div>
+              )}
+
+              <button className="sd-btn-ghost" style={{ width: '100%', justifyContent: 'center', opacity: 0.6 }}
+                onClick={() => { setStep('brand'); setGeneratedHtml(''); setGeneratedContent(null); setDeployUrl(''); setDeployMode(null); setIsRefined(false) }}>
+                ← Regenerate
               </button>
-            )}
-
-            {isRefining && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', border: '1px solid #6366f1', borderRadius: 10, color: '#a5b4fc', fontSize: 13 }}>
-                <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>◐</span>
-                GPT-4o is critiquing and sharpening your copy...
-              </div>
-            )}
-
-            {isRefined && (
-              <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10, padding: '10px 16px', fontSize: 12, color: '#a5b4fc', fontFamily: 'monospace', letterSpacing: 1 }}>
-                ✓ GPT-4O REFINED — copy sharpened by pitch coach
-              </div>
-            )}
-
-            {!deployMode && (
-              <button onClick={() => setDeployMode('vercel')} style={btnSecondaryStyle}>Deploy to Vercel →</button>
-            )}
-
-            {deployMode === 'vercel' && !deployUrl && (
-              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 20, border: '1px solid #1a2640' }}>
-                <Field label="Vercel API Token" name="vercelToken" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-                <p style={{ fontSize: 11, color: '#7a8fa8', marginBottom: 16 }}>Get your token at vercel.com/account/tokens</p>
-                <button onClick={deployToVercel} style={btnPrimaryStyle}>Push to Vercel</button>
-              </div>
-            )}
-
-            <button onClick={() => { setStep('brand'); setGeneratedHtml(''); setGeneratedContent(null); setDeployUrl(''); setDeployMode(null); setIsRefined(false) }} style={{ ...btnSecondaryStyle, opacity: 0.6 }}>← Regenerate</button>
+            </div>
           </div>
         </div>
       </div>
     )
   }
 
+  const progress = STEP_PROGRESS[step] || 0
+
   return (
-    <div style={shellStyle}>
-      <div style={cardStyle}>
-        <div style={{ marginBottom: 36 }}>
-          <div style={tagStyle}>SignalDeck</div>
-          <h1 style={headingStyle}>Build your<br /><span style={{ color: '#00e5c3' }}>cinematic</span> pitch</h1>
+    <div className="sd-shell">
+      <header className="sd-header">
+        <div className="sd-logo">
+          <div className="sd-logo-mark" />
+          <span className="sd-logo-name">SignalDeck</span>
         </div>
+        <span className="sd-step-label">{STEP_LABELS[step]}</span>
+      </header>
 
-        {error && <div style={errorStyle}>{error}</div>}
+      <div className="sd-progress-bar">
+        <div className="sd-progress-fill" style={{ width: `${progress}%` }} />
+      </div>
 
-        {step === 'company' && (
-          <>
-            <Field label="Company name" name="company" placeholder="Acme Inc." />
-            <Field label="One-liner" name="oneLiner" placeholder="What problem do you solve and for whom?" />
-            <Field label="Founder name" name="founderName" placeholder="Jane Smith" />
-            <Field label="Founder role" name="founderRole" placeholder="CEO & Co-founder" />
-            <Field label="Location" name="location" placeholder="San Francisco, CA" />
-            <Field label="Domain" name="domain" placeholder="yourcompany.com" />
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              <button onClick={() => setStep('story')} disabled={!form.company || !form.founderName} style={form.company && form.founderName ? btnPrimaryStyle : { ...btnPrimaryStyle, opacity: 0.4, cursor: 'not-allowed' }}>
-                Next: Story →
+      <div className="sd-main">
+        <div className="sd-card">
+
+          {error && <div className="sd-error">{error}</div>}
+
+          {/* ── Step 1: Company basics ── */}
+          {step === 'company' && <>
+            <h1 className="sd-card-title">Tell us about your startup</h1>
+            <p className="sd-card-subtitle">Start with the basics — we'll use this to build your narrative.</p>
+
+            <div className="sd-grid-2">
+              <label className="sd-field">
+                <span className="sd-label">Startup name</span>
+                <input className="sd-input" value={form.company} onChange={e => set('company', e.target.value)} placeholder="Acme Inc." />
+              </label>
+              <label className="sd-field">
+                <span className="sd-label">Industry</span>
+                <select className="sd-select" value={form.industry} onChange={e => set('industry', e.target.value)}>
+                  <option value="">Select…</option>
+                  {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
+                </select>
+              </label>
+              <label className="sd-field" style={{ gridColumn: '1 / -1' }}>
+                <span className="sd-label">One-liner</span>
+                <input className="sd-input" value={form.oneLiner} onChange={e => set('oneLiner', e.target.value)} placeholder="What do you do, in one sentence." />
+              </label>
+              <label className="sd-field">
+                <span className="sd-label">Stage</span>
+                <select className="sd-select" value={form.stage} onChange={e => set('stage', e.target.value)}>
+                  {STAGES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </label>
+              <label className="sd-field">
+                <span className="sd-label">Founder name</span>
+                <input className="sd-input" value={form.founderName} onChange={e => set('founderName', e.target.value)} placeholder="Jane Smith" />
+              </label>
+              <label className="sd-field">
+                <span className="sd-label">Founder role</span>
+                <input className="sd-input" value={form.founderRole} onChange={e => set('founderRole', e.target.value)} placeholder="CEO & Co-founder" />
+              </label>
+              <label className="sd-field">
+                <span className="sd-label">Domain</span>
+                <input className="sd-input" value={form.domain} onChange={e => set('domain', e.target.value)} placeholder="yourcompany.com" />
+              </label>
+            </div>
+
+            <div className="sd-nav">
+              <span />
+              <button className="sd-btn-primary" onClick={() => setStep('story')} disabled={!form.company || !form.founderName}>
+                Continue →
               </button>
             </div>
-          </>
-        )}
+          </>}
 
-        {step === 'story' && (
-          <>
-            <Field label="The problem" name="problem" rows={3} placeholder="Describe the pain your customers feel today..." />
-            <Field label="Your solution" name="solution" rows={3} placeholder="How does your product solve it uniquely?" />
-            <Field label="How it works" name="howItWorks" rows={3} placeholder="Step 1 → Step 2 → Step 3 — keep it simple" />
-            <Field label="Traction" name="traction" rows={2} placeholder="Revenue, customers, pilots, LOIs, growth rate..." />
-            <Field label="Market" name="market" rows={2} placeholder="Market size, target segment, geography..." />
-            <Field label="Business model" name="businessModel" rows={2} placeholder="How do you make money? Pricing model?" />
-            <Field label="Competition" name="competition" rows={2} placeholder="Who else plays here and why you win?" />
-            <Field label="Team" name="team" rows={2} placeholder="Founder backgrounds and why you're the right team?" />
-            <Field label="The ask" name="ask" rows={2} placeholder="How much are you raising and what will you use it for?" />
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              <button onClick={() => setStep('company')} style={btnSecondaryStyle}>← Back</button>
-              <button onClick={() => setStep('brand')} disabled={!form.problem} style={form.problem ? btnPrimaryStyle : { ...btnPrimaryStyle, opacity: 0.4, cursor: 'not-allowed' }}>
-                Next: Brand →
-              </button>
+          {/* ── Step 2: Story ── */}
+          {step === 'story' && <>
+            <h1 className="sd-card-title">The real story</h1>
+            <p className="sd-card-subtitle">Skip the polish. Tell us what made you start this — and what you've found.</p>
+
+            <label className="sd-field">
+              <span className="sd-label">The problem</span>
+              <textarea className="sd-textarea" rows={3} value={form.problem} onChange={e => set('problem', e.target.value)}
+                placeholder="Describe the pain your customers feel today…" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">Your solution</span>
+              <textarea className="sd-textarea" rows={3} value={form.solution} onChange={e => set('solution', e.target.value)}
+                placeholder="How does your product solve it uniquely?" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">How it works</span>
+              <textarea className="sd-textarea" rows={2} value={form.howItWorks} onChange={e => set('howItWorks', e.target.value)}
+                placeholder="Step 1 → Step 2 → Step 3 — keep it simple" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">Traction</span>
+              <textarea className="sd-textarea" rows={2} value={form.traction} onChange={e => set('traction', e.target.value)}
+                placeholder="Revenue, customers, pilots, LOIs, growth rate…" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">Market</span>
+              <textarea className="sd-textarea" rows={2} value={form.market} onChange={e => set('market', e.target.value)}
+                placeholder="Market size, target segment, geography…" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">Business model</span>
+              <textarea className="sd-textarea" rows={2} value={form.businessModel} onChange={e => set('businessModel', e.target.value)}
+                placeholder="How do you make money? Pricing model?" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">Competition</span>
+              <textarea className="sd-textarea" rows={2} value={form.competition} onChange={e => set('competition', e.target.value)}
+                placeholder="Who else plays here and why you win?" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">Team</span>
+              <textarea className="sd-textarea" rows={2} value={form.team} onChange={e => set('team', e.target.value)}
+                placeholder="Founder backgrounds and why you're the right team?" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">The ask</span>
+              <textarea className="sd-textarea" rows={2} value={form.ask} onChange={e => set('ask', e.target.value)}
+                placeholder="How much are you raising and what will you use it for?" />
+            </label>
+
+            <div className="sd-nav">
+              <button className="sd-btn-ghost" onClick={() => setStep('company')}>Back</button>
+              <button className="sd-btn-primary" onClick={() => setStep('purpose')} disabled={!form.problem}>Continue →</button>
             </div>
-          </>
-        )}
+          </>}
 
-        {step === 'brand' && (
-          <>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, textTransform: 'uppercase', color: '#7a8fa8', marginBottom: 10 }}>Accent color</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} style={{ width: 48, height: 48, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'none' }} />
-                <input value={form.accentColor} onChange={e => set('accentColor', e.target.value)} placeholder="#00e5c3" style={{ ...inputStyle, flex: 1 }} />
+          {/* ── Step 3: Purpose ── */}
+          {step === 'purpose' && <>
+            <h1 className="sd-card-title">Deck purpose</h1>
+            <p className="sd-card-subtitle">Who is this pitch going to, and what should happen after they read it?</p>
+
+            <div style={{ marginBottom: 18 }}>
+              <div className="sd-label" style={{ marginBottom: 8 }}>Audience</div>
+              <div className="sd-pill-group">
+                {AUDIENCES.map(a => (
+                  <button key={a} className={`sd-pill${form.audience === a ? ' active' : ''}`} onClick={() => set('audience', a)}>{a}</button>
+                ))}
               </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, textTransform: 'uppercase', color: '#7a8fa8', marginBottom: 10 }}>Theme</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[{ label: 'Dark', value: true, bg: '#06080d' }, { label: 'Light', value: false, bg: '#e9fef8' }].map(t => (
-                  <button key={String(t.value)} onClick={() => { set('isDark', t.value); set('bgColor', t.bg) }} style={{ flex: 1, padding: '12px 16px', borderRadius: 10, border: `2px solid ${form.isDark === t.value ? '#00e5c3' : '#1a2640'}`, background: t.bg, color: t.value ? '#eef2f7' : '#0f1d2e', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            <div style={{ marginBottom: 18 }}>
+              <div className="sd-label" style={{ marginBottom: 8 }}>Goal</div>
+              <div className="sd-goal-grid">
+                {GOALS.map(g => (
+                  <button key={g.id} className={`sd-goal-card${form.goal === g.id ? ' active' : ''}`} onClick={() => set('goal', g.id)}>
+                    <div>{g.title}</div>
+                    <div className="sd-goal-card-desc">{g.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="sd-field">
+              <span className="sd-label">Demo URL <span style={{ color: 'var(--ink-muted)', fontWeight: 400 }}>(optional iframe embed)</span></span>
+              <input className="sd-input" value={form.demoUrl} onChange={e => set('demoUrl', e.target.value)} placeholder="https://demo.yourapp.com" />
+            </label>
+            <label className="sd-field">
+              <span className="sd-label">What does the demo show?</span>
+              <textarea className="sd-textarea" rows={2} value={form.demoDescription} onChange={e => set('demoDescription', e.target.value)}
+                placeholder="What should the investor interact with?" />
+            </label>
+
+            <div className="sd-nav">
+              <button className="sd-btn-ghost" onClick={() => setStep('story')}>Back</button>
+              <button className="sd-btn-primary" onClick={() => setStep('brand')}>Continue →</button>
+            </div>
+          </>}
+
+          {/* ── Step 4: Brand ── */}
+          {step === 'brand' && <>
+            <h1 className="sd-card-title">Your brand</h1>
+            <p className="sd-card-subtitle">This becomes your deck's visual identity — colors, fonts, tone.</p>
+
+            <label className="sd-field">
+              <span className="sd-label">Accent color</span>
+              <div className="sd-color-row">
+                <input type="color" className="sd-color-swatch" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} />
+                <input className="sd-input" value={form.accentColor} onChange={e => set('accentColor', e.target.value)} placeholder="#0F1115" style={{ flex: 1 }} />
+              </div>
+            </label>
+
+            <div style={{ marginBottom: 18 }}>
+              <div className="sd-label" style={{ marginBottom: 8 }}>Theme</div>
+              <div className="sd-theme-toggle">
+                {[{ label: 'Dark', value: true, bg: '#06080d', fg: '#eef2f7' }, { label: 'Light', value: false, bg: '#f8f9fa', fg: '#0f1d2e' }].map(t => (
+                  <button key={String(t.value)}
+                    className={`sd-theme-btn${form.isDark === t.value ? ' active' : ''}`}
+                    style={{ background: t.bg, color: t.fg }}
+                    onClick={() => { set('isDark', t.value); set('bgColor', t.bg) }}>
                     {t.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, textTransform: 'uppercase', color: '#7a8fa8', marginBottom: 8 }}>Heading font</label>
-              <select value={form.fontHeading} onChange={e => set('fontHeading', e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
-                {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+            <div className="sd-grid-2" style={{ marginBottom: 0 }}>
+              <label className="sd-field">
+                <span className="sd-label">Heading font</span>
+                <select className="sd-select" value={form.fontHeading} onChange={e => set('fontHeading', e.target.value)}>
+                  {FONTS.map(f => <option key={f}>{f}</option>)}
+                </select>
+              </label>
+              <label className="sd-field">
+                <span className="sd-label">Body font</span>
+                <select className="sd-select" value={form.fontBody} onChange={e => set('fontBody', e.target.value)}>
+                  {FONTS.map(f => <option key={f}>{f}</option>)}
+                </select>
+              </label>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontFamily: 'monospace', letterSpacing: 2, textTransform: 'uppercase', color: '#7a8fa8', marginBottom: 8 }}>Body font</label>
-              <select value={form.fontBody} onChange={e => set('fontBody', e.target.value)} style={{ ...inputStyle, appearance: 'none' }}>
-                {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+            <div className="sd-nav">
+              <button className="sd-btn-ghost" onClick={() => setStep('purpose')}>Back</button>
+              <button className="sd-btn-primary" onClick={generate}>Generate Deck ✦</button>
             </div>
+          </>}
 
-            <Field label="Demo URL (optional iframe embed)" name="demoUrl" placeholder="https://demo.yourapp.com" />
-            <Field label="Demo description (helps AI explain it)" name="demoDescription" rows={2} placeholder="What does the demo show? What should the investor interact with?" />
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              <button onClick={() => setStep('story')} style={btnSecondaryStyle}>← Back</button>
-              <button onClick={generate} style={btnPrimaryStyle}>Generate Deck ✦</button>
-            </div>
-          </>
-        )}
+        </div>
       </div>
     </div>
   )
-}
-
-const shellStyle: React.CSSProperties = {
-  minHeight: '100vh',
-  background: '#06080d',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '40px 20px',
-  fontFamily: "'DM Sans', system-ui, sans-serif",
-  color: '#eef2f7',
-}
-
-const cardStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 560,
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid #1a2640',
-  borderRadius: 20,
-  padding: '40px 40px',
-}
-
-const tagStyle: React.CSSProperties = {
-  fontFamily: 'monospace',
-  fontSize: 10,
-  letterSpacing: 3,
-  textTransform: 'uppercase' as const,
-  color: '#00e5c3',
-  marginBottom: 12,
-}
-
-const headingStyle: React.CSSProperties = {
-  fontSize: 36,
-  fontWeight: 800,
-  lineHeight: 1.1,
-  marginBottom: 4,
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid #1a2640',
-  borderRadius: 10,
-  padding: '12px 14px',
-  color: '#eef2f7',
-  fontSize: 14,
-  outline: 'none',
-  transition: 'border-color .2s',
-}
-
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle,
-  resize: 'vertical' as const,
-  lineHeight: 1.6,
-  minHeight: 80,
-}
-
-const btnPrimaryStyle: React.CSSProperties = {
-  padding: '14px 24px',
-  background: '#00e5c3',
-  color: '#06080d',
-  border: 'none',
-  borderRadius: 10,
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: 'pointer',
-  flex: 1,
-  transition: 'opacity .2s',
-}
-
-const btnSecondaryStyle: React.CSSProperties = {
-  padding: '14px 24px',
-  background: 'transparent',
-  color: '#7a8fa8',
-  border: '1px solid #1a2640',
-  borderRadius: 10,
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-  transition: 'border-color .2s',
-}
-
-const errorStyle: React.CSSProperties = {
-  background: 'rgba(255,59,92,0.08)',
-  border: '1px solid rgba(255,59,92,0.2)',
-  borderRadius: 10,
-  padding: '12px 16px',
-  color: '#ff3b5c',
-  fontSize: 13,
-  marginBottom: 20,
 }
