@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getTemplate, VC_PROFILES, type Template } from '@/lib/templates'
 
 /* ── Icons ─────────────────────────────────────────────────────── */
 const ic = {
@@ -26,12 +27,12 @@ const ic = {
   mic:      (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/></svg>,
   chevL:    (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>,
   chevR:    (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>,
-  clock:    (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>,
   image:    (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
-  trash:    (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>,
+  refresh:  (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 12a9 9 0 0114-7l3 3M3 12l3-3M21 12a9 9 0 01-14 7l-3-3M21 12l-3 3"/></svg>,
+  plus:     (p: any) => <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14"/></svg>,
 }
 
-/* ── Nav ────────────────────────────────────────────────────────── */
+/* ── Nav (matches app.html groups) ─────────────────────────── */
 const NAV = [
   { group: 'Build', items: [
     { id: 'overview',   label: 'Overview',      icon: 'layers'   },
@@ -64,7 +65,7 @@ const TITLES: Record<string, [string, string]> = {
   style:      ['Style Library',  'Transitions, layouts, palettes, moods'],
   frameworks: ['Frameworks',     'Pick a narrative spine'],
   vclens:     ['VC Lens',        "Pitch through the investor's eyes"],
-  audit:      ['Audit',          'Story scoring and tips'],
+  audit:      ['Audit',          'Story scoring, rewrites, objections'],
   claims:     ['Claims',         'Every assertion, classified'],
   signals:    ['Signals',        'Engagement and drop-off'],
   demo:       ['Demo Layer',     'How the product appears'],
@@ -72,13 +73,6 @@ const TITLES: Record<string, [string, string]> = {
   deploy:     ['Deploy',         'Send the deck live'],
   followup:   ['Follow-up',      'Voice-matched email'],
   settings:   ['Settings',       'Profile, brand, exports'],
-}
-
-const SLIDE_LABELS: Record<string, string> = {
-  s1_intro:'Intro', s2_situation:'Situation', s3_problem:'Problem',
-  s4_implication:'Implication', s5_fix:'The Fix', s6_how:'How It Works',
-  s7_validation:'Validation', s8_market:'Market', s9_customers:'Customers',
-  s10_competition:'Competition', s11_risks:'Risks', s12_team_ask:'Team & Ask',
 }
 
 const FRAMEWORKS = [
@@ -90,17 +84,16 @@ const FRAMEWORKS = [
   { id:'bab',     name:'Before-After-Bridge',   summary:'Paint pain, paint relief, name the bridge.',       steps:['Before','After','Bridge','Proof'],                       when:'Short / demo-led decks.' },
 ]
 
-const PERSONAS: Record<string, { label: string; fund: string; focus: string }> = {
-  'Seed VC':   { label:'Seed VC',   fund:'Generalist Seed',  focus:'Conviction, insight quality, believable wedge' },
-  'Series A':  { label:'Series A',  fund:'Series A Lead',    focus:'Repeatable GTM, NRR, payback period' },
-  'Angel':     { label:'Angel',     fund:'Operator Angel',   focus:'Founder unfair advantage, why they win' },
-  'Strategic': { label:'Strategic', fund:'Corporate Dev',    focus:'Distribution fit, integration cost, M&A optionality' },
-  'Internal':  { label:'Internal',  fund:'Board / Team',     focus:'Decision framing, what changed, smallest ask' },
+const AUDIENCES = ['Seed VC', 'Series A', 'Angel', 'Strategic', 'Internal']
+const STAGES    = ['Pre-seed', 'Seed', 'Series A', 'Series B+', 'Bootstrapped']
+
+const SEVERITY_STYLE: Record<string, { bg: string; color: string }> = {
+  good: { bg:'#e8f4ee', color:'#137a4a' },
+  warn: { bg:'#fbf1dd', color:'#a86a00' },
+  risk: { bg:'#fbe8e5', color:'#b0322b' },
+  info: { bg:'#eff6ff', color:'#1d4ed8' },
 }
 
-const AUDIENCES = ['Seed VC', 'Series A', 'Angel', 'Strategic', 'Internal']
-
-const AUDIT_COLORS: Record<string, string> = { good:'#137a4a', warn:'#a86a00', risk:'#b0322b' }
 const CLAIM_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   'supported':      { bg:'#e8f4ee', color:'#137a4a', label:'Supported'      },
   'needs-source':   { bg:'#fbf1dd', color:'#a86a00', label:'Needs source'   },
@@ -108,7 +101,6 @@ const CLAIM_STYLES: Record<string, { bg: string; color: string; label: string }>
   'founder-thesis': { bg:'#eff6ff', color:'#1d4ed8', label:'Founder thesis' },
 }
 
-/* ── Props ──────────────────────────────────────────────────────── */
 interface WorkspaceProps {
   company: string
   accentColor: string
@@ -125,20 +117,30 @@ interface WorkspaceProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   WORKSPACE
+   WORKSPACE — per-industry adaptation via templates engine
 ═══════════════════════════════════════════════════════════════════ */
 export default function Workspace({
   company, accentColor, generatedHtml, generatedContent, onRestart,
-  logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage, industry,
+  logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry,
 }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  /* per-company template — drives every screen */
+  const [productType, setProductType] = useState(industry || 'Other')
+  const [stageType,   setStageType]   = useState(stage)
+  const [lensType,    setLensType]    = useState('Workflow pain + wedge')
+  const [investor,    setInvestor]    = useState(audience)
+  const tpl: Template = getTemplate(productType)
 
   /* deploy */
   const [vercelToken, setVercelToken] = useState('')
   const [deployUrl, setDeployUrl] = useState('')
   const [deployLoading, setDeployLoading] = useState(false)
+  const [selectedDeploy, setSelectedDeploy] = useState('Vercel')
   const [deployHistory, setDeployHistory] = useState<{ target: string; url: string; time: string; status: string }[]>([])
+  const [investorLinks, setInvestorLinks] = useState<string[]>(['blackbird','folklore','airtree'])
+  const [publishOpts, setPublishOpts] = useState({ named:true, slideTrack:true, password:false, expiry:false, pdf:true, blockDl:false })
 
   /* refine */
   const [isRefining, setIsRefining] = useState(false)
@@ -146,13 +148,16 @@ export default function Workspace({
   const [refinedHtml, setRefinedHtml] = useState(generatedHtml)
 
   /* VC Lens */
-  const [vcPersona, setVcPersona] = useState(audience)
   const [vcData, setVcData] = useState<any>(null)
   const [vcLoading, setVcLoading] = useState(false)
 
   /* Audit */
   const [auditData, setAuditData] = useState<any>(null)
   const [auditLoading, setAuditLoading] = useState(false)
+  const [objectionSeed, setObjectionSeed] = useState(0)
+
+  /* Story rewrite */
+  const [rewriteSeed, setRewriteSeed] = useState(0)
 
   /* Claims */
   const [claimsData, setClaimsData] = useState<any>(null)
@@ -168,6 +173,7 @@ export default function Workspace({
 
   /* Deck Build */
   const [activeSlide, setActiveSlide] = useState(0)
+  const [deckOpts, setDeckOpts] = useState({ motion: true, analytics: true, password: false })
 
   /* Style Library */
   const [styleTab, setStyleTab] = useState<'transitions'|'layouts'|'palettes'|'moods'>('transitions')
@@ -184,35 +190,42 @@ export default function Workspace({
   const [presentSlide, setPresentSlide] = useState(0)
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerSeconds, setTimerSeconds] = useState(0)
+  const [scriptLength, setScriptLength] = useState('5 minutes')
+  const [scriptTone, setScriptTone] = useState('Sharp and direct')
   const timerRef = useRef<any>(null)
 
   /* Settings */
   const [settingsName, setSettingsName] = useState(founderName)
   const [settingsCompany, setSettingsCompany] = useState(company)
-  const [settingsIndustry, setSettingsIndustry] = useState(industry || '')
+  const [settingsIndustry, setSettingsIndustry] = useState(productType)
   const [manualHex, setManualHex] = useState(accentColor)
   const [liveAccent, setLiveAccent] = useState(accentColor)
+  const [qualityGate, setQualityGate] = useState({ blockUnsourced:true, requireCta:true, mobile:true, consent:false })
+  const [analyticsOpts, setAnalyticsOpts] = useState({ slideTime:true, ctaClicks:true, returns:true, location:false, device:false, anonOpt:true })
+  const [exportOpts, setExportOpts] = useState({ html:true, vercel:true, cloudflare:true, netlify:true, pdf:true, pptx:false })
 
   /* Sources */
   const [sourcesFilter, setSourcesFilter] = useState('All')
 
+  /* Signals */
+  const [signalSeed, setSignalSeed] = useState(0)
+
   const [error, setError] = useState('')
 
-  const slides = generatedContent ? Object.entries(generatedContent) : []
-  const slideList = slides.map(([key, val]: [string, any], i) => ({
-    key, val, num: i + 1, label: SLIDE_LABELS[key] || key,
-  }))
+  /* derived: real slides if AI generated, else template slides */
+  const realSlides = generatedContent ? Object.entries(generatedContent).map(([key, val]: [string, any], i) => ({
+    key, kind: tpl.slides[i]?.kind || key, title: val.headline || tpl.slides[i]?.title || key,
+    body: val.lede || val.sub || tpl.slides[i]?.body || '',
+    motion: tpl.slides[i]?.motion || 'smooth reveal',
+    notes: val.notes || tpl.slides[i]?.notes || '',
+    val,
+  })) : tpl.slides.map((s, i) => ({ key: `s${i}_${s.kind.toLowerCase()}`, ...s, val: {} as any }))
+
+  useEffect(() => { document.documentElement.style.setProperty('--accent', liveAccent) }, [liveAccent])
 
   useEffect(() => {
-    document.documentElement.style.setProperty('--accent', liveAccent)
-  }, [liveAccent])
-
-  useEffect(() => {
-    if (timerRunning) {
-      timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000)
-    } else {
-      clearInterval(timerRef.current)
-    }
+    if (timerRunning) timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000)
+    else clearInterval(timerRef.current)
     return () => clearInterval(timerRef.current)
   }, [timerRunning])
 
@@ -242,7 +255,6 @@ export default function Workspace({
       if (!res.ok) throw new Error(data.error)
       setDeployUrl(data.url)
       setDeployHistory(h => [{ target:'Vercel', url: data.url, time:'just now', status:'Live' }, ...h])
-      setActive('deploy')
     } catch (e: any) { setError(e.message) }
     finally { setDeployLoading(false) }
   }
@@ -252,7 +264,7 @@ export default function Workspace({
     try {
       const res = await fetch('/api/refine', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: generatedContent, input: { company, accentColor } }),
+        body: JSON.stringify({ content: generatedContent, input: { company, accentColor: liveAccent } }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -266,7 +278,7 @@ export default function Workspace({
     try {
       const res = await fetch('/api/vclens', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: generatedContent, company, persona: vcPersona }),
+        body: JSON.stringify({ content: generatedContent, company, persona: investor }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -324,26 +336,43 @@ export default function Workspace({
 
   const Pill = ({ children, tone = 'soft' }: any) => {
     const styles: Record<string, any> = {
-      good:    { background:'#e8f4ee', color:'#137a4a' },
-      warn:    { background:'#fbf1dd', color:'#a86a00' },
-      risk:    { background:'#fbe8e5', color:'#b0322b' },
-      soft:    { background:'var(--surface)', color:'var(--ink-muted)' },
-      accent:  { background: liveAccent, color:'#fff' },
-      neutral: { background:'var(--surface)', color:'var(--ink)' },
+      good:   { background:'#e8f4ee', color:'#137a4a' },
+      warn:   { background:'#fbf1dd', color:'#a86a00' },
+      risk:   { background:'#fbe8e5', color:'#b0322b' },
+      info:   { background:'#eff6ff', color:'#1d4ed8' },
+      soft:   { background:'var(--surface)', color:'var(--ink-muted)' },
+      accent: { background: liveAccent, color:'#fff' },
     }
     return <span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full" style={styles[tone] || styles.soft}>{children}</span>
   }
 
-  const ScoreCard = ({ label, value }: { label: string; value: number }) => (
+  const MiniLabel = ({ children }: any) => (
+    <div className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: liveAccent }}>{children}</div>
+  )
+
+  const ScoreCard = ({ label, value, suffix='/ 100' }: { label: string; value: number; suffix?: string }) => (
     <Card className="p-5">
       <div className="text-[12px] uppercase tracking-wider ink-muted mb-1">{label}</div>
-      <div className="text-[28px] font-semibold tracking-tight">{value}</div>
-      <div className="text-[12px] ink-muted">/ 100</div>
-      <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
-        <div className="h-full rounded-full transition-all duration-700"
-          style={{ width:`${value}%`, background: value>=70?'#137a4a':value>=50?'#a86a00':'#b0322b' }} />
-      </div>
+      <div className="text-[28px] font-semibold tracking-tight" style={{ color: liveAccent }}>{value}</div>
+      <div className="text-[12px] ink-muted">{suffix}</div>
+      {suffix === '/ 100' && (
+        <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{ width:`${value}%`, background: value>=70?'#137a4a':value>=50?'#a86a00':'#b0322b' }} />
+        </div>
+      )}
     </Card>
+  )
+
+  const TipCard = ({ tip }: any) => (
+    <div className="p-4 rounded-xl hairline flex items-start gap-3" style={{ background:'var(--paper)' }}>
+      <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold flex-shrink-0"
+        style={SEVERITY_STYLE[tip.severity] || SEVERITY_STYLE.info}>{tip.icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-[14px]">{tip.title}</div>
+        <div className="text-[13px] ink-muted mt-0.5 leading-relaxed">{tip.body}</div>
+      </div>
+    </div>
   )
 
   const RunBtn = ({ onClick, loading, label, done, secondary }: any) => (
@@ -352,106 +381,119 @@ export default function Workspace({
       style={secondary
         ? { background:'var(--paper)', color:'var(--ink)' }
         : { background: liveAccent, color:'#fff', border:'none' }}>
-      {loading ? <><span className="sd-spinner">◐</span> Working…</> : done ? <><ic.spark className="w-3.5 h-3.5"/>Re-run</> : label}
+      {loading ? <><span className="sd-spinner">◐</span> Working…</> : done ? <><ic.refresh className="w-3.5 h-3.5"/>Re-run</> : label}
     </button>
+  )
+
+  const MotionChip = ({ children }: any) => (
+    <span className="inline-flex items-center text-[10px] font-mono px-2 py-1 rounded-full uppercase tracking-wider"
+      style={{ background: liveAccent+'12', color: liveAccent, border: `1px solid ${liveAccent}33` }}>
+      {children}
+    </span>
   )
 
   const [t1, t2] = TITLES[active] || ['', '']
 
   /* ── OVERVIEW ────────────────────────────────────────────────── */
   const ScreenOverview = () => {
-    const auditScore  = auditData?.overall ?? 74
-    const claimsFix   = claimsData ? claimsData.claims?.filter((c:any) => c.classification !== 'supported').length : 2
-    const claimsTotal = claimsData?.claims?.length ?? 7
+    const auditScore = auditData?.overall ?? Math.round(tpl.scoreBaseline.reduce((a,b)=>a+b,0)/4 * 10)
+    const claimsCount = claimsData?.claims?.length ?? tpl.exampleClaims.length
+    const claimsFix   = claimsData ? claimsData.claims.filter((c:any) => c.classification !== 'supported').length : tpl.exampleClaims.filter(c => c.classification !== 'supported').length
     return (
       <div className="p-6 lg:p-8 space-y-5">
         {/* Hero */}
-        <Card className="p-6 sm:p-8 overflow-hidden relative">
+        <Card className="p-6 sm:p-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
             style={{ backgroundImage:`linear-gradient(135deg,${liveAccent},transparent)` }} />
-          <div className="relative flex flex-col sm:flex-row sm:items-end gap-6">
-            <div className="flex-1">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Your deck is starting to take shape</div>
-              <h1 className="text-[26px] font-semibold tracking-tight leading-tight">{company || 'Your deck'} — {slideList.length || 12} slides built.</h1>
-              <p className="ink-muted mt-2 text-[14px] leading-relaxed">
-                {claimsFix} claim{claimsFix !== 1 ? 's' : ''} need{claimsFix === 1 ? 's' : ''} a source. Run the pitch coach to sharpen every word.
+          <div className="relative grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div>
+              <MiniLabel>Project command centre</MiniLabel>
+              <h1 className="text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight mt-2">
+                From rough founder notes to a live <span style={{ color: liveAccent }}>investor deck</span>
+              </h1>
+              <p className="ink-muted mt-3 text-[14px] leading-relaxed max-w-lg">
+                SignalDeck audits the story, applies a {productType} VC lens, checks claims, builds an interactive deck, deploys it, and shows what investors cared about after opening it.
               </p>
               <div className="flex gap-2 mt-5 flex-wrap">
-                <button onClick={() => setActive('deck')}
-                  className="h-10 px-4 rounded-xl font-medium text-[14px] text-white inline-flex items-center gap-2"
-                  style={{ background: liveAccent }}>
-                  <ic.cards className="w-4 h-4"/> Generate pitch deck
+                <button onClick={() => setActive('audit')}
+                  className="h-10 px-4 rounded-xl font-medium text-[14px] text-white inline-flex items-center gap-2" style={{ background: liveAccent }}>
+                  <ic.check className="w-4 h-4"/> Run audit
                 </button>
                 <button onClick={() => setActive('sources')}
-                  className="h-10 px-4 rounded-xl font-medium text-[14px] paper hairline ink hover:bg-[var(--surface)] inline-flex items-center gap-2">
-                  Review story
+                  className="h-10 px-4 rounded-xl font-medium text-[14px] paper hairline">
+                  Upload sources
+                </button>
+                <button onClick={() => setActive('signals')}
+                  className="h-10 px-4 rounded-xl font-medium text-[14px] paper hairline">
+                  View signals
                 </button>
               </div>
             </div>
-            <div className="hidden sm:flex w-[180px] h-[110px] rounded-2xl hairline surface flex-shrink-0 relative overflow-hidden items-end p-3"
-              style={{ background:'var(--surface)' }}>
-              <div className="absolute inset-0 opacity-30"
-                style={{ backgroundImage:'linear-gradient(to right,rgba(15,17,21,.05) 1px,transparent 1px),linear-gradient(to bottom,rgba(15,17,21,.05) 1px,transparent 1px)', backgroundSize:'16px 16px' }} />
-              <div className="relative">
-                <div className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white mb-1 inline-block" style={{ background: liveAccent }}>{company || 'Deck'}</div>
-                <div className="text-[10px] ink-muted">Live deck preview</div>
+            <Card className="p-5" style={{ background:`${liveAccent}08`, borderColor:`${liveAccent}33` }}>
+              <MiniLabel>Readiness snapshot</MiniLabel>
+              <div className="grid grid-cols-2 gap-3 mt-3 mb-3">
+                <div className="p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                  <div className="text-[32px] font-semibold tracking-tight" style={{ color: liveAccent }}>{auditScore}</div>
+                  <div className="text-[11px] ink-muted leading-tight mt-0.5">Investor readiness</div>
+                </div>
+                <div className="p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                  <div className="text-[32px] font-semibold tracking-tight" style={{ color: liveAccent }}>{claimsCount}</div>
+                  <div className="text-[11px] ink-muted leading-tight mt-0.5">Claims checked</div>
+                </div>
               </div>
-            </div>
+              <TipCard tip={tpl.tips[1]} />
+            </Card>
           </div>
         </Card>
 
-        {/* Stats */}
+        {/* Stat strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label:'Audit score',       value: auditScore,           sub: `/ 100` },
-            { label:'Claims to fix',     value: claimsFix,            sub: `of ${claimsTotal} total` },
-            { label:'Slides drafted',    value: slideList.length || 8, sub: `${Math.max(0, 12-(slideList.length||8))} in outline` },
-            { label:'Signals received',  value: 6,                    sub: 'Last 24h' },
+            { v: realSlides.length, t:'Deck slides',     d: `${productType} structure for ${stageType.toLowerCase()} investors.` },
+            { v: 5,                  t:'Sources',         d:'Notes, screenshots, website copy, demo material, proof.' },
+            { v: investorLinks.length, t:'Investor links', d:'Named links ready for separate tracking.' },
+            { v: '43%',              t:'Drop-off risk',   d:`Likely weak slide: ${tpl.slides[Math.floor(tpl.slides.length/2)]?.kind || 'Market'}.` },
           ].map((m, i) => (
             <Card key={i} className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-1">{m.label}</div>
-              <div className="text-[28px] font-semibold tracking-tight">{m.value}</div>
-              <div className="text-[12px] ink-muted mt-0.5">{m.sub}</div>
+              <div className="text-[36px] font-semibold tracking-tight leading-none" style={{ color: liveAccent, fontFamily:'inherit' }}>{m.v}</div>
+              <div className="font-medium text-[13px] mt-3">{m.t}</div>
+              <div className="text-[12px] ink-muted mt-1 leading-relaxed">{m.d}</div>
             </Card>
           ))}
         </div>
 
-        {/* Pick up + Recent activity */}
-        <div className="grid lg:grid-cols-3 gap-4">
-          <Card className="lg:col-span-2 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="font-semibold tracking-tight">Pick up where you left off</div>
-              <Pill tone="soft">3 items</Pill>
-            </div>
-            <div className="space-y-3">
+        {/* Pipeline + AI workbench */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          <Card className="p-6">
+            <div className="font-semibold tracking-tight mb-1">Build pipeline</div>
+            <div className="text-[12px] ink-muted mb-5">What the product does step by step</div>
+            <div className="relative space-y-3 pl-9">
+              <div className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background:`linear-gradient(${liveAccent},var(--line))` }} />
               {[
-                { text: auditData ? 'Re-run audit with refined copy' : 'Run the story audit', link: 'audit', cta: 'Open audit' },
-                { text: claimsData ? 'Add a source for the top risky claim' : 'Classify all claims', link: 'claims', cta: 'Open claims' },
-                { text: activeFramework ? `Review ${activeFramework} restructure` : 'Pick a narrative framework', link: 'frameworks', cta: 'Open frameworks' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-[var(--line)] last:border-0">
-                  <div className="text-[13px]">{item.text}</div>
-                  <button onClick={() => setActive(item.link)}
-                    className="text-[12px] font-medium flex-shrink-0 ml-4" style={{ color: liveAccent }}>
-                    {item.cta} →
-                  </button>
+                { n:1, t:'Parse founder context', d:`Extract problem, customer, proof, risks, and ${productType.toLowerCase()} market claims.` },
+                { n:2, t:'Apply VC lens',         d:`Restructure based on product type (${productType}), stage (${stageType}), and investor (${investor}).` },
+                { n:3, t:'Build coded deck',      d:'Render the approved story into HTML, CSS, JS, and analytics events.' },
+                { n:4, t:'Track signals',         d:'Measure time per slide, drop-off, return visits, CTA clicks, and follow-up intent.' },
+              ].map(s => (
+                <div key={s.n} className="relative grid grid-cols-[28px_1fr] gap-3 items-start">
+                  <div className="absolute -left-9 top-0 w-8 h-8 rounded-xl flex items-center justify-center font-mono text-[11px] font-semibold z-10"
+                    style={{ background:'var(--paper)', border:`1px solid ${liveAccent}55`, color: liveAccent }}>{s.n}</div>
+                  <div className="col-start-2 p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                    <div className="font-medium text-[13px]">{s.t}</div>
+                    <div className="text-[12px] ink-muted mt-1 leading-relaxed">{s.d}</div>
+                  </div>
                 </div>
               ))}
             </div>
           </Card>
+
           <Card className="p-6">
-            <div className="font-semibold tracking-tight mb-4">Recent activity</div>
-            <div className="space-y-3 text-[13px]">
-              {[
-                { text: 'a16z viewer opened slide 4 twice', time: '2h ago' },
-                { text: 'Sequoia viewer stayed 96s on demo', time: 'yesterday' },
-                { text: 'Story audit re-ran', time: 'yesterday' },
-              ].map((a, i) => (
-                <div key={i} className="flex flex-col gap-0.5">
-                  <div className="ink">{a.text}</div>
-                  <div className="ink-muted text-[12px]">{a.time}</div>
-                </div>
-              ))}
+            <div className="font-semibold tracking-tight mb-1">AI workbench</div>
+            <div className="text-[12px] ink-muted mb-5">Model split powering this deck</div>
+            <div className="space-y-3">
+              <TipCard tip={{ icon:'C', severity:'info', title:'Claude Sonnet 4.6 — strategy', body:'Story parsing, VC lens, structure, critique, and objection simulation.' }} />
+              <TipCard tip={{ icon:'G', severity:'good', title:'GPT-4o — writing layer',       body:'Slide copy, speaker notes, follow-up messages, tone variations.' }} />
+              <TipCard tip={{ icon:'JS', severity:'warn', title:'Deterministic renderer',       body:'AI returns structured JSON; the app renders safe templates into real HTML.' }} />
             </div>
           </Card>
         </div>
@@ -462,40 +504,74 @@ export default function Workspace({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="font-semibold tracking-tight">Run GPT-4o pitch coach</div>
-                <div className="text-[13px] ink-muted mt-1 leading-relaxed">Rebuilds headlines to 2–5 words, sharpens bullets, removes every buzzword.</div>
+                <div className="text-[13px] ink-muted mt-1 leading-relaxed">Rebuilds headlines to 2–5 words, sharpens bullets, removes buzzwords.</div>
               </div>
               {isRefining
                 ? <div className="flex-shrink-0 flex items-center gap-2 text-[13px]" style={{ color: liveAccent }}><span className="sd-spinner">◐</span> Working…</div>
-                : <button onClick={refine} className="flex-shrink-0 h-9 px-4 rounded-xl text-[13px] font-medium inline-flex items-center gap-1.5 text-white" style={{ background: liveAccent }}>
-                    <ic.spark className="w-3.5 h-3.5"/> Run coach
-                  </button>
+                : <button onClick={refine} className="flex-shrink-0 h-9 px-4 rounded-xl text-[13px] font-medium text-white" style={{ background: liveAccent }}>✦ Run coach</button>
               }
             </div>
           </Card>
         )}
-        {isRefined && <div className="px-4 py-3 rounded-[14px] text-[13px] flex items-center gap-2" style={{ background:'#f5f3ff', border:'1px solid #c7d2fe', color:'#6366f1' }}>✓ Pitch coach applied — copy is sharper</div>}
         {error && <div className="sd-error">{error}</div>}
       </div>
     )
   }
 
   /* ── SOURCES ─────────────────────────────────────────────────── */
+  const [openSource, setOpenSource] = useState<any>(null)
   const ScreenSources = () => {
-    const allSources = [
-      logoUrl    && { type:'Brand',   icon:'image',  name:'Logo / mark',                      value: logoUrl.slice(0,40)+'…',                          status:'Ready',      time:'Auto-detected'    },
-      websiteUrl && { type:'Brand',   icon:'globe',  name: websiteUrl.replace(/^https?:\/\//,''), value:'Brand colours and fonts extracted',             status:'Ready',      time:'Auto-detected'    },
-      realStory  && { type:'Story',   icon:'doc',    name:'Founder story',                    value: realStory.slice(0,80)+(realStory.length>80?'…':''), status:'Ready',      time:'Added at intake'  },
-                    { type:'Voice',   icon:'mic',    name:'Voice profile',                    value:'Extracted tone from your story input',              status:'Ready',      time:'At intake'        },
-                    { type:'Deck',    icon:'layers', name:'Claude Sonnet 4.6',                value:`Generated ${slideList.length||12}-slide deck`,      status:'Done',       time:'Just now'         },
-      isRefined && { type:'Deck',    icon:'spark',  name:'GPT-4o pitch coach',               value:'Refined all copy — headlines, bullets, lede',       status:'Done',       time:'Just now'         },
-    ].filter(Boolean) as any[]
+    const sources: any[] = [
+      logoUrl    && { type:'Brand',   title:'Logo / mark',                value: logoUrl.slice(0,40)+'…',                          status:'Ready',           confidence:'High',   tag:'good', body:'Logo extracted from your domain — used in deck cover and footer.' },
+      websiteUrl && { type:'Brand',   title: websiteUrl.replace(/^https?:\/\//,''), value:'Brand colours and fonts extracted',     status:'Ready',           confidence:'High',   tag:'good', body:'Website fetched, theme colours and fonts pulled in to drive the deck theme.' },
+      realStory  && { type:'Story',   title:'Founder story',              value: realStory.slice(0,80)+(realStory.length>80?'…':''),status:'Used in deck',    confidence:'High',   tag:'good', body:realStory },
+                    { type:'Voice',   title:'Voice profile',              value:'Extracted tone from your story input',              status:'Used in audit',  confidence:'Medium', tag:'info', body:'Voice match used for follow-up email generation and speaker notes tone.' },
+                    { type:'Deck',    title:'Claude Sonnet 4.6 output',   value:`Generated ${realSlides.length}-slide deck`,        status:'Used in deck',    confidence:'High',   tag:'good', body:'Structured slide JSON returned by Claude, rendered through the deterministic template.' },
+      isRefined && { type:'Deck',    title:'GPT-4o pitch coach',          value:'Refined all copy — headlines, bullets, lede',       status:'Applied',         confidence:'High',   tag:'good', body:'Pitch coach pass rewrote headlines to 2–5 words and sharpened proof claims.' },
+    ].filter(Boolean)
 
-    const filtered = sourcesFilter === 'All' ? allSources : allSources.filter(s => s.type === sourcesFilter)
-
-    const iconMap: Record<string, any> = { image: ic.image, globe: ic.globe, doc: ic.doc, mic: ic.mic, layers: ic.layers, spark: ic.spark }
+    const filtered = sourcesFilter === 'All' ? sources : sources.filter(s => s.type === sourcesFilter)
 
     return (
       <div className="p-6 lg:p-8 space-y-5">
+        {/* Hero */}
+        <Card className="p-6 sm:p-8 relative overflow-hidden">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div>
+              <MiniLabel>Source library</MiniLabel>
+              <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+                Separate real proof from loose <span style={{ color: liveAccent }}>claims</span>
+              </h1>
+              <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
+                Upload founder notes, old decks, links, screenshots, customer quotes, and investor feedback. Every slide should know what evidence supports it.
+              </p>
+              <div className="flex gap-2 mt-5 flex-wrap">
+                <button className="h-10 px-4 rounded-xl font-medium text-[14px] text-white inline-flex items-center gap-2" style={{ background: liveAccent }}>
+                  <ic.plus className="w-4 h-4"/> Add source
+                </button>
+                <button onClick={() => setActive('claims')} className="h-10 px-4 rounded-xl font-medium text-[14px] paper hairline">
+                  Scan for claims
+                </button>
+              </div>
+            </div>
+            <Card className="p-5" style={{ background:'var(--surface)' }}>
+              <MiniLabel>Source quality</MiniLabel>
+              <div className="space-y-2.5 mt-3">
+                {[['Proof', 76],['Claims', 58],['Assets', 88]].map(([l, v]: any) => (
+                  <div key={l} className="grid grid-cols-[70px_1fr_36px] items-center gap-2 text-[12px] ink-muted">
+                    <span>{l}</span>
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background:'var(--paper)' }}>
+                      <div className="h-full rounded-full" style={{ width:`${v}%`, background:`linear-gradient(90deg,${liveAccent},${liveAccent}99)` }}/>
+                    </div>
+                    <b className="text-right">{v}%</b>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </Card>
+
+        {/* Filter */}
         <div className="flex flex-wrap items-center gap-2">
           {['All','Brand','Story','Voice','Deck'].map(f => (
             <button key={f} onClick={() => setSourcesFilter(f)}
@@ -504,40 +580,50 @@ export default function Workspace({
               {f}
             </button>
           ))}
-          <button className="ml-auto h-8 px-3.5 rounded-full text-[13px] font-medium hairline inline-flex items-center gap-1.5">
-            <ic.upload className="w-3.5 h-3.5"/> Add source
-          </button>
+          <Pill tone="soft">{sources.length} sources</Pill>
         </div>
 
+        {/* Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((s: any, i: number) => {
-            const Ico = iconMap[s.icon] || ic.doc
-            return (
-              <Card key={i} className="p-5">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:'var(--surface)' }}>
-                    <Ico className="w-4 h-4 ink-muted"/>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-[14px] truncate">{s.name}</div>
-                    <div className="text-[12px] ink-muted mt-0.5">{s.type}</div>
-                  </div>
-                </div>
-                <div className="text-[12px] ink-muted truncate mb-3">{s.value}</div>
-                <div className="flex items-center justify-between">
-                  <Pill tone="good">{s.status}</Pill>
-                  <div className="text-[11px] ink-muted">{s.time}</div>
-                </div>
-              </Card>
-            )
-          })}
-          {/* empty state */}
-          <Card className="p-5 flex flex-col items-center justify-center text-center min-h-[120px]" style={{ background:'var(--surface)', border:'1.5px dashed var(--line)' }}>
+          {filtered.map((s: any, i: number) => (
+            <Card key={i} className="p-5 cursor-pointer transition-all hover:-translate-y-0.5" onClick={() => setOpenSource(s)}>
+              <MiniLabel>{s.type}</MiniLabel>
+              <div className="font-semibold text-[14px] mt-1.5 truncate">{s.title}</div>
+              <div className="text-[12px] ink-muted mt-2 leading-relaxed line-clamp-2">{s.body}</div>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                <Pill tone={s.tag}>{s.status}</Pill>
+                <Pill tone="soft">{s.confidence} confidence</Pill>
+              </div>
+            </Card>
+          ))}
+          <Card className="p-5 flex flex-col items-center justify-center text-center min-h-[140px]" style={{ background:'var(--surface)', border:'1.5px dashed var(--line)' }}>
             <ic.upload className="w-5 h-5 ink-muted mb-2"/>
             <div className="text-[13px] font-medium">Add another source</div>
             <div className="text-[12px] ink-muted mt-1">Logos, sites, decks, notes, screenshots, audio.</div>
           </Card>
         </div>
+
+        {/* Source modal */}
+        {openSource && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setOpenSource(null)}>
+            <Card className="w-full max-w-xl p-6" onClick={(e: any) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <MiniLabel>{openSource.type}</MiniLabel>
+                  <div className="font-semibold text-[16px] mt-1">{openSource.title}</div>
+                </div>
+                <button onClick={() => setOpenSource(null)} className="w-8 h-8 rounded-lg hairline">×</button>
+              </div>
+              <div className="space-y-3">
+                <TipCard tip={{ icon:'i', severity: openSource.tag, title: openSource.status, body: openSource.body }} />
+                <div className="p-4 rounded-xl hairline">
+                  <div className="text-[12px] uppercase tracking-wider ink-muted mb-1">Suggested use</div>
+                  <div className="text-[13px] leading-relaxed">Attach this source to the most relevant slide and use it to support claims, screenshots, or product proof.</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     )
   }
@@ -545,58 +631,40 @@ export default function Workspace({
   /* ── THEME ───────────────────────────────────────────────────── */
   const ScreenTheme = () => {
     const tints = [liveAccent, liveAccent+'cc', liveAccent+'99', liveAccent+'55', liveAccent+'22']
-    const demoThemes = [
-      { name:'SyncPay',   accent:'#00b09b', bg:'#f0fafa', desc:'Fintech teal' },
-      { name:'Momentum',  accent:'#e63946', bg:'#fff5f5', desc:'Bold red' },
-      { name:'Verdant',   accent:'#2d6a4f', bg:'#f0f7f0', desc:'Clean green' },
-    ]
     return (
       <div className="p-6 lg:p-8">
         <div className="grid lg:grid-cols-3 gap-5">
-          {/* Left panel */}
           <Card className="p-6 space-y-5 lg:col-span-1">
             <div>
               <div className="font-semibold tracking-tight mb-1">Brand intelligence</div>
               {websiteUrl && <div className="text-[12px] ink-muted">Extracted from {websiteUrl.replace(/^https?:\/\//,'')}</div>}
             </div>
-
             <div>
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Extracted colours</div>
-              <div className="flex flex-wrap gap-2 mb-2">
+              <MiniLabel>Extracted colours</MiniLabel>
+              <div className="flex flex-wrap gap-2 mt-2 mb-2">
                 {tints.map((t, i) => (
                   <button key={i} onClick={() => { setLiveAccent(t); setManualHex(t) }}
-                    className="w-8 h-8 rounded-lg hairline transition-all hover:ring-2"
+                    className="w-8 h-8 rounded-lg hairline transition-all hover:scale-110"
                     style={{ background: t }} />
                 ))}
               </div>
               <div className="text-[11px] ink-muted">Click any colour to apply it as the primary</div>
             </div>
-
             {logoUrl && (
               <div>
-                <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Brand logo</div>
-                <img src={logoUrl} alt="Logo" className="h-10 max-w-[140px] rounded hairline object-contain" />
+                <MiniLabel>Brand logo</MiniLabel>
+                <img src={logoUrl} alt="Logo" className="mt-2 h-10 max-w-[140px] rounded hairline object-contain" />
               </div>
             )}
-
-            {industry && (
+            {productType && (
               <div>
-                <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Industry</div>
-                <Pill tone="soft">{industry}</Pill>
+                <MiniLabel>Industry</MiniLabel>
+                <div className="mt-2"><Pill tone="soft">{productType}</Pill></div>
               </div>
             )}
-
             <div>
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Detected fonts</div>
-              <div className="space-y-1 text-[13px]">
-                <div><span className="font-semibold">Inter</span> <span className="ink-muted">— Heading</span></div>
-                <div><span>Inter</span> <span className="ink-muted">— Body</span></div>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Manual override</div>
-              <div className="flex gap-2">
+              <MiniLabel>Manual override</MiniLabel>
+              <div className="flex gap-2 mt-2">
                 <input value={manualHex} onChange={e => setManualHex(e.target.value)}
                   className="flex-1 h-9 px-3 rounded-xl text-[13px] hairline font-mono" placeholder="#3B7D4F" />
                 <button onClick={() => setLiveAccent(manualHex)}
@@ -605,19 +673,22 @@ export default function Workspace({
                 </button>
               </div>
             </div>
-
             <button onClick={() => { setLiveAccent(accentColor); setManualHex(accentColor) }}
               className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted inline-flex items-center gap-1.5">
-              <ic.spark className="w-3 h-3"/> Reset to detected
+              <ic.refresh className="w-3 h-3"/> Reset to detected
             </button>
           </Card>
 
-          {/* Right panel */}
           <div className="lg:col-span-2 space-y-5">
             <Card className="p-6">
-              <div className="font-semibold tracking-tight mb-4">How the UI adapts to brand</div>
+              <div className="font-semibold tracking-tight mb-1">How the UI adapts to brand</div>
+              <div className="text-[12px] ink-muted mb-4">Same workspace, three brand worlds</div>
               <div className="grid grid-cols-3 gap-3">
-                {demoThemes.map(dt => (
+                {[
+                  { name:'Fintech',    accent:'#00b09b', bg:'#f0fafa' },
+                  { name:'Consumer',   accent:'#e63946', bg:'#fff5f5' },
+                  { name:'Climate',    accent:'#2d6a4f', bg:'#f0f7f0' },
+                ].map(dt => (
                   <div key={dt.name} className="rounded-xl overflow-hidden hairline" style={{ background: dt.bg }}>
                     <div className="h-16 p-2 flex gap-1">
                       <div className="w-10 rounded-lg flex-shrink-0" style={{ background: dt.accent + '33' }}/>
@@ -627,7 +698,7 @@ export default function Workspace({
                         <div className="h-1.5 rounded-full" style={{ background: dt.accent, opacity:.2, width:'50%' }}/>
                       </div>
                     </div>
-                    <div className="px-2 pb-2 text-[10px] font-medium" style={{ color: dt.accent }}>{dt.name} · {dt.desc}</div>
+                    <div className="px-2 pb-2 text-[10px] font-medium" style={{ color: dt.accent }}>{dt.name}</div>
                   </div>
                 ))}
               </div>
@@ -645,13 +716,8 @@ export default function Workspace({
                   </div>
                 </div>
                 <div className="p-3 text-[12px] ink-muted">
-                  {company} · {industry || 'Startup'} · {liveAccent}
+                  {company} · {productType} · {liveAccent}
                 </div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                {tints.slice(0,4).map((t, i) => (
-                  <div key={i} className="flex-1 h-6 rounded-lg" style={{ background: t }} />
-                ))}
               </div>
             </Card>
           </div>
@@ -662,119 +728,137 @@ export default function Workspace({
 
   /* ── DECK BUILD ──────────────────────────────────────────────── */
   const ScreenDeck = () => {
-    if (!slideList.length) return (
-      <div className="p-8"><Card className="p-10 text-center max-w-md mx-auto">
-        <div className="text-[13px] ink-muted">No deck content yet. Complete the intake to generate slides.</div>
-      </Card></div>
-    )
-    const cur = slideList[activeSlide]
+    const cur = realSlides[activeSlide]
     return (
-      <div className="p-4 lg:p-6">
-        <div className="grid lg:grid-cols-[220px_1fr_260px] gap-4 h-full">
-          {/* Outline */}
-          <Card className="p-3 overflow-auto max-h-[calc(100vh-160px)]">
-            <div className="flex items-center justify-between px-2 py-1 mb-2">
-              <div className="text-[12px] uppercase tracking-wider ink-muted font-medium">Outline</div>
-              <Pill tone="soft">{slideList.length}</Pill>
+      <div className="p-4 lg:p-6 space-y-5">
+        {/* Slide map */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="font-semibold tracking-tight">Generated slide map</div>
+              <div className="text-[12px] ink-muted mt-0.5">Click a slide to update the deck preview</div>
             </div>
-            <div className="space-y-0.5">
-              {slideList.map((s, i) => (
-                <button key={s.key} onClick={() => setActiveSlide(i)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-all group"
-                  style={i===activeSlide ? { background:'var(--surface)' } : {}}>
-                  <span className="text-[11px] ink-muted w-4 flex-shrink-0">⋮⋮</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate" style={i===activeSlide?{color:liveAccent}:{}}>{s.val?.headline || s.label}</div>
-                    <div className="text-[11px] ink-muted truncate">{s.label}</div>
-                  </div>
-                  <div className="flex-shrink-0 flex gap-0.5 opacity-0 group-hover:opacity-100">
-                    <button className="w-5 h-5 flex items-center justify-center text-[10px] ink-muted" onClick={e=>{e.stopPropagation();setActiveSlide(Math.max(0,i-1))}}>↑</button>
-                    <button className="w-5 h-5 flex items-center justify-center text-[10px] ink-muted" onClick={e=>{e.stopPropagation();setActiveSlide(Math.min(slideList.length-1,i+1))}}>↓</button>
-                  </div>
-                </button>
-              ))}
+            <button onClick={() => setActiveSlide((activeSlide+1) % realSlides.length)}
+              className="h-8 px-3 rounded-xl text-[12px] hairline inline-flex items-center gap-1.5">
+              <ic.refresh className="w-3 h-3"/> Regenerate flow
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {realSlides.map((s, i) => (
+              <button key={s.key} onClick={() => setActiveSlide(i)}
+                className="text-left p-3 rounded-xl hairline transition-all hover:-translate-y-1"
+                style={i===activeSlide ? { background: liveAccent+'12', borderColor: liveAccent } : { background:'var(--paper)' }}>
+                <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: liveAccent }}>{s.kind}</div>
+                <div className="font-semibold text-[13px] leading-tight mb-1.5 line-clamp-2">{s.title}</div>
+                <div className="text-[11px] ink-muted leading-snug line-clamp-2">{s.body}</div>
+                <div className="text-[9px] font-mono ink-muted mt-2">{String(i+1).padStart(2,'0')}</div>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* HTML deck build */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="font-semibold tracking-tight">HTML deck build</div>
+              <div className="text-[12px] ink-muted mt-0.5">Interactive coded deck with motion, pacing, and demo sections</div>
             </div>
-          </Card>
-
-          {/* Center */}
-          <div className="space-y-4">
-            {/* Slide grid */}
-            <Card className="p-4">
-              <div className="grid grid-cols-2 gap-3">
-                {slideList.slice(0,6).map((s, i) => (
-                  <button key={s.key} onClick={() => setActiveSlide(i)}
-                    className="rounded-xl overflow-hidden hairline text-left transition-all"
-                    style={i===activeSlide ? { boxShadow:`0 0 0 2px ${liveAccent}` } : {}}>
-                    <div className="aspect-video p-3 relative overflow-hidden" style={{ background: i===activeSlide ? liveAccent+'11' : 'var(--surface)' }}>
-                      <Pill tone={i===activeSlide?'accent':'soft'}>{s.label}</Pill>
-                      <div className="mt-1.5 text-[12px] font-semibold leading-tight truncate">{s.val?.headline || s.label}</div>
-                      {s.val?.lede && <div className="text-[10px] ink-muted mt-0.5 line-clamp-2 leading-snug">{s.val.lede}</div>}
-                    </div>
-                    <div className="px-3 py-1.5 flex items-center justify-between" style={{ background:'var(--surface)' }}>
-                      <span className="text-[10px] ink-muted">S{i+1}</span>
-                      <Pill tone="good">Ready</Pill>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-            {/* Live preview */}
-            <Card className="p-0 overflow-hidden">
-              <div className="aspect-video p-8 relative" style={{ background:`linear-gradient(135deg,${liveAccent}22,var(--paper))` }}>
-                <Pill tone="accent">{cur?.label}</Pill>
-                <div className="mt-4 text-[28px] sm:text-[36px] font-semibold tracking-tight leading-tight">{cur?.val?.headline || cur?.label}</div>
-                {cur?.val?.lede && <div className="mt-3 text-[15px] ink-muted leading-relaxed max-w-lg">{cur?.val?.lede}</div>}
-                {cur?.val?.bullets?.length > 0 && (
-                  <ul className="mt-3 space-y-1.5">
-                    {cur.val.bullets.slice(0,3).map((b: string, j: number) => (
-                      <li key={j} className="text-[13px] flex gap-2">
-                        <span style={{ color: liveAccent }}>·</span>{b}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </Card>
+            <MotionChip>scroll snap + analytics</MotionChip>
           </div>
 
-          {/* Inspector */}
-          <Card className="p-5 space-y-4 overflow-auto max-h-[calc(100vh-160px)]">
-            <div className="font-semibold tracking-tight">Inspector</div>
-            {cur && (<>
-              <div>
-                <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Title</label>
-                <input defaultValue={cur.val?.headline || cur.label}
-                  className="w-full h-9 px-3 rounded-xl text-[13px] hairline" />
+          <div className="grid lg:grid-cols-[1.25fr_0.75fr] gap-5">
+            {/* Preview */}
+            <div className="rounded-2xl overflow-hidden hairline aspect-video p-8 relative"
+              style={{ background: `radial-gradient(circle at 70% 30%, ${liveAccent}22, transparent 30%), linear-gradient(180deg, var(--paper), var(--surface))` }}>
+              <div className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ backgroundImage:'linear-gradient(rgba(15,17,21,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(15,17,21,.06) 1px, transparent 1px)', backgroundSize:'48px 48px' }}/>
+              <div className="relative h-full flex flex-col justify-between">
+                <div>
+                  <div className="text-[10px] font-mono uppercase tracking-[0.2em] mb-3" style={{ color: liveAccent }}>
+                    Slide {String(activeSlide+1).padStart(2,'0')} · {cur?.kind?.toLowerCase()}
+                  </div>
+                  <h2 className="text-[36px] sm:text-[48px] font-semibold tracking-tight leading-[0.95] uppercase">
+                    {cur?.title}. <span style={{ color: liveAccent }}>{company} makes it obvious.</span>
+                  </h2>
+                </div>
+                <div className="flex items-end justify-between gap-3">
+                  <p className="ink-muted text-[13px] leading-relaxed max-w-md">{cur?.body}</p>
+                  <MotionChip>transition: {cur?.motion}</MotionChip>
+                </div>
               </div>
-              <div>
-                <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Body</label>
-                <textarea defaultValue={cur.val?.lede || ''} rows={3}
-                  className="w-full px-3 py-2 rounded-xl text-[13px] hairline resize-none" />
-              </div>
-              <div>
-                <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Speaker notes</label>
-                <textarea rows={3} className="w-full px-3 py-2 rounded-xl text-[13px] hairline resize-none"
-                  placeholder="Notes for when you present this slide…" />
-              </div>
-              <div>
-                <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Framework</label>
-                <select className="w-full h-9 px-3 rounded-xl text-[13px] hairline">
-                  <option>None selected</option>
-                  {FRAMEWORKS.map(f => <option key={f.id}>{f.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Status</label>
-                <select className="w-full h-9 px-3 rounded-xl text-[13px] hairline">
-                  <option>Ready</option>
-                  <option>Drafting</option>
-                  <option>Outline</option>
-                </select>
-              </div>
-            </>)}
-          </Card>
-        </div>
+            </div>
+
+            {/* Right stack */}
+            <div className="space-y-3">
+              <Card className="p-4">
+                <MiniLabel>Build status</MiniLabel>
+                <div className="font-medium text-[13px] mt-2">{generatedContent ? 'HTML deck generated' : 'Ready to generate'}</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">
+                  {generatedContent
+                    ? 'Created index.html, styles.css, deck.js, analytics.js, investor links, and PDF fallback.'
+                    : 'Use the intake to generate slides; this will build the live HTML deck.'}
+                </div>
+              </Card>
+              <Card className="p-4">
+                <MiniLabel>Included files</MiniLabel>
+                <ul className="mt-2 space-y-1 text-[12px]">
+                  {['index.html','styles.css','deck.js','analytics.js','assets/','PDF fallback'].map(f =>
+                    <li key={f} className="flex items-center gap-2"><span className="w-1 h-1 rounded-full" style={{ background: liveAccent }}/>{f}</li>
+                  )}
+                </ul>
+              </Card>
+              <Card className="p-4">
+                <MiniLabel>Deck controls</MiniLabel>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(['motion','analytics','password'] as const).map(k => (
+                    <button key={k} onClick={() => setDeckOpts(o => ({ ...o, [k]: !o[k] }))}
+                      className="text-[12px] px-3 h-7 rounded-full hairline capitalize transition-all"
+                      style={deckOpts[k] ? { background: liveAccent+'15', color: liveAccent, borderColor: liveAccent+'55' } : { color:'var(--ink-muted)' }}>
+                      {k}
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </Card>
+
+        {/* Inspector */}
+        <Card className="p-5">
+          <div className="font-semibold tracking-tight mb-4">Inspector — slide {activeSlide+1}</div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <MiniLabel>Title</MiniLabel>
+              <input defaultValue={cur?.title} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
+            </div>
+            <div>
+              <MiniLabel>Kind</MiniLabel>
+              <input defaultValue={cur?.kind} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
+            </div>
+            <div className="sm:col-span-2">
+              <MiniLabel>Body</MiniLabel>
+              <textarea defaultValue={cur?.body} rows={3} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none" />
+            </div>
+            <div className="sm:col-span-2">
+              <MiniLabel>Speaker notes</MiniLabel>
+              <textarea defaultValue={cur?.notes} rows={3} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none" />
+            </div>
+            <div>
+              <MiniLabel>Framework</MiniLabel>
+              <select className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline">
+                <option>None</option>
+                {FRAMEWORKS.map(f => <option key={f.id}>{f.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <MiniLabel>Motion</MiniLabel>
+              <select defaultValue={cur?.motion} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline">
+                {['smooth reveal','zoom passage','glitch','fold','explode','stat pulse','vortex','clean fade','hard cut','flow','pop','orbit'].map(m => <option key={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+        </Card>
       </div>
     )
   }
@@ -799,10 +883,10 @@ export default function Workspace({
         { name:'Grid mosaic',            usage:'Used by 5% in your industry' },
       ],
       palettes: [
-        { name:'Trust teal',    usage:'Used by 28% in your industry' },
-        { name:'Corporate blue',usage:'Used by 22% in your industry', generic: true },
-        { name:'Founder ink',   usage:'Used by 19% in your industry' },
-        { name:'Warm clay',     usage:'Used by 14% in your industry' },
+        { name:'Brand primary',  usage:'Used by 28% in your industry' },
+        { name:'Corporate blue', usage:'Used by 22% in your industry', generic: true },
+        { name:'Founder ink',    usage:'Used by 19% in your industry' },
+        { name:'Warm clay',      usage:'Used by 14% in your industry' },
       ],
       moods: [
         { name:'Calm conviction',  usage:'Used by 31% in your industry' },
@@ -812,7 +896,7 @@ export default function Workspace({
         { name:'Warm founder',     usage:'Used by 9% in your industry' },
       ],
     }
-    const items = (antiGeneric ? content[styleTab].filter(x => !x.generic) : content[styleTab])
+    const items = antiGeneric ? content[styleTab].filter(x => !x.generic) : content[styleTab]
     return (
       <div className="p-6 lg:p-8 space-y-5">
         <Card className="p-4">
@@ -841,10 +925,8 @@ export default function Workspace({
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((item, i) => (
             <Card key={i} className="p-0 overflow-hidden cursor-pointer hover:shadow-lg transition-all">
-              <div className="h-16 relative overflow-hidden"
-                style={{ background:`linear-gradient(135deg,${liveAccent}33,${liveAccent}11)` }}>
-                <div className="absolute inset-0 opacity-20"
-                  style={{ backgroundImage:'linear-gradient(to right,rgba(15,17,21,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(15,17,21,.08) 1px,transparent 1px)', backgroundSize:'12px 12px' }}/>
+              <div className="h-16 relative overflow-hidden" style={{ background:`linear-gradient(135deg,${liveAccent}33,${liveAccent}11)` }}>
+                <div className="absolute inset-0 opacity-20" style={{ backgroundImage:'linear-gradient(to right,rgba(15,17,21,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(15,17,21,.08) 1px,transparent 1px)', backgroundSize:'12px 12px' }}/>
                 {styleTab==='palettes' && (
                   <div className="absolute bottom-2 left-3 flex gap-1.5">
                     {[liveAccent, liveAccent+'99', liveAccent+'44'].map((c,j)=>(
@@ -894,7 +976,7 @@ export default function Workspace({
                 style={{ background: activeFramework===f.id ? '#137a4a' : liveAccent }}>
                 {activeFramework===f.id ? '✓ Applied' : 'Apply to deck'}
               </button>
-              <button className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted">Preview restructure</button>
+              <button className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted">Preview</button>
             </div>
           </Card>
         ))}
@@ -903,178 +985,289 @@ export default function Workspace({
   )
 
   /* ── VC LENS ─────────────────────────────────────────────────── */
-  const ScreenVCLens = () => (
-    <div className="p-6 lg:p-8">
-      <div className="grid lg:grid-cols-[260px_1fr] gap-5">
-        {/* Left: archetypes */}
-        <Card className="p-4">
-          <div className="text-[12px] uppercase tracking-wider ink-muted mb-3 px-2">Investor archetypes</div>
-          <div className="space-y-1">
-            {AUDIENCES.map(a => {
-              const p = PERSONAS[a]
-              return (
-                <button key={a} onClick={() => setVcPersona(a)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl transition-all flex items-start justify-between gap-2"
-                  style={vcPersona===a ? { background:'var(--surface)' } : {}}>
-                  <div>
-                    <div className="text-[13px] font-medium" style={vcPersona===a?{color:liveAccent}:{}}>{p.label}</div>
-                    <div className="text-[11px] ink-muted mt-0.5">{p.fund}</div>
-                  </div>
-                  {vcPersona===a && <Pill tone="soft">Selected</Pill>}
-                </button>
-              )
-            })}
+  const ScreenVCLens = () => {
+    const profile = VC_PROFILES[investor] || VC_PROFILES['Seed VC']
+    return (
+      <div className="p-6 lg:p-8 space-y-5">
+        {/* Hero with selects */}
+        <Card className="p-6 sm:p-8 relative overflow-hidden">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div>
+              <MiniLabel>VC lens</MiniLabel>
+              <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+                Different investors need <span style={{ color: liveAccent }}>different stories</span>
+              </h1>
+              <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
+                The product adjusts template, audit, slide order, and critique based on product type, stage, and investor audience.
+              </p>
+              <div className="flex gap-2 mt-5 flex-wrap">
+                <RunBtn onClick={runVCLens} loading={vcLoading} label="Apply lens to deck" done={!!vcData} />
+                <button onClick={() => setActive('audit')} className="h-9 px-4 rounded-xl text-[13px] font-medium hairline">View audit</button>
+              </div>
+            </div>
+            <Card className="p-5 space-y-3" style={{ background:`${liveAccent}08`, borderColor:`${liveAccent}33` }}>
+              <div>
+                <MiniLabel>Product type</MiniLabel>
+                <select value={productType} onChange={e => setProductType(e.target.value)}
+                  className="w-full h-9 px-3 mt-1.5 rounded-xl text-[13px] hairline">
+                  {Object.keys({ Fintech:1, SaaS:1, AI:1, Enterprise:1, Consumer:1, 'Developer Tools':1, Climate:1, Health:1, Education:1, Other:1 }).map(p => <option key={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <MiniLabel>Stage</MiniLabel>
+                <select value={stageType} onChange={e => setStageType(e.target.value)}
+                  className="w-full h-9 px-3 mt-1.5 rounded-xl text-[13px] hairline">
+                  {STAGES.map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <MiniLabel>Investor lens</MiniLabel>
+                <select value={lensType} onChange={e => setLensType(e.target.value)}
+                  className="w-full h-9 px-3 mt-1.5 rounded-xl text-[13px] hairline">
+                  {['Workflow pain + wedge','Founder insight + market size','Product depth + defensibility','Growth loop + retention','Enterprise ROI + adoption risk'].map(s => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <MiniLabel>Target investor</MiniLabel>
+                <select value={investor} onChange={e => setInvestor(e.target.value)}
+                  className="w-full h-9 px-3 mt-1.5 rounded-xl text-[13px] hairline">
+                  {AUDIENCES.map(a => <option key={a}>{a}</option>)}
+                </select>
+              </div>
+            </Card>
           </div>
         </Card>
 
-        {/* Right */}
-        <div className="space-y-4">
+        {/* Template logic + VC profile */}
+        <div className="grid lg:grid-cols-2 gap-4">
           <Card className="p-5">
-            <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <div className="font-semibold tracking-tight">{PERSONAS[vcPersona]?.label}</div>
-                <div className="text-[13px] ink-muted mt-0.5">{PERSONAS[vcPersona]?.fund} — {PERSONAS[vcPersona]?.focus}</div>
+                <div className="font-semibold tracking-tight">Template logic</div>
+                <div className="text-[12px] ink-muted mt-0.5">Updates when you change product type</div>
               </div>
-              <RunBtn onClick={runVCLens} loading={vcLoading} label="Apply lens to deck" done={!!vcData} />
+              <Pill tone="accent">{tpl.status}</Pill>
             </div>
-            {!vcData && !vcLoading && (
-              <div className="text-[13px] ink-muted">Run the lens to see how a {vcPersona} would react to this pitch.</div>
-            )}
+            <div className="space-y-3">
+              {tpl.tips.map((t, i) => <TipCard key={i} tip={t} />)}
+            </div>
           </Card>
 
-          {vcData && (<>
-            <Card className="p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[11px] uppercase tracking-wider ink-muted mb-1">{vcPersona} verdict</div>
-                  <div className="font-semibold text-[15px] leading-snug">{vcData.verdict}</div>
-                </div>
-                <div className="flex-shrink-0 text-center">
-                  <div className="text-[32px] font-semibold tracking-tight" style={{ color: liveAccent }}>{vcData.score}</div>
-                  <div className="text-[11px] ink-muted">/ 100</div>
-                </div>
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="font-semibold tracking-tight">VC profile</div>
+                <div className="text-[12px] ink-muted mt-0.5">Public signals and likely questions</div>
+              </div>
+            </div>
+            <Card className="p-4" style={{ background:'var(--surface)' }}>
+              <MiniLabel>{profile.name}</MiniLabel>
+              <div className="font-medium text-[14px] mt-1">{profile.fund}</div>
+              <div className="text-[12px] ink-muted mt-1 leading-relaxed">Public thesis, portfolio, posts shaping the lens.</div>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {profile.focus.map(f => <Pill key={f} tone="info">{f}</Pill>)}
               </div>
             </Card>
-
-            <Card className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-3">Likely questions</div>
-              <ol className="space-y-2">
-                {vcData.questions?.map((q: string, i: number) => (
-                  <li key={i} className="flex gap-3 p-2 rounded-xl" style={{ background:'var(--surface)' }}>
-                    <span className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] flex-shrink-0 font-semibold"
-                      style={{ background: liveAccent }}>{i+1}</span>
-                    <span className="text-[13px]">{q}</span>
+            <div className="mt-4">
+              <MiniLabel>Likely questions</MiniLabel>
+              <ol className="mt-2 space-y-1.5">
+                {profile.questionsLikely.map((q, i) => (
+                  <li key={i} className="flex gap-2 text-[13px]">
+                    <span className="font-semibold flex-shrink-0" style={{ color: liveAccent }}>{i+1}.</span>{q}
                   </li>
                 ))}
               </ol>
-            </Card>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Card className="p-5">
-                <div className="text-[12px] uppercase tracking-wider ink-muted mb-3">Strengths</div>
-                <ul className="space-y-2">
-                  {vcData.strengths?.map((s: string, i: number) => (
-                    <li key={i} className="text-[13px] flex gap-2"><ic.check className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color:'#137a4a' }}/>{s}</li>
-                  ))}
-                </ul>
-              </Card>
-              <Card className="p-5">
-                <div className="text-[12px] uppercase tracking-wider ink-muted mb-3">Concerns</div>
-                <ul className="space-y-2">
-                  {vcData.concerns?.map((c: string, i: number) => (
-                    <li key={i} className="text-[13px] flex gap-2"><span className="flex-shrink-0 mt-0.5" style={{ color:'#b0322b' }}>·</span>{c}</li>
-                  ))}
-                </ul>
-              </Card>
             </div>
-
-            <Card className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-3">Lens tips</div>
-              <ul className="space-y-2">
-                {vcData.tips?.map((t: string, i: number) => (
-                  <li key={i} className="text-[13px] flex gap-2"><ic.check className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: liveAccent }}/>{t}</li>
-                ))}
-              </ul>
-            </Card>
-          </>)}
-          {error && <div className="sd-error">{error}</div>}
+          </Card>
         </div>
+
+        {/* Quality gates checklist */}
+        <Card className="p-5">
+          <div className="font-semibold tracking-tight mb-1">What this lens tests</div>
+          <div className="text-[12px] ink-muted mb-4">Deck quality gates based on audience</div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {tpl.checklist.map((item, i) => (
+              <Card key={i} className="p-4" style={{ background:'var(--surface)' }}>
+                <MiniLabel>Quality gate</MiniLabel>
+                <div className="font-medium text-[13px] mt-1.5">{item}</div>
+                <div className="text-[12px] ink-muted mt-1.5 leading-relaxed">
+                  This lens checks whether the deck proves this clearly enough for {investor.toLowerCase()}.
+                </div>
+              </Card>
+            ))}
+          </div>
+        </Card>
+
+        {/* AI-augmented output if vcData loaded */}
+        {vcData && (
+          <Card className="p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <MiniLabel>{investor} verdict</MiniLabel>
+                <div className="font-semibold text-[15px] mt-1 leading-snug">{vcData.verdict}</div>
+              </div>
+              <div className="text-center flex-shrink-0">
+                <div className="text-[32px] font-semibold tracking-tight" style={{ color: liveAccent }}>{vcData.score}</div>
+                <div className="text-[11px] ink-muted">/ 100</div>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <MiniLabel>Strengths</MiniLabel>
+                <ul className="mt-2 space-y-1.5">{vcData.strengths?.map((s: string, i: number) => <li key={i} className="text-[12px] flex gap-2"><span style={{ color:'#137a4a' }}>✓</span>{s}</li>)}</ul>
+              </div>
+              <div>
+                <MiniLabel>Concerns</MiniLabel>
+                <ul className="mt-2 space-y-1.5">{vcData.concerns?.map((c: string, i: number) => <li key={i} className="text-[12px] flex gap-2"><span style={{ color:'#b0322b' }}>·</span>{c}</li>)}</ul>
+              </div>
+              <div>
+                <MiniLabel>Tips</MiniLabel>
+                <ul className="mt-2 space-y-1.5">{vcData.tips?.map((t: string, i: number) => <li key={i} className="text-[12px] flex gap-2"><span style={{ color: liveAccent }}>→</span>{t}</li>)}</ul>
+              </div>
+            </div>
+          </Card>
+        )}
+        {error && <div className="sd-error">{error}</div>}
       </div>
-    </div>
-  )
+    )
+  }
 
   /* ── AUDIT ───────────────────────────────────────────────────── */
-  const ScreenAudit = () => (
-    <div className="p-6 lg:p-8 space-y-5">
-      {!auditData && (
-        <Card className="p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="font-semibold tracking-tight">Deck audit</div>
-              <div className="text-[13px] ink-muted mt-1">Scores clarity, momentum, evidence, and conviction. Most decks score 40–70.</div>
+  const ScreenAudit = () => {
+    const base = tpl.scoreBaseline
+    const seedAdjust = (i: number) => Math.max(4.8, Math.min(9.3, base[i] + (Math.sin(rewriteSeed * (i+1)) * 0.6))).toFixed(1)
+    const scores = [seedAdjust(0), seedAdjust(1), seedAdjust(2), seedAdjust(3)]
+    const objs = tpl.objections.slice(objectionSeed % 1, (objectionSeed % 1) + 3)
+    return (
+      <div className="p-6 lg:p-8 space-y-5">
+        {/* Score grid + tips */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="font-semibold tracking-tight">Investor readiness audit</div>
+              <Pill tone="accent">{productType} lens active</Pill>
             </div>
-            <RunBtn onClick={runAudit} loading={auditLoading} label="Run audit" done={false} />
-          </div>
-        </Card>
-      )}
+            <div className="text-[12px] ink-muted mb-4">Scored from founder notes and selected VC lens</div>
+            <div className="grid grid-cols-4 gap-2">
+              {[['Story clarity', scores[0]], ['Proof strength', scores[1]], ['Investor fit', scores[2]], ['Market logic', scores[3]]].map(([l, v]: any) => (
+                <Card key={l} className="p-3" style={{ background:'var(--surface)' }}>
+                  <div className="text-[28px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{v}</div>
+                  <div className="text-[11px] ink-muted mt-2 leading-tight">{l}</div>
+                </Card>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <RunBtn onClick={() => { setRewriteSeed(s => s+1); runAudit() }} loading={auditLoading} label="Re-run audit" done={!!auditData} secondary />
+            </div>
+          </Card>
 
-      {auditData && (<>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <ScoreCard label="Clarity"    value={auditData.scores?.clarity    ?? 0} />
-          <ScoreCard label="Momentum"   value={auditData.scores?.momentum   ?? 0} />
-          <ScoreCard label="Evidence"   value={auditData.scores?.evidence   ?? 0} />
-          <ScoreCard label="Conviction" value={auditData.scores?.conviction ?? 0} />
+          <Card className="p-5">
+            <div className="font-semibold tracking-tight mb-1">VC tips</div>
+            <div className="text-[12px] ink-muted mb-4">Blunt notes before the deck is built</div>
+            <div className="space-y-3">
+              {tpl.tips.map((t, i) => <TipCard key={i} tip={t} />)}
+            </div>
+          </Card>
         </div>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-5">
+        {/* Story rewrite */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="font-semibold tracking-tight">Overall</div>
-              <div className="text-[13px] ink-muted">Composite score</div>
+              <div className="font-semibold tracking-tight">Story rewrite</div>
+              <div className="text-[12px] ink-muted mt-0.5">Turns raw notes into stronger slide copy</div>
             </div>
-            <div className="text-[40px] font-semibold tracking-tight" style={{ color: liveAccent }}>{auditData.overall}</div>
+            <button onClick={() => setRewriteSeed(s => s+1)} className="h-8 px-3 rounded-xl text-[12px] hairline inline-flex items-center gap-1.5">
+              <ic.refresh className="w-3 h-3"/> Rewrite again
+            </button>
           </div>
-          <div className="h-3 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width:`${auditData.overall}%`, background: liveAccent }} />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Card className="p-4" style={{ background:'var(--surface)' }}>
+              <MiniLabel>Before</MiniLabel>
+              <p className="text-[13px] ink-muted mt-2 leading-relaxed">{realStory?.slice(0,170) || tpl.rewriteBefore}{realStory && realStory.length > 170 ? '…' : ''}</p>
+            </Card>
+            <Card className="p-4" style={{ background:`${liveAccent}08`, borderColor:`${liveAccent}33` }}>
+              <MiniLabel>After</MiniLabel>
+              <h4 className="font-semibold text-[15px] mt-2 leading-snug">{tpl.rewriteAfter.headline}</h4>
+              <p className="text-[13px] ink-muted mt-2 leading-relaxed">{tpl.rewriteAfter.body.replace(/We /g, `${company || 'We'} `)}</p>
+            </Card>
           </div>
         </Card>
 
-        <Card className="p-6">
+        {/* Objection simulator */}
+        <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <div className="font-semibold tracking-tight">VC tips</div>
-            <RunBtn onClick={runAudit} loading={auditLoading} label="Re-run audit" done={false} secondary />
+            <div>
+              <div className="font-semibold tracking-tight">Objection simulator</div>
+              <div className="text-[12px] ink-muted mt-0.5">Likely investor pushback and suggested answer angle</div>
+            </div>
+            <button onClick={() => setObjectionSeed(s => s+1)} className="h-8 px-3 rounded-xl text-[12px] hairline inline-flex items-center gap-1.5">
+              <ic.refresh className="w-3 h-3"/> New objection
+            </button>
           </div>
           <div className="space-y-3">
-            {auditData.tips?.map((tip: any, i: number) => (
-              <div key={i} className="p-4 rounded-xl hairline flex items-start gap-3">
-                <Pill tone={tip.severity==='good'?'good':tip.severity==='risk'?'risk':'warn'}>{tip.severity}</Pill>
+            {tpl.objections.map((o, i) => (
+              <div key={i} className="p-4 rounded-xl hairline flex items-start gap-3" style={{ background:'var(--paper)' }}>
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center font-bold flex-shrink-0" style={SEVERITY_STYLE[o.severity]}>?</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-[14px]">{tip.title}</div>
-                  <div className="text-[13px] ink-muted mt-0.5 leading-relaxed">{tip.body}</div>
-                  {tip.slide && (
-                    <button onClick={() => { setActive('deck') }}
-                      className="text-[12px] font-medium mt-1.5" style={{ color: liveAccent }}>
-                      Apply to {SLIDE_LABELS[tip.slide] || tip.slide} →
-                    </button>
-                  )}
+                  <div className="font-medium text-[14px]">{o.question}</div>
+                  <div className="text-[13px] ink-muted mt-1 leading-relaxed">{o.angle}</div>
                 </div>
               </div>
             ))}
           </div>
         </Card>
-      </>)}
-      {error && <div className="sd-error">{error}</div>}
-    </div>
-  )
+        {error && <div className="sd-error">{error}</div>}
+      </div>
+    )
+  }
 
   /* ── CLAIMS ──────────────────────────────────────────────────── */
+  const [openClaim, setOpenClaim] = useState<any>(null)
   const ScreenClaims = () => {
-    const allClaims = claimsData?.claims || []
+    const apiClaims = claimsData?.claims || []
+    const allClaims = apiClaims.length > 0 ? apiClaims : tpl.exampleClaims.map((c, i) => ({ ...c, slide: realSlides[i % realSlides.length]?.key, confidence: c.classification==='supported' ? 0.9 : c.classification==='needs-source' ? 0.55 : 0.4 }))
     const filterMap: Record<string, string> = { 'Supported':'supported', 'Needs source':'needs-source', 'Risky':'risky', 'Founder thesis':'founder-thesis' }
-    const visible = claimsFilter==='All' ? allClaims : allClaims.filter((c:any) => c.classification===filterMap[claimsFilter])
+    const visible = claimsFilter === 'All' ? allClaims : allClaims.filter((c:any) => c.classification === filterMap[claimsFilter])
+    const verified = allClaims.filter((c:any) => c.classification === 'supported').length
+    const risky    = allClaims.filter((c:any) => c.classification === 'risky' || c.classification === 'needs-source').length
     return (
       <div className="p-6 lg:p-8 space-y-5">
+        {/* Hero */}
+        <Card className="p-6 relative overflow-hidden">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div>
+              <MiniLabel>Claim checker</MiniLabel>
+              <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+                Find weak claims before investors <span style={{ color: liveAccent }}>do</span>
+              </h1>
+              <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
+                Every market number, traction point, and competitive statement gets a confidence level. Unsupported claims get safer rewrites.
+              </p>
+              <div className="flex gap-2 mt-5 flex-wrap">
+                <RunBtn onClick={runClaims} loading={claimsLoading} label="Check claims" done={!!claimsData} />
+                <button className="h-9 px-4 rounded-xl text-[13px] font-medium hairline inline-flex items-center gap-1.5">
+                  <ic.plus className="w-3.5 h-3.5"/> Add claim
+                </button>
+              </div>
+            </div>
+            <Card className="p-5" style={{ background:'var(--surface)' }}>
+              <MiniLabel>Claim status</MiniLabel>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div className="p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                  <div className="text-[32px] font-semibold tracking-tight" style={{ color: '#137a4a' }}>{verified}</div>
+                  <div className="text-[11px] ink-muted mt-0.5">Verified</div>
+                </div>
+                <div className="p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                  <div className="text-[32px] font-semibold tracking-tight" style={{ color: '#b0322b' }}>{risky}</div>
+                  <div className="text-[11px] ink-muted mt-0.5">Need source</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </Card>
+
+        {/* Filter */}
         <div className="flex flex-wrap items-center gap-2">
           {['All','Supported','Needs source','Risky','Founder thesis'].map(f => (
             <button key={f} onClick={() => setClaimsFilter(f)}
@@ -1083,104 +1276,134 @@ export default function Workspace({
               {f}
             </button>
           ))}
-          <div className="ml-auto">
-            <RunBtn onClick={runClaims} loading={claimsLoading} label="Classify claims" done={!!claimsData} />
-          </div>
+          <div className="ml-auto"><Pill tone="warn">{risky} risky</Pill></div>
         </div>
 
-        {!claimsData && !claimsLoading && (
-          <Card className="p-10 text-center">
-            <ic.bolt className="w-8 h-8 ink-muted mx-auto mb-3"/>
-            <div className="font-semibold tracking-tight">No claims classified yet</div>
-            <div className="text-[13px] ink-muted mt-1">Run the classifier to see every assertion in your deck.</div>
-          </Card>
-        )}
-
-        {claimsData && (
-          <Card className="p-2">
-            {visible.length === 0 && (
-              <div className="p-8 text-center text-[13px] ink-muted">No claims in this category.</div>
-            )}
-            {visible.map((c: any, i: number) => {
-              const cs = CLAIM_STYLES[c.classification] || CLAIM_STYLES['needs-source']
-              return (
-                <div key={i} className="flex items-start gap-4 p-4 border-b border-[var(--line)] last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] leading-snug">{c.text}</div>
-                    <div className="text-[12px] ink-muted mt-1">
-                      {SLIDE_LABELS[c.slide] || c.slide} · confidence {Math.round((c.confidence||0)*100)}%
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5"
-                    style={{ background: cs.bg, color: cs.color }}>{cs.label}</span>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    <button className="h-7 px-2.5 rounded-lg text-[12px] hairline">Attach source</button>
-                    <button className="h-7 px-2.5 rounded-lg text-[12px] ink-muted">Soften</button>
-                  </div>
+        {/* Grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visible.map((c: any, i: number) => {
+            const cs = CLAIM_STYLES[c.classification] || CLAIM_STYLES['needs-source']
+            return (
+              <Card key={i} className="p-5 cursor-pointer transition-all hover:-translate-y-0.5" onClick={() => setOpenClaim(c)}>
+                <MiniLabel>{c.status || cs.label}</MiniLabel>
+                <h4 className="font-semibold text-[14px] mt-2 leading-snug">{c.text || c.claim}</h4>
+                <div className="text-[12px] ink-muted mt-2">Risk: {c.risk || 'Medium'}</div>
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: cs.bg, color: cs.color }}>{cs.label}</span>
+                  <Pill tone="soft">conf {Math.round((c.confidence || 0.6)*100)}%</Pill>
                 </div>
-              )
-            })}
-          </Card>
+              </Card>
+            )
+          })}
+        </div>
+
+        {/* Claim modal */}
+        {openClaim && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setOpenClaim(null)}>
+            <Card className="w-full max-w-xl p-6" onClick={(e: any) => e.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <MiniLabel>Claim review</MiniLabel>
+                  <div className="text-[12px] ink-muted mt-0.5">{openClaim.status || CLAIM_STYLES[openClaim.classification]?.label}</div>
+                </div>
+                <button onClick={() => setOpenClaim(null)} className="w-8 h-8 rounded-lg hairline">×</button>
+              </div>
+              <div className="space-y-3">
+                <TipCard tip={{
+                  icon: openClaim.classification==='supported'?'✓':openClaim.classification==='risky'?'!':'~',
+                  severity: openClaim.classification==='supported'?'good':openClaim.classification==='risky'?'risk':'warn',
+                  title: openClaim.text || openClaim.claim,
+                  body: `Risk level: ${openClaim.risk || 'Medium'}`,
+                }} />
+                <Card className="p-4" style={{ background:'var(--surface)' }}>
+                  <MiniLabel>Suggested rewrite</MiniLabel>
+                  <p className="text-[13px] mt-2 leading-relaxed">{openClaim.rewrite || 'Rewrite this with lower certainty until a source is added.'}</p>
+                </Card>
+                <div className="flex gap-2">
+                  <button className="h-9 px-4 rounded-xl text-[13px] font-medium text-white" style={{ background: liveAccent }}>Attach source</button>
+                  <button className="h-9 px-4 rounded-xl text-[13px] font-medium hairline">Apply rewrite</button>
+                </div>
+              </div>
+            </Card>
+          </div>
         )}
-        {error && <div className="sd-error">{error}</div>}
       </div>
     )
   }
 
   /* ── SIGNALS ─────────────────────────────────────────────────── */
   const ScreenSignals = () => {
-    const perSlide = slideList.slice(0,10).map((s, i) => ({
-      label:`S${i+1}`, pct: [92,78,96,43,61,55,88,71,39,82][i] ?? 60
-    }))
+    const seed = signalSeed
+    const engagement = tpl.engagementLabels.map((_, i) => {
+      const base = [92, 78, 96, 43, 61, 55, 88, 71][i] ?? 60
+      return Math.max(20, Math.min(99, base + Math.sin(seed * (i+1)) * 8))
+    })
     const viewers = [
-      { id:'a16z-•-9f', last:'2h ago', returns:3 },
-      { id:'seq-•-4a',  last:'yesterday', returns:2 },
-      { id:'nea-•-7c',  last:'3d ago', returns:1 },
+      { id:'blackbird-•-9f', last:'2h ago',    returns:3, hot:true  },
+      { id:'folklore-•-4a',  last:'yesterday', returns:2, hot:false },
+      { id:'airtree-•-7c',   last:'3d ago',    returns:1, hot:false },
     ]
     return (
       <div className="p-6 lg:p-8 space-y-5">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label:'Returning viewers', value:'3',    sub:'Last 7 days'    },
-            { label:'Demo time',         value:'2:04', sub:'Median'         },
-            { label:'Avg drop-off',       value:'38%',  sub:'Across slides'  },
-            { label:'Hook engagement',   value:'92%',  sub:'Slide 1'        },
-          ].map((m, i) => (
-            <Card key={i} className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-1">{m.label}</div>
-              <div className="text-[28px] font-semibold tracking-tight">{m.value}</div>
-              <div className="text-[12px] ink-muted mt-0.5">{m.sub}</div>
-            </Card>
-          ))}
-        </div>
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="font-semibold tracking-tight">Investor signals</div>
+              <div className="text-[12px] ink-muted mt-0.5">Named links, viewer behaviour, and follow-up guidance</div>
+            </div>
+            <button onClick={() => setSignalSeed(s => s+1)}
+              className="h-9 px-4 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5" style={{ background: liveAccent }}>
+              <ic.refresh className="w-3.5 h-3.5"/> Simulate new view
+            </button>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { v: 3 + seed,       t:'Return visits',     d:'Investors coming back after first view.' },
+              { v: `${2+seed}m`,   t:'Product demo time', d:'Most attention went to the demo section.' },
+              { v: `${Math.max(15, 43 - seed*4)}%`, t:'Market drop-off',  d:'The market story may need to be clearer.' },
+            ].map((m, i) => (
+              <Card key={i} className="p-4" style={{ background:'var(--surface)' }}>
+                <div className="text-[32px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{m.v}</div>
+                <div className="font-medium text-[13px] mt-3">{m.t}</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">{m.d}</div>
+              </Card>
+            ))}
+          </div>
+        </Card>
 
         <div className="grid lg:grid-cols-2 gap-4">
           <Card className="p-5">
-            <div className="font-semibold tracking-tight mb-4">Per-slide engagement</div>
+            <div className="font-semibold tracking-tight mb-1">Slide engagement</div>
+            <div className="text-[12px] ink-muted mb-4">Track what the viewer cared about</div>
             <div className="space-y-2.5">
-              {perSlide.map(ps => (
-                <div key={ps.label} className="flex items-center gap-3">
-                  <div className="text-[12px] ink-muted w-6 flex-shrink-0 font-mono">{ps.label}</div>
-                  <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
-                    <div className="h-full rounded-full transition-all duration-500"
-                      style={{ width:`${ps.pct}%`, background:`linear-gradient(90deg,${liveAccent},${liveAccent}99)` }} />
+              {tpl.engagementLabels.map((l, i) => (
+                <div key={l} className="grid grid-cols-[70px_1fr_36px] items-center gap-2 text-[12px] ink-muted">
+                  <span className="font-medium ink">{l}</span>
+                  <div className="h-2.5 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width:`${engagement[i]}%`, background:`linear-gradient(90deg,${liveAccent},${liveAccent}99)` }}/>
                   </div>
-                  <div className="text-[12px] ink-muted w-8 text-right font-mono">{ps.pct}%</div>
+                  <b className="text-right">{Math.round(engagement[i])}%</b>
                 </div>
               ))}
             </div>
           </Card>
 
           <Card className="p-5">
-            <div className="font-semibold tracking-tight mb-4">Returning viewers</div>
-            <div className="divide-y divide-[var(--line)]">
-              {viewers.map(v => (
-                <div key={v.id} className="py-3 flex items-center justify-between">
-                  <div>
-                    <div className="text-[14px] font-medium font-mono">{v.id}</div>
-                    <div className="text-[12px] ink-muted">Last seen {v.last}</div>
+            <div className="font-semibold tracking-tight mb-1">Activity feed</div>
+            <div className="text-[12px] ink-muted mb-4">Viewer behaviour and AI follow-up</div>
+            <div className="space-y-3">
+              {[
+                { a:'B',  t:'Blackbird link opened',     d:'Viewed 11 slides, longest on product demo, clicked book a call.', time:'9:42 AM' },
+                { a:'F',  t:'Folklore link returned',    d:'Second visit detected. Rewatched the workflow slides.',           time:'11:18 AM' },
+                { a:'AI', t:'Follow-up suggestion',      d: tpl.followupAngle.headline + '. ' + tpl.followupAngle.reason,     time:'Now' },
+              ].map((r, i) => (
+                <div key={i} className="grid grid-cols-[42px_1fr_auto] gap-3 items-center p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[12px]" style={{ background:'var(--surface)', color: liveAccent }}>{r.a}</div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-[13px]">{r.t}</div>
+                    <div className="text-[12px] ink-muted mt-0.5 leading-snug">{r.d}</div>
                   </div>
-                  <Pill tone="soft">{v.returns}× returns</Pill>
+                  <div className="text-[11px] font-mono ink-muted">{r.time}</div>
                 </div>
               ))}
             </div>
@@ -1188,23 +1411,20 @@ export default function Workspace({
         </div>
 
         <Card className="p-5">
-          <div className="font-semibold tracking-tight mb-4">Drop-off by slide</div>
-          <div className="flex items-end gap-1.5 h-32">
-            {perSlide.map((ps, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <div className="w-full rounded-t-md transition-all duration-500"
-                  style={{ height:`${ps.pct * 0.9}%`, background: liveAccent, opacity:.85 }} />
-                <div className="text-[10px] ink-muted">{ps.label}</div>
+          <div className="font-semibold tracking-tight mb-1">Returning viewers</div>
+          <div className="text-[12px] ink-muted mb-4">Per investor link</div>
+          <div className="divide-y divide-[var(--line)]">
+            {viewers.map(v => (
+              <div key={v.id} className="py-3 flex items-center justify-between">
+                <div>
+                  <div className="text-[14px] font-medium font-mono">{v.id}</div>
+                  <div className="text-[12px] ink-muted">Last seen {v.last}</div>
+                </div>
+                <Pill tone={v.hot ? 'accent' : 'soft'}>{v.returns}× returns</Pill>
               </div>
             ))}
           </div>
         </Card>
-
-        <div className="text-center p-6 text-[13px] ink-muted">
-          <ic.signal className="w-5 h-5 mx-auto mb-2 opacity-40"/>
-          Deploy your deck to start collecting real engagement signals.
-          <button onClick={() => setActive('deploy')} className="ml-2 font-medium" style={{ color: liveAccent }}>Deploy →</button>
-        </div>
       </div>
     )
   }
@@ -1214,15 +1434,16 @@ export default function Workspace({
     <div className="p-6 lg:p-8 space-y-5">
       <div className="grid sm:grid-cols-3 gap-4">
         {([
-          { id:'embed',   title:'App embed',    desc:'Embed a live demo inside your deck.' },
-          { id:'video',   title:'Autoplay video', desc:'Auto-play an MP4 at the right moment.' },
-          { id:'speaker', title:'Speaker-led',   desc:'Beat-by-beat script for a live walkthrough.' },
+          { id:'embed',   title:'App embed',      desc:'Embed a live demo inside your deck.',           est:'2:00' },
+          { id:'video',   title:'Autoplay video', desc:'Auto-play an MP4 at the right moment.',          est:'1:20' },
+          { id:'speaker', title:'Speaker-led',    desc:'Beat-by-beat script for a live walkthrough.',    est:'3:00' },
         ] as const).map(m => (
-          <Card key={m.id} className="p-5 cursor-pointer transition-all"
+          <Card key={m.id} className="p-5 cursor-pointer transition-all hover:-translate-y-0.5"
             style={demoMode===m.id ? { boxShadow:`0 0 0 2px ${liveAccent}` } : {}}
             onClick={() => setDemoMode(m.id)}>
-            <div className="font-semibold tracking-tight mb-1">{m.title}</div>
-            <div className="text-[13px] ink-muted">{m.desc}</div>
+            <MiniLabel>{m.est}</MiniLabel>
+            <div className="font-semibold tracking-tight mt-1.5">{m.title}</div>
+            <div className="text-[13px] ink-muted mt-1 leading-relaxed">{m.desc}</div>
           </Card>
         ))}
       </div>
@@ -1231,10 +1452,8 @@ export default function Workspace({
         {demoMode === 'embed' && (
           <div className="space-y-4">
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">App URL</label>
-              <input value={demoUrl} onChange={e => setDemoUrl(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl text-[13px] hairline"
-                placeholder="https://app.yourproduct.com/demo" />
+              <MiniLabel>App URL</MiniLabel>
+              <input value={demoUrl} onChange={e => setDemoUrl(e.target.value)} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" placeholder="https://app.yourproduct.com/demo" />
             </div>
             <div className="flex items-center justify-between text-[13px]">
               <span className="ink-muted">Estimated demo time</span>
@@ -1245,10 +1464,8 @@ export default function Workspace({
         {demoMode === 'video' && (
           <div className="space-y-4">
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Video URL (MP4)</label>
-              <input value={demoUrl} onChange={e => setDemoUrl(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl text-[13px] hairline"
-                placeholder="https://cdn.yourproduct.com/demo.mp4" />
+              <MiniLabel>Video URL (MP4)</MiniLabel>
+              <input value={demoUrl} onChange={e => setDemoUrl(e.target.value)} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" placeholder="https://cdn.yourproduct.com/demo.mp4" />
             </div>
             <div className="flex items-center justify-between text-[13px]">
               <span className="ink-muted">Estimated demo time</span>
@@ -1259,8 +1476,8 @@ export default function Workspace({
         {demoMode === 'speaker' && (
           <div className="space-y-4">
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Beats (one per line)</label>
-              <textarea rows={5} className="w-full px-3 py-2 rounded-xl text-[13px] hairline resize-none"
+              <MiniLabel>Beats (one per line)</MiniLabel>
+              <textarea rows={5} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none"
                 placeholder={"Open the dashboard\nClick 'New payment'\nShow the 3-second confirmation\nNavigate to reports"} />
             </div>
             <div className="flex items-center justify-between text-[13px]">
@@ -1279,59 +1496,75 @@ export default function Workspace({
 
   /* ── PRESENT ─────────────────────────────────────────────────── */
   const ScreenPresent = () => {
-    const cur  = slideList[presentSlide]
-    const next = slideList[presentSlide + 1]
-    const qaPrep = [
-      "What's your CAC and how does it scale?",
-      'Who else are you talking to right now?',
-      "Why won't a larger player copy this?",
-      'What does the next 18 months look like?',
-    ]
+    const cur  = realSlides[presentSlide]
+    const next = realSlides[presentSlide + 1]
     return (
-      <div className="p-4 lg:p-6">
-        <div className="grid lg:grid-cols-3 gap-4">
-          {/* Main slide */}
-          <div className="lg:col-span-2 space-y-3">
+      <div className="p-4 lg:p-6 space-y-5">
+        {/* Hero */}
+        <Card className="p-6 relative overflow-hidden">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div>
+              <MiniLabel>Presentation mode</MiniLabel>
+              <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+                Turn the deck into a <span style={{ color: liveAccent }}>talk track</span>
+              </h1>
+              <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
+                Generate speaker notes, timing, demo day script, and investor Q&amp;A prep for each slide. Tone: <i>{tpl.speakerTone}</i>
+              </p>
+            </div>
+            <Card className="p-5 space-y-3" style={{ background:'var(--surface)' }}>
+              <div>
+                <MiniLabel>Presentation length</MiniLabel>
+                <select value={scriptLength} onChange={e => setScriptLength(e.target.value)} className="w-full h-9 px-3 mt-1.5 rounded-xl text-[13px] hairline">
+                  {['2 minutes','5 minutes','10 minutes','Investor meeting'].map(l => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <MiniLabel>Tone</MiniLabel>
+                <select value={scriptTone} onChange={e => setScriptTone(e.target.value)} className="w-full h-9 px-3 mt-1.5 rounded-xl text-[13px] hairline">
+                  {['Sharp and direct','Demo day energy','Technical walkthrough','Founder story'].map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </Card>
+          </div>
+        </Card>
+
+        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-4">
+          {/* Slide + controls */}
+          <div className="space-y-3">
             <Card className="p-0 overflow-hidden">
               <div className="aspect-video p-8 flex flex-col justify-end relative"
-                style={{ background:`linear-gradient(135deg,${liveAccent}22,var(--paper) 70%)` }}>
+                style={{ background:`radial-gradient(circle at 70% 30%, ${liveAccent}22, transparent 30%), linear-gradient(180deg, var(--paper), var(--surface))` }}>
                 <div className="absolute inset-0 opacity-10 pointer-events-none"
-                  style={{ backgroundImage:'linear-gradient(to right,rgba(15,17,21,.06) 1px,transparent 1px),linear-gradient(to bottom,rgba(15,17,21,.06) 1px,transparent 1px)', backgroundSize:'20px 20px' }}/>
-                <Pill tone="accent">{cur?.label}</Pill>
-                <div className="mt-3 text-[32px] sm:text-[44px] font-semibold tracking-tight leading-tight">
-                  {cur?.val?.headline || cur?.label || company}
+                  style={{ backgroundImage:'linear-gradient(rgba(15,17,21,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(15,17,21,.06) 1px, transparent 1px)', backgroundSize:'24px 24px' }}/>
+                <div className="relative">
+                  <MotionChip>Slide {String(presentSlide+1).padStart(2,'0')} · {cur?.kind?.toLowerCase()}</MotionChip>
+                  <div className="mt-3 text-[32px] sm:text-[44px] font-semibold tracking-tight leading-tight uppercase">
+                    {cur?.title}
+                  </div>
+                  {cur?.body && <div className="mt-3 text-[15px] ink-muted max-w-lg">{cur.body}</div>}
                 </div>
-                {cur?.val?.lede && <div className="mt-3 text-[15px] ink-muted max-w-lg">{cur.val.lede}</div>}
               </div>
               <div className="p-3 flex items-center justify-between border-t border-[var(--line)]">
                 <div className="flex gap-2">
-                  <button onClick={() => setPresentSlide(s => Math.max(0, s-1))}
-                    className="h-8 px-3 rounded-xl text-[13px] hairline inline-flex items-center gap-1">
+                  <button onClick={() => setPresentSlide(s => Math.max(0, s-1))} className="h-8 px-3 rounded-xl text-[13px] hairline inline-flex items-center gap-1">
                     <ic.chevL className="w-4 h-4"/> Prev
                   </button>
-                  <button onClick={() => setPresentSlide(s => Math.min(slideList.length-1, s+1))}
-                    className="h-8 px-3 rounded-xl text-[13px] text-white inline-flex items-center gap-1"
-                    style={{ background: liveAccent }}>
+                  <button onClick={() => setPresentSlide(s => Math.min(realSlides.length-1, s+1))} className="h-8 px-3 rounded-xl text-[13px] text-white inline-flex items-center gap-1" style={{ background: liveAccent }}>
                     Next <ic.chevR className="w-4 h-4"/>
                   </button>
                 </div>
                 <div className="text-[14px] font-mono ink-muted">{fmtTimer(timerSeconds)}</div>
                 <div className="flex gap-2">
-                  <button onClick={() => setTimerRunning(!timerRunning)}
-                    className="h-8 px-3 rounded-xl text-[13px] hairline">
-                    {timerRunning ? 'Pause' : 'Start timer'}
-                  </button>
-                  <button onClick={() => { setTimerSeconds(0); setTimerRunning(false) }}
-                    className="h-8 px-3 rounded-xl text-[13px] ink-muted">
-                    Reset
-                  </button>
+                  <button onClick={() => setTimerRunning(!timerRunning)} className="h-8 px-3 rounded-xl text-[13px] hairline">{timerRunning ? 'Pause' : 'Start'}</button>
+                  <button onClick={() => { setTimerSeconds(0); setTimerRunning(false) }} className="h-8 px-3 rounded-xl text-[13px] ink-muted">Reset</button>
                 </div>
               </div>
             </Card>
 
             {/* Thumbnail strip */}
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {slideList.map((s, i) => (
+              {realSlides.map((s, i) => (
                 <button key={s.key} onClick={() => setPresentSlide(i)}
                   className="h-8 px-3 rounded-xl text-[12px] font-mono flex-shrink-0 transition-all"
                   style={i===presentSlide ? { background: liveAccent, color:'#fff' } : { background:'var(--surface)', color:'var(--ink-muted)' }}>
@@ -1341,287 +1574,341 @@ export default function Workspace({
             </div>
           </div>
 
-          {/* Right */}
-          <div className="space-y-4">
-            <Card className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Speaker notes</div>
-              <div className="text-[13px] leading-relaxed">
-                {cur?.val?.notes || `Walk through ${cur?.val?.headline || 'this slide'} with confidence. Pause after the key stat.`}
-              </div>
-            </Card>
-            <Card className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Up next</div>
-              {next ? (<>
-                <Pill tone="soft">{next.label}</Pill>
-                <div className="font-semibold text-[15px] mt-2">{next.val?.headline || next.label}</div>
-                {next.val?.lede && <div className="text-[13px] ink-muted mt-1">{next.val.lede}</div>}
-              </>) : (
-                <div className="text-[13px] ink-muted">Last slide.</div>
-              )}
-            </Card>
-            <Card className="p-5">
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-3">Q&amp;A prep</div>
-              <ul className="space-y-2">
-                {qaPrep.map((q, i) => (
-                  <li key={i} className="text-[13px] flex gap-2">
-                    <span className="ink-muted flex-shrink-0">·</span>{q}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </div>
+          {/* Speaker notes timeline */}
+          <Card className="p-5">
+            <div className="font-semibold tracking-tight mb-1">Speaker notes</div>
+            <div className="text-[12px] ink-muted mb-4">Generated per slide</div>
+            <div className="relative space-y-3 pl-9">
+              <div className="absolute left-[15px] top-2 bottom-2 w-px" style={{ background:`linear-gradient(${liveAccent},var(--line))` }} />
+              {realSlides.slice(0,5).map((s, i) => (
+                <div key={s.key} className="relative grid grid-cols-[28px_1fr] gap-3 items-start cursor-pointer" onClick={() => setPresentSlide(i)}>
+                  <div className="absolute -left-9 top-0 w-8 h-8 rounded-xl flex items-center justify-center font-mono text-[11px] font-semibold z-10"
+                    style={{ background:'var(--paper)', border:`1px solid ${i===presentSlide ? liveAccent : liveAccent+'55'}`, color: liveAccent }}>{i+1}</div>
+                  <div className="col-start-2 p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                    <div className="font-medium text-[13px]">{s.title}</div>
+                    <div className="text-[12px] ink-muted mt-1 leading-relaxed">Say: {s.body} Then move to proof. Likely question: why does this matter now?</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       </div>
     )
   }
 
   /* ── DEPLOY ──────────────────────────────────────────────────── */
-  const ScreenDeploy = () => (
-    <div className="p-6 lg:p-8 space-y-5">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { name:'Vercel',       desc:'One-click deploy, share link in 30s.',     action: () => setActive('deploy') },
-          { name:'Netlify',      desc:'Drag & drop or git-connected deploy.',      action: () => {} },
-          { name:'Cloudflare',   desc:'Edge CDN, global fast, free tier.',         action: () => {} },
-          { name:'HTML Export',  desc:'Download a self-contained HTML bundle.',    action: download },
-        ].map((t, i) => (
-          <Card key={i} className="p-5 flex flex-col">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 text-white text-[15px] font-bold"
-              style={{ background: liveAccent }}>
-              <ic.rocket className="w-5 h-5"/>
+  const ScreenDeploy = () => {
+    const targets = [
+      { name:'Vercel',      letter:'V',   desc:'Push the deck to a live route like /pitch.' },
+      { name:'Netlify',     letter:'N',   desc:'Static deploy with fast preview links.' },
+      { name:'Cloudflare',  letter:'C',   desc:'Ship to Pages with custom domain support.' },
+      { name:'HTML ZIP',    letter:'ZIP', desc:'Download HTML, CSS, JS, and assets.' },
+    ]
+    return (
+      <div className="p-6 lg:p-8 space-y-5">
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="font-semibold tracking-tight">Deploy anywhere</div>
+              <div className="text-[12px] ink-muted mt-0.5">Hosted link, exportable code, or push to the founder's stack</div>
             </div>
-            <div className="font-semibold tracking-tight text-[14px] mb-1">{t.name}</div>
-            <div className="text-[12px] ink-muted mb-4 flex-1">{t.desc}</div>
-            <button onClick={t.action}
-              className="h-8 px-3 rounded-xl text-[12px] font-medium text-white self-start"
+            <button onClick={selectedDeploy === 'HTML ZIP' ? download : deployToVercel}
+              disabled={deployLoading}
+              className="h-9 px-4 rounded-xl text-[13px] font-medium text-white disabled:opacity-40"
               style={{ background: liveAccent }}>
-              Deploy
+              {deployLoading ? <><span className="sd-spinner">◐</span> Publishing…</> : 'Publish selected'}
             </button>
-          </Card>
-        ))}
-      </div>
-
-      {/* Vercel token input */}
-      <Card className="p-6">
-        <div className="font-semibold tracking-tight mb-1">Deploy to Vercel</div>
-        <div className="text-[13px] ink-muted mb-4">Paste your Vercel token and your deck goes live in seconds.</div>
-        <div className="flex gap-2">
-          <input value={vercelToken} onChange={e => setVercelToken(e.target.value)}
-            className="flex-1 h-9 px-3 rounded-xl text-[13px] hairline font-mono"
-            placeholder="vcel_…" type="password" />
-          <button onClick={deployToVercel} disabled={!vercelToken || deployLoading}
-            className="h-9 px-4 rounded-xl text-[13px] font-medium text-white disabled:opacity-40"
-            style={{ background: liveAccent }}>
-            {deployLoading ? <><span className="sd-spinner">◐</span> Deploying…</> : 'Deploy'}
-          </button>
-        </div>
-        {deployUrl && (
-          <div className="mt-4 p-3 rounded-xl flex items-center gap-3" style={{ background:'#e8f4ee', border:'1px solid #b7ddc7' }}>
-            <ic.external className="w-4 h-4 flex-shrink-0" style={{ color:'#137a4a' }}/>
-            <a href={`https://${deployUrl}`} target="_blank" rel="noreferrer"
-              className="text-[13px] font-medium truncate" style={{ color:'#137a4a' }}>
-              {deployUrl}
-            </a>
           </div>
-        )}
-      </Card>
-
-      {/* Deploy history */}
-      <Card className="p-6">
-        <div className="font-semibold tracking-tight mb-4">Deploy history</div>
-        {deployHistory.length === 0 && !deployUrl ? (
-          <div className="text-[13px] ink-muted">No deployments yet.</div>
-        ) : (
-          <div className="divide-y divide-[var(--line)]">
-            {(deployUrl ? [{ target:'Vercel', url: deployUrl, time:'just now', status:'Live' }, ...deployHistory] : deployHistory).map((d, i) => (
-              <div key={i} className="py-3 flex items-center justify-between">
-                <div>
-                  <div className="text-[14px] font-medium">{d.target}</div>
-                  <div className="text-[12px] ink-muted">{d.url} · {d.time}</div>
-                </div>
-                <Pill tone="good">{d.status}</Pill>
-              </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {targets.map(t => (
+              <Card key={t.name} className="p-5 cursor-pointer transition-all hover:-translate-y-0.5"
+                style={selectedDeploy===t.name ? { boxShadow:`0 0 0 2px ${liveAccent}`, background:`${liveAccent}08` } : {}}
+                onClick={() => setSelectedDeploy(t.name)}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3 font-bold text-[13px]"
+                  style={{ background: 'var(--surface)', color: liveAccent }}>{t.letter}</div>
+                <div className="font-semibold tracking-tight text-[14px]">{t.name}</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">{t.desc}</div>
+              </Card>
             ))}
           </div>
-        )}
-      </Card>
-      {error && <div className="sd-error">{error}</div>}
-    </div>
-  )
+        </Card>
 
-  /* ── FOLLOW-UP ───────────────────────────────────────────────── */
-  const ScreenFollowup = () => (
-    <div className="p-6 lg:p-8">
-      <div className="grid lg:grid-cols-2 gap-5">
-        {/* Compose */}
-        <Card className="p-6 space-y-4">
-          <div className="font-semibold tracking-tight">Compose follow-up</div>
-          <div>
-            <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Investor persona</label>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {AUDIENCES.map(a => (
-                <button key={a} onClick={() => setFuAudience(a)}
-                  className="h-8 px-3 rounded-full text-[13px] hairline transition-all"
-                  style={fuAudience===a ? { background: liveAccent, color:'#fff', border:'none' } : {}}>
-                  {a}
+        {selectedDeploy === 'Vercel' && (
+          <Card className="p-6">
+            <div className="font-semibold tracking-tight mb-1">Vercel token</div>
+            <div className="text-[13px] ink-muted mb-4">Paste your Vercel token and your deck goes live in seconds.</div>
+            <div className="flex gap-2">
+              <input value={vercelToken} onChange={e => setVercelToken(e.target.value)}
+                className="flex-1 h-9 px-3 rounded-xl text-[13px] hairline font-mono"
+                placeholder="vcel_…" type="password" />
+              <button onClick={deployToVercel} disabled={!vercelToken || deployLoading}
+                className="h-9 px-4 rounded-xl text-[13px] font-medium text-white disabled:opacity-40"
+                style={{ background: liveAccent }}>
+                {deployLoading ? 'Deploying…' : 'Deploy'}
+              </button>
+            </div>
+            {deployUrl && (
+              <div className="mt-4 p-3 rounded-xl flex items-center gap-3" style={{ background:'#e8f4ee', border:'1px solid #b7ddc7' }}>
+                <ic.external className="w-4 h-4 flex-shrink-0" style={{ color:'#137a4a' }}/>
+                <a href={`https://${deployUrl}`} target="_blank" rel="noreferrer" className="text-[13px] font-medium truncate" style={{ color:'#137a4a' }}>{deployUrl}</a>
+              </div>
+            )}
+          </Card>
+        )}
+
+        <div className="grid lg:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="font-semibold tracking-tight">Investor links</div>
+                <div className="text-[12px] ink-muted mt-0.5">Create named links for tracking</div>
+              </div>
+              <button onClick={() => {
+                const name = prompt('Investor link name', 'new-investor')
+                if (name) setInvestorLinks(l => [...l, name.toLowerCase().replace(/[^a-z0-9]+/g,'-')])
+              }} className="h-8 px-3 rounded-xl text-[12px] hairline inline-flex items-center gap-1.5">
+                <ic.plus className="w-3 h-3"/> Add link
+              </button>
+            </div>
+            <div className="space-y-2">
+              {investorLinks.map(name => (
+                <div key={name} className="grid grid-cols-[42px_1fr_auto] gap-3 items-center p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold" style={{ background:'var(--surface)', color: liveAccent }}>{name[0].toUpperCase()}</div>
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-mono font-medium truncate">{(company || 'deck').toLowerCase()}.com/pitch/{name}</div>
+                    <div className="text-[12px] ink-muted">Named tracking link for {name}</div>
+                  </div>
+                  <Pill tone="good">live</Pill>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="font-semibold tracking-tight mb-1">Publish settings</div>
+            <div className="text-[12px] ink-muted mb-4">Control privacy and access</div>
+            <div className="flex flex-wrap gap-2">
+              {([
+                ['named',      'Named links'],
+                ['slideTrack', 'Slide tracking'],
+                ['password',   'Password'],
+                ['expiry',     'Expiry'],
+                ['pdf',        'PDF fallback'],
+                ['blockDl',    'Disable download'],
+              ] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setPublishOpts(o => ({ ...o, [k]: !o[k] }))}
+                  className="h-8 px-3 rounded-full text-[12px] hairline transition-all"
+                  style={publishOpts[k] ? { background: liveAccent+'15', color: liveAccent, borderColor: liveAccent+'55' } : { color:'var(--ink-muted)' }}>
+                  {l}
                 </button>
               ))}
             </div>
+            <Card className="p-3 mt-4" style={{ background:'var(--surface)' }}>
+              <div className="text-[12px] ink-muted leading-relaxed">
+                {deployUrl
+                  ? `Published to ${selectedDeploy}. Live at ${deployUrl}. Investor analytics active.`
+                  : 'No deployment yet. Select a platform and press publish.'}
+              </div>
+            </Card>
+          </Card>
+        </div>
+
+        {deployHistory.length > 0 && (
+          <Card className="p-5">
+            <div className="font-semibold tracking-tight mb-4">Deploy history</div>
+            <div className="divide-y divide-[var(--line)]">
+              {deployHistory.map((d, i) => (
+                <div key={i} className="py-3 flex items-center justify-between">
+                  <div>
+                    <div className="text-[14px] font-medium">{d.target}</div>
+                    <div className="text-[12px] ink-muted font-mono">{d.url} · {d.time}</div>
+                  </div>
+                  <Pill tone="good">{d.status}</Pill>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+        {error && <div className="sd-error">{error}</div>}
+      </div>
+    )
+  }
+
+  /* ── FOLLOW-UP ───────────────────────────────────────────────── */
+  const ScreenFollowup = () => (
+    <div className="p-6 lg:p-8 space-y-5">
+      <Card className="p-6 relative overflow-hidden">
+        <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+          <div>
+            <MiniLabel>Follow-up intelligence</MiniLabel>
+            <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+              Use viewer behaviour to send the <span style={{ color: liveAccent }}>right follow-up</span>
+            </h1>
+            <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
+              SignalDeck reads engagement patterns and recommends the next message, talking points, and deck changes.
+            </p>
+            <div className="flex gap-2 mt-5 flex-wrap">
+              <RunBtn onClick={runFollowup} loading={fuLoading} label="Generate follow-up" done={!!fuData} />
+              <button onClick={() => setActive('signals')} className="h-9 px-4 rounded-xl text-[13px] font-medium hairline">View signals</button>
+            </div>
+          </div>
+          <Card className="p-5" style={{ background:'var(--surface)' }}>
+            <MiniLabel>Recommended angle</MiniLabel>
+            <h4 className="font-semibold text-[15px] mt-2">{tpl.followupAngle.headline}</h4>
+            <p className="text-[13px] ink-muted mt-2 leading-relaxed">{tpl.followupAngle.reason}</p>
+          </Card>
+        </div>
+      </Card>
+
+      <div className="grid lg:grid-cols-2 gap-5">
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold tracking-tight">Suggested email</div>
+            <button onClick={async () => {
+              if (fuData) { await navigator.clipboard.writeText(`Subject: ${fuData.subject}\n\n${fuData.body}`); setFuCopied(true); setTimeout(() => setFuCopied(false), 2000) }
+            }} className="h-8 px-3 rounded-xl text-[12px] hairline inline-flex items-center gap-1.5">
+              <ic.copy className="w-3 h-3"/>{fuCopied ? 'Copied' : 'Copy'}
+            </button>
           </div>
           <div>
-            <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">To</label>
-            <input value={fuTo} onChange={e => setFuTo(e.target.value)}
-              className="w-full h-9 px-3 rounded-xl text-[13px] hairline"
-              placeholder="partner@a16z.com" />
+            <MiniLabel>Persona</MiniLabel>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {AUDIENCES.map(a => (
+                <button key={a} onClick={() => setFuAudience(a)}
+                  className="h-8 px-3 rounded-full text-[12px] hairline transition-all"
+                  style={fuAudience===a ? { background: liveAccent, color:'#fff', border:'none' } : {}}>{a}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <MiniLabel>To</MiniLabel>
+            <input value={fuTo} onChange={e => setFuTo(e.target.value)} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
           </div>
           {fuData && (<>
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Subject</label>
-              <input defaultValue={fuData.subject}
-                className="w-full h-9 px-3 rounded-xl text-[13px] hairline" />
+              <MiniLabel>Subject</MiniLabel>
+              <input defaultValue={fuData.subject} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Message</label>
-              <textarea defaultValue={fuData.body} rows={8}
-                className="w-full px-3 py-2 rounded-xl text-[13px] hairline resize-none leading-relaxed" />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {['deck.pdf', 'one-pager.pdf'].map(f => (
-                <span key={f} className="text-[12px] px-2.5 py-1 rounded-full" style={{ background:'var(--surface)' }}>{f}</span>
-              ))}
+              <MiniLabel>Message</MiniLabel>
+              <textarea defaultValue={fuData.body} rows={9} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none leading-relaxed" />
             </div>
           </>)}
-          <div className="flex gap-2 pt-2">
-            <RunBtn onClick={runFollowup} loading={fuLoading} label="✦ Generate email" done={!!fuData} />
-            {fuData && (
-              <button className="h-9 px-3 rounded-xl text-[13px] hairline ink-muted">Save draft</button>
-            )}
-          </div>
         </Card>
 
-        {/* Voice-match preview */}
-        <Card className="p-6" style={{ background:`linear-gradient(135deg,${liveAccent}08,var(--paper))` }}>
-          <div className="font-semibold tracking-tight mb-1">Voice-match preview</div>
-          <div className="text-[13px] ink-muted mb-4">Tone tuned to your voice sample and founder story.</div>
-          {fuData ? (
-            <div className="paper hairline rounded-xl p-4 space-y-3">
-              <div>
-                <div className="text-[11px] uppercase tracking-wider ink-muted mb-1">Subject</div>
-                <div className="font-semibold text-[14px]">{fuData.subject}</div>
-              </div>
-              <div className="border-t border-[var(--line)] pt-3">
-                <div className="text-[13px] leading-relaxed whitespace-pre-line">{fuData.body}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="paper hairline rounded-xl p-6 text-center">
-              <ic.send className="w-6 h-6 mx-auto mb-2 opacity-30"/>
-              <div className="text-[13px] ink-muted">Generate an email to see the preview here.</div>
-            </div>
-          )}
-          {fuData && (
-            <button onClick={async () => {
-              await navigator.clipboard.writeText(`Subject: ${fuData.subject}\n\n${fuData.body}`)
-              setFuCopied(true); setTimeout(() => setFuCopied(false), 2000)
-            }} className="mt-4 h-9 px-4 rounded-xl text-[13px] hairline inline-flex items-center gap-1.5 w-full justify-center">
-              <ic.copy className="w-3.5 h-3.5"/>{fuCopied ? 'Copied!' : 'Copy to clipboard'}
-            </button>
-          )}
+        <Card className="p-6">
+          <div className="font-semibold tracking-tight mb-1">Next actions</div>
+          <div className="text-[12px] ink-muted mb-4">What to do before sending</div>
+          <div className="space-y-3">
+            <TipCard tip={{ icon:'1', severity:'good', title:'Lead with product demo',     body:'The viewer spent the most time on product, so keep the follow-up practical.' }} />
+            <TipCard tip={{ icon:'2', severity:'warn', title:'Do not over-send market data', body:'They dropped near market. Offer to explain the wedge instead.' }} />
+            <TipCard tip={{ icon:'3', severity:'info', title:'Book a short walkthrough',   body:'Best next CTA is a 10-minute product walkthrough, not a generic coffee.' }} />
+          </div>
         </Card>
       </div>
-      {error && <div className="sd-error mt-4">{error}</div>}
+      {error && <div className="sd-error">{error}</div>}
     </div>
   )
 
   /* ── SETTINGS ────────────────────────────────────────────────── */
   const ScreenSettings = () => {
-    const tints = [liveAccent, liveAccent+'cc', liveAccent+'99', liveAccent+'55', '#0F1115', '#6366f1', '#137a4a', '#b0322b']
+    const tints = [liveAccent, liveAccent+'cc', liveAccent+'99', '#0F1115', '#6366f1', '#137a4a', '#b0322b', '#a86a00']
+    const Toggle = ({ on, label, onClick }: any) => (
+      <button onClick={onClick} className="h-8 px-3 rounded-full text-[12px] hairline transition-all"
+        style={on ? { background: liveAccent+'15', color: liveAccent, borderColor: liveAccent+'55' } : { color:'var(--ink-muted)' }}>
+        {label}
+      </button>
+    )
     return (
-      <div className="p-6 lg:p-8">
+      <div className="p-6 lg:p-8 space-y-5">
+        <Card className="p-6 relative overflow-hidden">
+          <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
+            <div>
+              <MiniLabel>Workspace settings</MiniLabel>
+              <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+                Control privacy, tracking, and <span style={{ color: liveAccent }}>deck quality gates</span>
+              </h1>
+              <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
+                Set how aggressive analytics should be, whether claims need sources before publishing, and what export formats are enabled.
+              </p>
+            </div>
+            <Card className="p-5" style={{ background:'var(--surface)' }}>
+              <MiniLabel>Quality gate</MiniLabel>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Toggle on={qualityGate.blockUnsourced} label="Block unsourced numbers" onClick={() => setQualityGate(q => ({ ...q, blockUnsourced: !q.blockUnsourced }))} />
+                <Toggle on={qualityGate.requireCta}     label="Require CTA"             onClick={() => setQualityGate(q => ({ ...q, requireCta: !q.requireCta }))} />
+                <Toggle on={qualityGate.mobile}         label="Mobile check"            onClick={() => setQualityGate(q => ({ ...q, mobile: !q.mobile }))} />
+                <Toggle on={qualityGate.consent}        label="Consent banner"          onClick={() => setQualityGate(q => ({ ...q, consent: !q.consent }))} />
+              </div>
+            </Card>
+          </div>
+        </Card>
+
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {/* Profile */}
           <Card className="p-6 space-y-4">
             <div className="font-semibold tracking-tight">Profile</div>
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Founder name</label>
-              <input value={settingsName} onChange={e => setSettingsName(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl text-[13px] hairline" />
+              <MiniLabel>Founder name</MiniLabel>
+              <input value={settingsName} onChange={e => setSettingsName(e.target.value)} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Company</label>
-              <input value={settingsCompany} onChange={e => setSettingsCompany(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl text-[13px] hairline" />
+              <MiniLabel>Company</MiniLabel>
+              <input value={settingsCompany} onChange={e => setSettingsCompany(e.target.value)} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div>
-              <label className="text-[12px] uppercase tracking-wider ink-muted mb-1.5 block">Industry</label>
-              <select value={settingsIndustry} onChange={e => setSettingsIndustry(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl text-[13px] hairline">
-                {['Fintech','Climate','Health','AI','SaaS','Enterprise','Developer Tools','Consumer','Education','Other'].map(i=>(
-                  <option key={i}>{i}</option>
-                ))}
+              <MiniLabel>Industry</MiniLabel>
+              <select value={settingsIndustry} onChange={e => { setSettingsIndustry(e.target.value); setProductType(e.target.value) }} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline">
+                {['Fintech','SaaS','AI','Enterprise','Consumer','Developer Tools','Climate','Health','Education','Other'].map(i => <option key={i}>{i}</option>)}
               </select>
             </div>
-            <button className="h-9 px-4 rounded-xl text-[13px] font-medium text-white w-full"
-              style={{ background: liveAccent }}>Save profile</button>
+            <button className="h-9 px-4 rounded-xl text-[13px] font-medium text-white w-full" style={{ background: liveAccent }}>Save profile</button>
           </Card>
 
-          {/* Brand override */}
           <Card className="p-6 space-y-4">
             <div className="font-semibold tracking-tight">Brand override</div>
             {websiteUrl && <div className="text-[13px] ink-muted">Currently using colours from {websiteUrl.replace(/^https?:\/\//,'')}.</div>}
             <div>
-              <div className="text-[12px] uppercase tracking-wider ink-muted mb-2">Colour palette</div>
-              <div className="flex flex-wrap gap-2">
+              <MiniLabel>Colour palette</MiniLabel>
+              <div className="flex flex-wrap gap-2 mt-2">
                 {tints.map((t, i) => (
                   <button key={i} onClick={() => { setLiveAccent(t); setManualHex(t) }}
-                    className="w-10 h-10 rounded-lg hairline shadow-card hover:ring-2 ring-offset-1 transition-all"
-                    style={{ background: t }} />
+                    className="w-10 h-10 rounded-lg hairline shadow-card transition-all hover:scale-110" style={{ background: t }} />
                 ))}
               </div>
             </div>
             <button onClick={() => { setLiveAccent(accentColor); setManualHex(accentColor) }}
               className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted inline-flex items-center gap-1.5">
-              <ic.spark className="w-3 h-3"/> Reset to detected
+              <ic.refresh className="w-3 h-3"/> Reset to detected
             </button>
           </Card>
 
-          {/* Exports + Danger */}
           <Card className="p-6 space-y-5">
             <div>
-              <div className="font-semibold tracking-tight mb-3">Exports</div>
-              <div className="space-y-2">
-                {[
-                  { label:'Deck PDF',       action: download },
-                  { label:'HTML bundle',    action: download },
-                  { label:'Speaker notes',  action: () => {} },
-                ].map((x, i) => (
-                  <div key={i} className="flex items-center justify-between py-1">
-                    <span className="text-[13px]">{x.label}</span>
-                    <button onClick={x.action}
-                      className="h-7 px-3 rounded-xl text-[12px] hairline inline-flex items-center gap-1">
-                      <ic.download className="w-3 h-3"/> Export
-                    </button>
-                  </div>
-                ))}
+              <div className="font-semibold tracking-tight mb-3">Analytics</div>
+              <div className="flex flex-wrap gap-2">
+                <Toggle on={analyticsOpts.slideTime}  label="Slide time"            onClick={() => setAnalyticsOpts(a => ({ ...a, slideTime: !a.slideTime }))} />
+                <Toggle on={analyticsOpts.ctaClicks}  label="CTA clicks"            onClick={() => setAnalyticsOpts(a => ({ ...a, ctaClicks: !a.ctaClicks }))} />
+                <Toggle on={analyticsOpts.returns}    label="Return visits"         onClick={() => setAnalyticsOpts(a => ({ ...a, returns: !a.returns }))} />
+                <Toggle on={analyticsOpts.location}   label="Location"              onClick={() => setAnalyticsOpts(a => ({ ...a, location: !a.location }))} />
+                <Toggle on={analyticsOpts.device}     label="Device"                onClick={() => setAnalyticsOpts(a => ({ ...a, device: !a.device }))} />
+                <Toggle on={analyticsOpts.anonOpt}    label="Anonymous mode option" onClick={() => setAnalyticsOpts(a => ({ ...a, anonOpt: !a.anonOpt }))} />
               </div>
             </div>
-            <div className="pt-4 border-t border-[var(--line)]">
-              <div className="text-[13px] font-semibold mb-3" style={{ color:'#b0322b' }}>Danger zone</div>
-              <div className="space-y-2">
-                {[
-                  { label:'Reset workspace', action: onRestart },
-                  { label:'Delete account',  action: () => {} },
-                ].map((x, i) => (
-                  <div key={i} className="flex items-center justify-between py-1">
-                    <span className="text-[13px]">{x.label}</span>
-                    <button onClick={x.action}
-                      className="h-7 px-3 rounded-xl text-[12px] hairline"
-                      style={{ color:'#b0322b' }}>
-                      {x.label.includes('Reset') ? 'Reset' : 'Delete'}
-                    </button>
-                  </div>
-                ))}
+            <div>
+              <div className="font-semibold tracking-tight mb-3">Exports</div>
+              <div className="flex flex-wrap gap-2">
+                <Toggle on={exportOpts.html}        label="HTML ZIP"     onClick={() => setExportOpts(e => ({ ...e, html: !e.html }))} />
+                <Toggle on={exportOpts.vercel}      label="Vercel"       onClick={() => setExportOpts(e => ({ ...e, vercel: !e.vercel }))} />
+                <Toggle on={exportOpts.cloudflare}  label="Cloudflare"   onClick={() => setExportOpts(e => ({ ...e, cloudflare: !e.cloudflare }))} />
+                <Toggle on={exportOpts.netlify}     label="Netlify"      onClick={() => setExportOpts(e => ({ ...e, netlify: !e.netlify }))} />
+                <Toggle on={exportOpts.pdf}         label="PDF fallback" onClick={() => setExportOpts(e => ({ ...e, pdf: !e.pdf }))} />
+                <Toggle on={exportOpts.pptx}        label="PPTX"         onClick={() => setExportOpts(e => ({ ...e, pptx: !e.pptx }))} />
               </div>
+            </div>
+            <div className="pt-3 border-t border-[var(--line)]">
+              <div className="text-[13px] font-semibold mb-3" style={{ color:'#b0322b' }}>Danger zone</div>
+              <button onClick={onRestart} className="h-8 px-3 rounded-xl text-[12px] hairline w-full text-left" style={{ color:'#b0322b' }}>Reset workspace</button>
             </div>
           </Card>
         </div>
@@ -1642,7 +1929,6 @@ export default function Workspace({
   /* ── Sidebar ─────────────────────────────────────────────────── */
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Brand */}
       <div className="px-6 py-4 border-b border-[var(--line)] flex items-center gap-3">
         {logoUrl
           ? <img src={logoUrl} alt="Logo" className="h-7 max-w-[100px] object-contain rounded"/>
@@ -1651,7 +1937,13 @@ export default function Workspace({
         {company && <span className="font-semibold tracking-tight text-[14px] truncate">{company}</span>}
       </div>
 
-      {/* Nav */}
+      {/* Project chip */}
+      <div className="px-4 py-3 border-b border-[var(--line)]">
+        <MiniLabel>Current project</MiniLabel>
+        <div className="text-[13px] font-medium mt-1 truncate">{company || 'Untitled'} investor deck</div>
+        <div className="mt-2"><Pill tone="accent">{tpl.status}</Pill></div>
+      </div>
+
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
         {NAV.map(group => (
           <div key={group.group}>
@@ -1672,11 +1964,8 @@ export default function Workspace({
         ))}
       </nav>
 
-      {/* Bottom */}
       <div className="p-4 border-t border-[var(--line)]">
-        <button onClick={onRestart} className="w-full h-8 rounded-xl text-[12px] hairline ink-muted">
-          ← New deck
-        </button>
+        <button onClick={onRestart} className="w-full h-8 rounded-xl text-[12px] hairline ink-muted">← New deck</button>
       </div>
     </div>
   )
@@ -1684,59 +1973,41 @@ export default function Workspace({
   /* ── Shell ───────────────────────────────────────────────────── */
   return (
     <div className="flex h-screen overflow-hidden" style={{ background:'var(--bg)', color:'var(--ink)' }}>
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--line)] bg-[var(--paper)]">
         <SidebarContent />
       </aside>
 
-      {/* Mobile drawer */}
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
-          <aside className="relative w-[240px] h-full bg-[var(--paper)] flex flex-col shadow-xl">
-            <SidebarContent />
-          </aside>
+          <aside className="relative w-[240px] h-full bg-[var(--paper)] flex flex-col shadow-xl"><SidebarContent /></aside>
         </div>
       )}
 
-      {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
         <header className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-[var(--line)] bg-[var(--paper)] flex-shrink-0">
-          <button className="lg:hidden" onClick={() => setSidebarOpen(true)}>
-            <ic.menu className="w-5 h-5 ink-muted"/>
-          </button>
+          <button className="lg:hidden" onClick={() => setSidebarOpen(true)}><ic.menu className="w-5 h-5 ink-muted"/></button>
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[15px] font-semibold truncate">{t1}</span>
             <span className="hidden sm:inline text-[13px] ink-muted">— {t2}</span>
           </div>
           <div className="flex-1"/>
           <div className="hidden md:flex items-center gap-3">
-            {slideList.length > 0 && (
-              <Pill tone="soft">{slideList.length} slides ready</Pill>
-            )}
-            <button onClick={() => setActive('theme')}
-              className="h-8 px-3 rounded-full hairline flex items-center gap-2 text-[13px]">
-              <div className="w-4 h-4 rounded-full flex-shrink-0"
-                style={{ background:`linear-gradient(135deg,${liveAccent},${liveAccent}88)` }}/>
+            {realSlides.length > 0 && <Pill tone="soft">{realSlides.length} slides ready</Pill>}
+            <button onClick={() => setActive('theme')} className="h-8 px-3 rounded-full hairline flex items-center gap-2 text-[13px]">
+              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background:`linear-gradient(135deg,${liveAccent},${liveAccent}88)` }}/>
               Theme
             </button>
           </div>
-          <button onClick={() => setActive('present')}
-            className="h-8 px-3.5 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5"
-            style={{ background: liveAccent }}>
+          <button onClick={() => setActive('present')} className="h-8 px-3.5 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5" style={{ background: liveAccent }}>
             <ic.play className="w-3.5 h-3.5"/> Present
           </button>
-          <div className="w-9 h-9 rounded-full surface hairline flex items-center justify-center text-[12px] font-semibold flex-shrink-0"
-            style={{ background:'var(--surface)' }}>
+          <div className="w-9 h-9 rounded-full surface hairline flex items-center justify-center text-[12px] font-semibold flex-shrink-0" style={{ background:'var(--surface)' }}>
             {(settingsName || founderName || 'YO').slice(0,2).toUpperCase()}
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto">
-          <Screen />
-        </main>
+        <main className="flex-1 overflow-y-auto"><Screen /></main>
       </div>
     </div>
   )
