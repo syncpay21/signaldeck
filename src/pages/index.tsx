@@ -84,8 +84,25 @@ export default function Home() {
   const [deployMode, setDeployMode] = useState<'vercel' | null>(null)
   const [isRefined, setIsRefined] = useState(false)
   const [error, setError] = useState('')
+  const [detecting, setDetecting] = useState(false)
+  const [detectedColors, setDetectedColors] = useState<string[]>([])
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
+
+  async function detectBrand() {
+    if (!form.domain) return
+    setDetecting(true)
+    setDetectedColors([])
+    try {
+      const res = await fetch(`/api/brand?domain=${encodeURIComponent(form.domain)}`)
+      const data = await res.json()
+      if (data.colors?.length) {
+        setDetectedColors(data.colors)
+        set('accentColor', data.colors[0])
+      }
+    } catch {}
+    setDetecting(false)
+  }
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', form.accentColor)
@@ -358,6 +375,36 @@ export default function Home() {
                   onChange={e => set('accentColor', e.target.value)}
                   placeholder="#0F1115" style={{ flex: 1 }} />
               </div>
+              {form.domain && (
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    type="button"
+                    className="sd-btn-secondary"
+                    style={{ width: '100%', fontSize: 13 }}
+                    onClick={detectBrand}
+                    disabled={detecting}
+                  >
+                    {detecting ? '↻ Detecting…' : `↗ Detect from ${form.domain}`}
+                  </button>
+                  {detectedColors.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                      {detectedColors.map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          title={color}
+                          onClick={() => set('accentColor', color)}
+                          style={{
+                            width: 36, height: 36, background: color, borderRadius: 8,
+                            border: form.accentColor === color ? '3px solid var(--ink)' : '1px solid var(--line)',
+                            cursor: 'pointer', transition: 'border 0.1s',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </label>
 
             <div style={{ marginBottom: 18 }}>
