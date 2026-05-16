@@ -151,6 +151,12 @@ export default function Home() {
         generatedHtml={generatedHtml}
         generatedContent={generatedContent}
         logoUrl={logoUrl}
+        audience={form.audience}
+        websiteUrl={form.websiteUrl}
+        realStory={form.realStory}
+        founderName={form.founderName}
+        stage={form.stage}
+        industry={form.industry}
         onRestart={() => {
           setStep('basics')
           setForm(empty)
