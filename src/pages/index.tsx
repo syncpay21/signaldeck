@@ -57,6 +57,19 @@ export default function Home() {
     document.documentElement.style.setProperty('--accent', form.accentColor)
   }, [form.accentColor])
 
+  // ?demo=1 — jump straight to workspace with stub content
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('demo') === '1') {
+      setForm(f => ({ ...f, company: 'SignalDeck', accentColor: '#6366f1' }))
+      document.documentElement.style.setProperty('--accent', '#6366f1')
+      setGeneratedHtml('<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#6366f1;font-size:18px;font-weight:600;">Demo deck — generate a real one to see slides here</div>')
+      setGeneratedContent({})
+      setStep('canvas')
+    }
+  }, [])
+
   const togglePrompt = (p: string) => {
     const used = form.promptsUsed.includes(p)
       ? form.promptsUsed.filter(x => x !== p)
