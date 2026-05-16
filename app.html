@@ -888,13 +888,27 @@ function IntakePurpose({data, set, next, back}){
   </IntakeShell>;
 }
 
+const SOCIAL_SOURCES = [
+  { key:"twitter",     label:"X / Twitter",    icon:"𝕏", placeholder:"https://x.com/yourbrand" },
+  { key:"linkedin",    label:"LinkedIn",        icon:"in", placeholder:"https://linkedin.com/company/yourbrand" },
+  { key:"instagram",   label:"Instagram",       icon:"◈",  placeholder:"https://instagram.com/yourbrand" },
+  { key:"producthunt", label:"Product Hunt",    icon:"▲",  placeholder:"https://producthunt.com/products/yourbrand" },
+];
+
 function IntakeBrand({data, set, next, back}){
   const b = data.brandSources;
   const setB = (patch)=> set({brandSources:{...b, ...patch}});
-  const [detecting, setDetecting] = useState(false);
-  const [preview, setPreview] = useState(null); // {primary, secondary, all[]}
-  const [detectErr, setDetectErr] = useState(false);
+  const setSocial = (patch)=> setB({socialUrls:{...b.socialUrls,...patch}});
+
+  const [detecting, setDetecting]       = useState(false);
+  const [preview, setPreview]           = useState(null);
+  const [detectErr, setDetectErr]       = useState(false);
+  const [socialFetching, setSocialFetching] = useState(null); // key being tried
+  const [socialResult, setSocialResult] = useState(null);    // {key, colors[]}
+  const [imgColors, setImgColors]       = useState(b.screenshotColors || []);
   const debounceRef = useRef(null);
+
+  const showFallback = detectErr || (!b.websiteUrl && !preview);
 
   const tryDetect = (url)=>{
     if(!url || !url.startsWith("http")) return;
@@ -903,63 +917,156 @@ function IntakeBrand({data, set, next, back}){
     debounceRef.current = setTimeout(async ()=>{
       const result = await fetchBrandColors(url);
       setDetecting(false);
-      if(result){ setPreview(result); }
+      if(result && result.primary){ setPreview(result); setDetectErr(false); }
       else { setDetectErr(true); }
     }, 900);
   };
 
+  const trySocial = async (key, url)=>{
+    if(!url || !url.startsWith("http")) return;
+    setSocialFetching(key); setSocialResult(null);
+    const result = await fetchBrandColors(url);
+    setSocialFetching(null);
+    if(result && result.primary){
+      setSocialResult({key, colors: result.all});
+      setB({ screenshotColors: result.all });
+    }
+  };
+
+  const onScreenshotUpload = async (files)=>{
+    const allColors = [];
+    for(const f of files){
+      const cols = await extractColorsFromImageFile(f);
+      allColors.push(...cols);
+    }
+    // Deduplicate and keep top 8
+    const deduped = [...new Set(allColors)].slice(0,8);
+    setImgColors(deduped);
+    setB({ screenshotColors: deduped, refImages: files.map(f=>f.name) });
+  };
+
+  const activeColors = preview?.all || socialResult?.colors || imgColors;
+
   return <IntakeShell step={4} total={5} onBack={back} onNext={next}>
     <h1 className="text-[28px] font-semibold tracking-tight">Brand and theme sources</h1>
-    <p className="ink-muted mt-2">Paste your website URL — we'll read the real colours and apply them across the whole UI.</p>
+    <p className="ink-muted mt-2">We'll read your brand and apply it across the whole UI. Start with your website — or use any of the fallbacks below.</p>
 
+    {/* ── Website URL ─────────────────────────────────────────── */}
     <div className="mt-6 space-y-1">
       <div className="text-[13px] ink-muted">Website URL</div>
       <div className="relative">
         <Input
           value={b.websiteUrl}
           onChange={e=>{ setB({websiteUrl:e.target.value}); tryDetect(e.target.value); }}
-          placeholder="https://cleaneatsaustralia.com.au"
+          placeholder="https://yourbrand.com"
         />
         {detecting && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin"/>}
       </div>
 
-      {/* Live color preview */}
       {preview && (
-        <div className="mt-3 p-3 rounded-xl surface flex items-center gap-3">
+        <div className="mt-2 p-3 rounded-xl surface flex items-center gap-3">
           <div className="flex gap-1.5">
             {preview.all.slice(0,5).map((c,i)=>
-              <div key={i} className="w-7 h-7 rounded-md hairline shadow-card" style={{background:c}} title={c}/>
+              <div key={i} className="w-7 h-7 rounded-md hairline" style={{background:c}} title={c}/>
             )}
           </div>
-          <div className="text-[13px]">
-            <div className="font-medium">Brand colors detected</div>
-            <div className="ink-muted">{preview.all.length} colours from {b.websiteUrl.replace(/https?:\/\//,"").split("/")[0]}</div>
+          <div className="text-[13px] flex-1">
+            <div className="font-medium">Brand colours detected</div>
+            <div className="ink-muted text-[12px]">{preview.all.length} colours from {b.websiteUrl.replace(/https?:\/\//,"").split("/")[0]}</div>
           </div>
           <Pill tone="good">Ready</Pill>
         </div>
       )}
+
       {detectErr && (
-        <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-          <div className="text-[12px] font-medium text-amber-800">Could not read this site automatically</div>
-          <div className="text-[11px] text-amber-700 mt-0.5">This site likely blocks automated requests (Cloudflare, bot protection). You can still continue — paste a hex colour or upload a logo below and we'll build the theme from that.</div>
+        <div className="mt-2 p-3 rounded-xl border border-amber-200 bg-amber-50">
+          <div className="text-[12px] font-semibold text-amber-800">Website blocked automated reading</div>
+          <div className="text-[11px] text-amber-700 mt-0.5">This site uses Cloudflare or similar protection. Try your social profiles, upload a screenshot, or drop in a logo below — we'll extract your colours from any of those.</div>
         </div>
       )}
     </div>
 
-    <div className="mt-4">
+    {/* ── Fallback panel: social + screenshots ────────────────── */}
+    {(detectErr || !preview) && (
+      <div className="mt-5 space-y-4">
+        {/* Social media */}
+        <div>
+          <div className="text-[13px] font-medium mb-2">Try a social profile instead</div>
+          <div className="space-y-2">
+            {SOCIAL_SOURCES.map(s=>(
+              <div key={s.key} className="flex gap-2 items-center">
+                <div className="w-8 h-8 rounded-lg surface hairline flex items-center justify-center text-[11px] font-bold flex-shrink-0">{s.icon}</div>
+                <Input
+                  value={b.socialUrls[s.key]}
+                  onChange={e=> setSocial({[s.key]: e.target.value})}
+                  placeholder={s.placeholder}
+                  className="flex-1"
+                />
+                <button
+                  onClick={()=> trySocial(s.key, b.socialUrls[s.key])}
+                  disabled={!b.socialUrls[s.key] || socialFetching===s.key}
+                  className="h-10 px-3 rounded-xl hairline paper text-[13px] font-medium disabled:opacity-40 hover:bg-[var(--surface)] transition-colors flex-shrink-0 flex items-center gap-1.5"
+                >
+                  {socialFetching===s.key
+                    ? <div className="w-3.5 h-3.5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin"/>
+                    : "Try"}
+                </button>
+                {socialResult?.key===s.key && (
+                  <div className="flex gap-1 flex-shrink-0">
+                    {socialResult.colors.slice(0,4).map((c,i)=><div key={i} className="w-5 h-5 rounded-md hairline" style={{background:c}}/>)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Screenshot / logo upload */}
+        <div>
+          <div className="text-[13px] font-medium mb-2">Upload screenshots or your logo</div>
+          <label className="block cursor-pointer">
+            <div className="rounded-xl hairline border-dashed p-5 text-center hover:bg-[var(--surface)] transition-colors">
+              <div className="text-[13px] font-medium">Drop brand screenshots, logos, or mood board images</div>
+              <div className="text-[12px] ink-muted mt-1">PNG, JPG, SVG, WebP — we'll sample the dominant colours</div>
+              {imgColors.length > 0 && (
+                <div className="flex justify-center gap-2 mt-3">
+                  {imgColors.map((c,i)=>(
+                    <div key={i} className="w-8 h-8 rounded-lg shadow-card" style={{background:c}} title={c}/>
+                  ))}
+                </div>
+              )}
+            </div>
+            <input type="file" className="hidden" multiple accept="image/*"
+              onChange={e=> onScreenshotUpload(Array.from(e.target.files||[]))}/>
+          </label>
+          {imgColors.length > 0 && (
+            <div className="mt-2 text-[12px] ink-muted text-center">{imgColors.length} colours extracted from your images</div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* ── Always-visible colour summary ───────────────────────── */}
+    {activeColors.length > 0 && !preview && (
+      <div className="mt-4 p-3 rounded-xl surface flex items-center gap-3">
+        <div className="flex gap-1.5">
+          {activeColors.slice(0,6).map((c,i)=><div key={i} className="w-7 h-7 rounded-md hairline" style={{background:c}} title={c}/>)}
+        </div>
+        <div className="text-[13px] flex-1">
+          <div className="font-medium">Colours ready</div>
+          <div className="ink-muted text-[12px]">We'll build the theme from these</div>
+        </div>
+        <Pill tone="good">Ready</Pill>
+      </div>
+    )}
+
+    {/* ── Other fields ────────────────────────────────────────── */}
+    <div className="mt-5 space-y-4">
       <Field label="Existing deck or Figma URL">
         <Input value={b.deckUrl} onChange={e=>setB({deckUrl:e.target.value})} placeholder="https://figma.com/file/…" />
       </Field>
-    </div>
-
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-      <UploadZone label="Logo" hint="PNG or SVG" value={b.logo} onChange={v=>setB({logo:v})} icon={<I.image className="w-5 h-5"/>}/>
-      <UploadZone label="Colour reference" hint="Brand screenshot or mood board" multi value={b.refImages} onChange={v=>setB({refImages:v})} icon={<I.palette className="w-5 h-5"/>}/>
-    </div>
-
-    <div className="mt-4">
-      <Field label="Design notes / inspiration" hint="A vibe, a reference, a colour code — anything.">
-        <Textarea rows={3} value={b.designNotes} onChange={e=>setB({designNotes:e.target.value})} placeholder="Natural greens, clean food brand, think earthy but modern."/>
+      <Field label="Design notes / inspiration" hint="A vibe, a reference, or a hex colour — anything helps.">
+        <Textarea rows={3} value={b.designNotes} onChange={e=>setB({designNotes:e.target.value})} placeholder="Natural greens, clean food brand, think earthy but modern. Or just: #3B7A4F"/>
       </Field>
     </div>
   </IntakeShell>;
