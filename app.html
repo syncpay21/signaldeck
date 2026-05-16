@@ -271,16 +271,19 @@ function parseBrandAssets(html, url){
   if(!faviconUrl && origin) faviconUrl = origin + "/favicon.ico";
 
   /* ── STYLE SIGNALS ───────────────────────────────────────────── */
-  // Dark mode detection
-  const hasDarkMeta = /color-scheme[^;{]*dark/.test(html) || /prefers-color-scheme[^;{]*dark/.test(html);
-  // Check body/root background if explicitly set to a dark colour
-  const bgColorMatch = html.match(/body[^{]*{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/i)
-    || html.match(/:root[^{]*{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/i);
-  const bgLum = bgColorMatch ? luminance(bgColorMatch[1]) : 100;
-  // Also look at what colour appears as background in css vars
-  const darkBgCount = [...html.matchAll(/background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/gi)]
-    .filter(m => luminance(m[1]) < 30).length;
-  const isDarkSite = hasDarkMeta || bgLum < 30 || darkBgCount >= 3;
+  // Dark mode detection — check multiple signals
+  const hasDarkMeta = /color-scheme\s*:\s*dark/.test(html) || /["']color-scheme["']\s*content=["'][^"']*dark/i.test(html);
+  // Body/root/html background set to a dark hex
+  const bgMatches = [...html.matchAll(/(?:body|:root|html)\s*\{[^}]{0,300}background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/gi)];
+  const bgLums = bgMatches.map(m => luminance(m[1]));
+  const darkBgFromSelector = bgLums.some(l => l < 25);
+  // CSS variable named --bg or --background set to a dark colour
+  const cssBgVarMatch = [...html.matchAll(/--(?:bg|background|background-color|surface)\s*:\s*(#[0-9a-fA-F]{3,6})/gi)];
+  const darkCssVar = cssBgVarMatch.some(m => luminance(m[1]) < 25);
+  // Count all background declarations that are dark
+  const allDarkBgCount = [...html.matchAll(/background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/gi)]
+    .filter(m => luminance(m[1]) < 20).length;
+  const isDarkSite = hasDarkMeta || darkBgFromSelector || darkCssVar || allDarkBgCount >= 4;
 
   // Border radius style
   const radiusValues = [...html.matchAll(/border-radius\s*:\s*(\d+(?:\.\d+)?)(px|rem|em)/gi)]
