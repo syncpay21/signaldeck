@@ -1054,16 +1054,20 @@ function BrandDetection({appData, onDone}){
         brandResult = await fetchBrandColors(url);
       }
 
-      // If no website or fetch failed, fall back to a neutral warm white
+      // If fetch failed, try to extract a hex from designNotes as fallback
       if(!brandResult){
+        const notes = appData.brandSources?.designNotes || "";
+        const hexInNotes = (notes.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g) || []).map(h=>h.toLowerCase());
+        const primary = hexInNotes.find(h=>!isNeutral(h)) || "#4F6AF5";
         brandResult = {
-          primary: "#5B6470",
-          secondary: "#0F1115",
-          all: ["#5B6470","#0F1115","#ECECEC"],
+          primary,
+          secondary: adjustHsl(primary, 0, -5, -18),
+          all: hexInNotes.length ? hexInNotes.slice(0,4) : [primary],
           url: url || "",
           fonts: { heading: null, body: null, names: [], googleUrls: [] },
           logo: null,
           favicon: null,
+          styleSignals: null,
         };
       }
 
