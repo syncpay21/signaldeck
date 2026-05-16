@@ -45,7 +45,7 @@ const empty: FormData = {
   company: '', oneLiner: '', problem: '', solution: '',
   howItWorks: '', traction: '', market: '', businessModel: '',
   competition: '', team: '', ask: '',
-  founderName: '', founderRole: 'Founder', location: '', domain: '',
+  founderName: '', founderRole: '', location: '', domain: '',
   demoUrl: '', demoDescription: '',
   accentColor: '#00e5c3', bgColor: '#06080d',
   fontHeading: 'Barlow Condensed', fontBody: 'DM Sans',
@@ -242,12 +242,12 @@ export default function Home() {
 
         {step === 'company' && (
           <>
-            <Field label="Company name" name="company" placeholder="SyncPay" />
-            <Field label="One-liner" name="oneLiner" placeholder="Businesses lack data richness to understand cash flow without manual work" />
-            <Field label="Founder name" name="founderName" placeholder="Ezana Yohala" />
-            <Field label="Founder role" name="founderRole" placeholder="Founder" />
-            <Field label="Location" name="location" placeholder="Melbourne, Australia" />
-            <Field label="Domain" name="domain" placeholder="syncpay.au" />
+            <Field label="Company name" name="company" placeholder="Acme Inc." />
+            <Field label="One-liner" name="oneLiner" placeholder="What problem do you solve and for whom?" />
+            <Field label="Founder name" name="founderName" placeholder="Jane Smith" />
+            <Field label="Founder role" name="founderRole" placeholder="CEO & Co-founder" />
+            <Field label="Location" name="location" placeholder="San Francisco, CA" />
+            <Field label="Domain" name="domain" placeholder="yourcompany.com" />
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <button onClick={() => setStep('story')} disabled={!form.company || !form.founderName} style={form.company && form.founderName ? btnPrimaryStyle : { ...btnPrimaryStyle, opacity: 0.4, cursor: 'not-allowed' }}>
                 Next: Story →
@@ -258,15 +258,15 @@ export default function Home() {
 
         {step === 'story' && (
           <>
-            <Field label="The problem" name="problem" rows={3} placeholder="Businesses can't see invoice, GST, or supplier data inside their bank feed..." />
-            <Field label="Your solution" name="solution" rows={3} placeholder="SyncPay embeds metadata into every payment transaction..." />
-            <Field label="How it works" name="howItWorks" rows={3} placeholder="Step 1: payment is made → Step 2: SyncPay attaches metadata → Step 3: accountant sees full record" />
-            <Field label="Traction" name="traction" rows={2} placeholder="3 pilots with $2M+ GMV, 1 LOI from regional bank" />
-            <Field label="Market" name="market" rows={2} placeholder="$4.2T global B2B payments market, 30M SMBs in English-speaking markets" />
-            <Field label="Business model" name="businessModel" rows={2} placeholder="SaaS: $49/mo per business, $199/mo for accountants" />
-            <Field label="Competition" name="competition" rows={2} placeholder="Xero, MYOB, Stripe — none embed metadata at payment layer" />
-            <Field label="Team" name="team" rows={2} placeholder="Ezana: ex-ANZ Bank, 8 yrs payments. Priya: ex-Atlassian, Head of Eng" />
-            <Field label="The ask" name="ask" rows={2} placeholder="Raising $1.5M seed to hire 2 engineers and run 10 bank pilots" />
+            <Field label="The problem" name="problem" rows={3} placeholder="Describe the pain your customers feel today..." />
+            <Field label="Your solution" name="solution" rows={3} placeholder="How does your product solve it uniquely?" />
+            <Field label="How it works" name="howItWorks" rows={3} placeholder="Step 1 → Step 2 → Step 3 — keep it simple" />
+            <Field label="Traction" name="traction" rows={2} placeholder="Revenue, customers, pilots, LOIs, growth rate..." />
+            <Field label="Market" name="market" rows={2} placeholder="Market size, target segment, geography..." />
+            <Field label="Business model" name="businessModel" rows={2} placeholder="How do you make money? Pricing model?" />
+            <Field label="Competition" name="competition" rows={2} placeholder="Who else plays here and why you win?" />
+            <Field label="Team" name="team" rows={2} placeholder="Founder backgrounds and why you're the right team?" />
+            <Field label="The ask" name="ask" rows={2} placeholder="How much are you raising and what will you use it for?" />
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <button onClick={() => setStep('company')} style={btnSecondaryStyle}>← Back</button>
               <button onClick={() => setStep('brand')} disabled={!form.problem} style={form.problem ? btnPrimaryStyle : { ...btnPrimaryStyle, opacity: 0.4, cursor: 'not-allowed' }}>
@@ -312,7 +312,7 @@ export default function Home() {
             </div>
 
             <Field label="Demo URL (optional iframe embed)" name="demoUrl" placeholder="https://demo.yourapp.com" />
-            <Field label="Demo description (helps AI explain it)" name="demoDescription" rows={2} placeholder="Interactive side-by-side comparison of bank feed without vs with SyncPay enrichment" />
+            <Field label="Demo description (helps AI explain it)" name="demoDescription" rows={2} placeholder="What does the demo show? What should the investor interact with?" />
 
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <button onClick={() => setStep('story')} style={btnSecondaryStyle}>← Back</button>
