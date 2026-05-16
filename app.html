@@ -149,16 +149,38 @@ function luminance(hex){
 /* ================================================================
    BRAND COLOR EXTRACTION
 ================================================================ */
+async function proxyFetch(url, timeoutMs=9000){
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const ctrl = new AbortController();
+  const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(proxy, {signal: ctrl.signal});
+    const json = await res.json();
+    return json.contents || "";
+  }catch{ return ""; }
+  finally{ clearTimeout(tid); }
+}
+
 async function fetchBrandColors(url){
   if(!url) return null;
   try{
-    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const ctrl = new AbortController();
-    const tid = setTimeout(()=>ctrl.abort(), 9000);
-    const res = await fetch(proxy, {signal: ctrl.signal}).finally(()=>clearTimeout(tid));
-    const json = await res.json();
-    const html = json.contents || "";
-    return parseBrandAssets(html, url);
+    // 1. Fetch the HTML
+    const html = await proxyFetch(url);
+    if(!html) return null;
+
+    // 2. Find the first external CSS file referenced in the HTML and fetch it too
+    //    Most modern sites put all their colour tokens in a bundled CSS file
+    const cssMatches = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+\.css[^"']*)["']/gi)];
+    let cssText = "";
+    for(const m of cssMatches.slice(0, 3)){ // try up to 3 stylesheets
+      const cssUrl = resolveUrl(url, m[1]);
+      if(!cssUrl) continue;
+      const chunk = await proxyFetch(cssUrl, 7000);
+      if(chunk){ cssText += chunk + "\n"; break; } // first successful one is enough
+    }
+
+    // Combine HTML + external CSS for richer signal extraction
+    return parseBrandAssets(html + cssText, url);
   }catch(e){
     return null;
   }
