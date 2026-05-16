@@ -1,0 +1,2157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SignalDeck</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#ffffff; --surface:#FAFAF9; --paper:#ffffff;
+    --ink:#0F1115; --ink-muted:#5B6470; --line:#ECECEC;
+    --accent:#0F1115; --accent-2:#5B6470; --accent-3:#ECECEC;
+    --side-pattern: none;
+    --card-pattern: none;
+    --hero-pattern: none;
+    --overlay-pattern: none;
+    --brand-pattern: none;
+    --side-bg: #FAFAF9;
+    --hero-bg: #FAFAF9;
+    --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", Helvetica, Arial, sans-serif;
+    --font-body:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", Helvetica, Arial, sans-serif;
+    --radius-sm: 8px; --radius-md: 14px; --radius-lg: 20px;
+    --font-case: none;
+    --tracking: normal;
+  }
+  h1,h2,h3,h4{ font-family: var(--font-heading); text-transform: var(--font-case); letter-spacing: var(--tracking); }
+  button, .btn { text-transform: var(--font-case); letter-spacing: var(--tracking); }
+  body{ font-family: var(--font-body); }
+
+  /* ── Brand style profile overrides ──────────────────────────── */
+  /* Sharp: collapse Tailwind rounded-* to tight values */
+  [data-style="sharp"] .rounded-sm, [data-style="sharp"] .rounded { border-radius: var(--radius-sm) !important; }
+  [data-style="sharp"] .rounded-md, [data-style="sharp"] .rounded-lg { border-radius: var(--radius-sm) !important; }
+  [data-style="sharp"] .rounded-xl, [data-style="sharp"] .rounded-2xl { border-radius: var(--radius-md) !important; }
+  [data-style="sharp"] .rounded-3xl, [data-style="sharp"] .rounded-full { border-radius: var(--radius-lg) !important; }
+  /* Pill: push all rounded toward pill */
+  [data-style="pill"] .rounded-sm, [data-style="pill"] .rounded { border-radius: var(--radius-sm) !important; }
+  [data-style="pill"] .rounded-md, [data-style="pill"] .rounded-lg { border-radius: var(--radius-md) !important; }
+  [data-style="pill"] .rounded-xl, [data-style="pill"] .rounded-2xl, [data-style="pill"] .rounded-3xl, [data-style="pill"] .rounded-full { border-radius: var(--radius-lg) !important; }
+
+  /* ── Dark site shell overrides ──────────────────────────────── */
+  [data-dark="true"] .hairline { border-color: var(--line) !important; }
+  [data-dark="true"] .shadow-card { box-shadow: 0 1px 2px rgba(0,0,0,.3) !important; }
+  [data-dark="true"] .shadow-pop  { box-shadow: 0 6px 24px rgba(0,0,0,.4) !important; }
+  [data-dark="true"] ::placeholder { color: var(--ink-muted); opacity: .6; }
+  html,body,#root{height:100%}
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", Helvetica, Arial, sans-serif;
+    font-size:15px;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color .25s ease;
+  }
+  .theme-transition, .theme-transition *{
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  .num{font-variant-numeric: tabular-nums}
+  .shadow-card{box-shadow:0 1px 2px rgba(15,17,21,.04)}
+  .shadow-pop{box-shadow:0 6px 24px rgba(15,17,21,.06)}
+  .hairline{border:1px solid var(--line)}
+  .paper{background:var(--paper)}
+  .surface{background:var(--surface)}
+  .ink{color:var(--ink)}
+  .ink-muted{color:var(--ink-muted)}
+  .accent-bg{background:var(--accent)}
+  .accent-text{color:var(--accent)}
+  .accent-border{border-color:var(--accent)}
+  .side-bg{background: var(--side-bg); background-image: var(--side-pattern); background-size: cover;}
+  .hero-bg{background: var(--hero-bg); background-image: var(--hero-pattern); background-size: cover;}
+  .card-pattern{background-image: var(--card-pattern);}
+  .overlay-pattern{background-image: var(--overlay-pattern);}
+  .brand-pattern{background-image: var(--brand-pattern); background-size: cover;}
+  .focus-ring:focus{outline:none; box-shadow:0 0 0 2px #fff, 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);}
+  input, textarea, select{font: inherit; color: inherit}
+  ::placeholder{color:#94a0ab}
+  .scroll-fade{mask-image: linear-gradient(180deg, transparent 0, #000 16px, #000 calc(100% - 16px), transparent 100%)}
+  .grid-bg{
+    background-image:
+      linear-gradient(to right, rgba(15,17,21,.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15,17,21,.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef, createContext, useContext } = React;
+
+/* ================================================================
+   COLOR UTILITIES
+================================================================ */
+function hexToRgb(hex){
+  hex = hex.replace(/^#/,"");
+  if(hex.length===3) hex = hex.split("").map(c=>c+c).join("");
+  const n = parseInt(hex,16);
+  return [n>>16&255, n>>8&255, n&255];
+}
+function rgbToHex(r,g,b){
+  return "#"+[r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,"0")).join("");
+}
+function rgbToHsl(r,g,b){
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h,s,l=(max+min)/2;
+  if(max===min){ h=s=0; }
+  else{
+    const d=max-min; s=l>.5?d/(2-max-min):d/(max+min);
+    switch(max){ case r: h=(g-b)/d+(g<b?6:0); break; case g: h=(b-r)/d+2; break; default: h=(r-g)/d+4; }
+    h/=6;
+  }
+  return [h*360, s*100, l*100];
+}
+function hslToHex(h,s,l){
+  h/=360; s/=100; l/=100;
+  let r,g,b;
+  if(s===0){ r=g=b=l; }
+  else{
+    const hue2rgb=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+    const q=l<.5?l*(1+s):l+s-l*s, p=2*l-q;
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
+  }
+  return rgbToHex(r*255,g*255,b*255);
+}
+function adjustHsl(hex, dh=0, ds=0, dl=0){
+  const [r,g,b] = hexToRgb(hex);
+  let [h,s,l] = rgbToHsl(r,g,b);
+  return hslToHex(Math.max(0,Math.min(360,h+dh)), Math.max(0,Math.min(100,s+ds)), Math.max(0,Math.min(100,l+dl)));
+}
+function isNeutral(hex){
+  const [r,g,b] = hexToRgb(hex);
+  const [h,s,l] = rgbToHsl(r,g,b);
+  return l>92 || l<8 || s<8; // near-white, near-black, or near-grey
+}
+function hexToRgba(hex, a){
+  const [r,g,b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function luminance(hex){
+  const [r,g,b] = hexToRgb(hex);
+  const [h,s,l] = rgbToHsl(r,g,b);
+  return l;
+}
+
+/* ================================================================
+   BRAND COLOR EXTRACTION
+================================================================ */
+async function fetchBrandColors(url){
+  if(!url) return null;
+  try{
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), 9000);
+    const res = await fetch(proxy, {signal: ctrl.signal}).finally(()=>clearTimeout(tid));
+    const json = await res.json();
+    const html = json.contents || "";
+    return parseBrandAssets(html, url);
+  }catch(e){
+    return null;
+  }
+}
+
+function resolveUrl(base, relative){
+  try{
+    const b = new URL(base);
+    if(!relative) return null;
+    if(relative.startsWith("http")) return relative;
+    if(relative.startsWith("//")) return b.protocol + relative;
+    if(relative.startsWith("/")) return b.origin + relative;
+    return b.origin + "/" + relative;
+  }catch{ return null; }
+}
+
+function parseBrandAssets(html, url){
+  /* ── COLOURS ─────────────────────────────────────────────────── */
+  const colors = new Map();
+  const addColor = (hex)=>{
+    if(!hex) return;
+    hex = hex.toLowerCase().trim();
+    if(!/^#[0-9a-f]{3,6}$/.test(hex)) return;
+    if(hex.length===4) hex = "#"+hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3];
+    if(isNeutral(hex)) return;
+    colors.set(hex, (colors.get(hex)||0)+1);
+  };
+
+  const metaTheme = html.match(/meta[^>]+name=["']theme-color["'][^>]+content=["']([^"']+)["']/i)
+    || html.match(/meta[^>]+content=["']([^"']+)["'][^>]+name=["']theme-color["']/i);
+  if(metaTheme){ addColor(metaTheme[1]); colors.set(metaTheme[1].toLowerCase(), (colors.get(metaTheme[1].toLowerCase())||0)+10); }
+
+  [...html.matchAll(/content=["']([#][0-9a-fA-F]{3,6})["']/g)].forEach(m=> addColor(m[1]));
+  [...html.matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)].forEach(m=> addColor("#"+m[1]));
+  [...html.matchAll(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g)].forEach(m=> addColor(rgbToHex(+m[1],+m[2],+m[3])));
+  [...html.matchAll(/--(primary|brand|accent|main|color)[^:]*:\s*(#[0-9a-fA-F]{3,6})/gi)]
+    .forEach(m=>{ addColor(m[2]); colors.set(m[2].toLowerCase(), (colors.get(m[2].toLowerCase())||0)+8); });
+
+  const ranked = [...colors.entries()].sort((a,b)=>b[1]-a[1]);
+  const top = ranked.slice(0,6).map(([hex])=>hex);
+  const primary = top[0] || null;
+  const secondary = top[1] || null;
+
+  /* ── FONTS ───────────────────────────────────────────────────── */
+  // 1. Google Fonts <link> tags
+  const gFontsLinks = [...html.matchAll(/href=["'](https?:\/\/fonts\.googleapis\.com\/css[^"']*family=([^"'&]+)[^"']*)["']/gi)];
+  const googleFontUrls = gFontsLinks.map(m=> m[1].replace(/&amp;/g,"&"));
+  const googleFontNames = gFontsLinks.map(m=> decodeURIComponent(m[2]).split("|").map(f=>f.split(":")[0].trim()).filter(Boolean)).flat();
+
+  // 2. CSS font-family in <style> or inline style
+  const fontFamilyMatches = [...html.matchAll(/font-family\s*:\s*["']?([A-Za-z][A-Za-z0-9 _-]+?)["']?\s*[,;}{]/g)];
+  const cssFontNames = fontFamilyMatches.map(m=>m[1].trim()).filter(n=> n && !["sans-serif","serif","monospace","inherit","initial"].includes(n.toLowerCase()));
+
+  // Deduplicate; prefer Google Fonts names (they're loadable)
+  const allFontNames = [...new Set([...googleFontNames, ...cssFontNames])].slice(0,3);
+  const headingFont = allFontNames[0] || null;
+  const bodyFont   = allFontNames[1] || allFontNames[0] || null;
+
+  /* ── LOGO ────────────────────────────────────────────────────── */
+  // Priority: og:image > apple-touch-icon > high-res favicon > img[src*=logo]
+  let logoUrl = null;
+
+  const ogImage = html.match(/meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+    || html.match(/meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  if(ogImage) logoUrl = resolveUrl(url, ogImage[1]);
+
+  if(!logoUrl){
+    const appleTouchIcon = html.match(/link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i)
+      || html.match(/link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon["']/i);
+    if(appleTouchIcon) logoUrl = resolveUrl(url, appleTouchIcon[1]);
+  }
+
+  if(!logoUrl){
+    // img tags with logo-like src/alt/class
+    const logoImg = html.match(/img[^>]+(?:src|class|id|alt)=["'][^"']*logo[^"']*["'][^>]*src=["']([^"']+)["']/i)
+      || html.match(/img[^>]+src=["']([^"']+logo[^"']*)["']/i);
+    if(logoImg) logoUrl = resolveUrl(url, logoImg[1]);
+  }
+
+  // Favicon as last resort (always works, small)
+  const origin = (() =>{ try{ return new URL(url).origin; }catch{ return null; } })();
+
+  /* ── FAVICON (always try) ─────────────────────────────────────── */
+  let faviconUrl = null;
+  const faviconLink = html.match(/link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i)
+    || html.match(/link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*icon[^"']*["']/i);
+  if(faviconLink) faviconUrl = resolveUrl(url, faviconLink[1]);
+  if(!faviconUrl && origin) faviconUrl = origin + "/favicon.ico";
+
+  /* ── STYLE SIGNALS ───────────────────────────────────────────── */
+  // Dark mode detection
+  const hasDarkMeta = /color-scheme[^;{]*dark/.test(html) || /prefers-color-scheme[^;{]*dark/.test(html);
+  // Check body/root background if explicitly set to a dark colour
+  const bgColorMatch = html.match(/body[^{]*{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/i)
+    || html.match(/:root[^{]*{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/i);
+  const bgLum = bgColorMatch ? luminance(bgColorMatch[1]) : 100;
+  // Also look at what colour appears as background in css vars
+  const darkBgCount = [...html.matchAll(/background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})/gi)]
+    .filter(m => luminance(m[1]) < 30).length;
+  const isDarkSite = hasDarkMeta || bgLum < 30 || darkBgCount >= 3;
+
+  // Border radius style
+  const radiusValues = [...html.matchAll(/border-radius\s*:\s*(\d+(?:\.\d+)?)(px|rem|em)/gi)]
+    .map(m => m[2] === "rem" ? parseFloat(m[1]) * 16 : m[2] === "em" ? parseFloat(m[1]) * 14 : parseFloat(m[1]));
+  const avgRadius = radiusValues.length ? radiusValues.reduce((a,b)=>a+b,0)/radiusValues.length : 8;
+  const borderRadiusStyle = avgRadius < 4 ? "sharp" : avgRadius > 20 ? "pill" : "rounded";
+
+  // Typography style
+  const monoKeywords = /\b(mono|monospace|courier|code|fira code|jetbrains|inconsolata|roboto mono|space mono|ibm plex mono|source code)\b/i;
+  const isMono = monoKeywords.test(allFontNames.join(" ")) || monoKeywords.test(html.match(/font-family[^;]{0,60}/g)||[]).join(" ");
+  const uppercaseCount = (html.match(/text-transform\s*:\s*uppercase/gi)||[]).length;
+  const isUppercase = uppercaseCount >= 4;
+  const trackedCount = (html.match(/letter-spacing\s*:\s*[\d.]+em/gi)||[]).length;
+  const isTracked = trackedCount >= 3;
+
+  return {
+    primary, secondary, all: top, url,
+    fonts: { heading: headingFont, body: bodyFont, names: allFontNames, googleUrls: googleFontUrls },
+    logo: logoUrl,
+    favicon: faviconUrl,
+    styleSignals: { isDarkSite, borderRadiusStyle, isMono, isUppercase, isTracked },
+  };
+}
+
+/* ================================================================
+   BUILD DYNAMIC THEME FROM REAL COLORS + FONTS + LOGO
+================================================================ */
+function buildThemeFromBrand({ primary, secondary, all=[], company="", industry="", url="", fonts=null, logo=null, favicon=null, styleSignals=null }){
+  const lum = luminance(primary);
+  // Dark: either the accent itself is very dark, OR the site signals dark mode
+  const isDark = (styleSignals && styleSignals.isDarkSite) || lum < 15;
+
+  // derive accent2 = darkened primary, accent3 = very light tint
+  const accent = primary;
+  const accent2 = secondary && secondary !== primary ? secondary : adjustHsl(primary, 0, -5, isDark ? 12 : -18);
+  const accent3 = adjustHsl(primary, 0, -30, isDark ? 20 : Math.max(0, 88-lum));
+
+  // bg, paper, ink — flip for dark sites
+  let bg, paper, sideBg, heroBg, ink, inkMuted, line;
+  if(isDark){
+    // Dark shell: near-black bg tinted toward primary hue
+    const [h] = rgbToHsl(...hexToRgb(primary));
+    bg      = hslToHex(h, 12, 8);
+    paper   = hslToHex(h, 10, 12);
+    sideBg  = hslToHex(h, 14, 6);
+    heroBg  = hslToHex(h, 12, 10);
+    ink     = hslToHex(h, 5, 92);
+    inkMuted= hslToHex(h, 8, 60);
+    line    = hslToHex(h, 10, 20);
+  } else {
+    bg      = adjustHsl(primary, 0, -50, 97);
+    paper   = "#ffffff";
+    sideBg  = adjustHsl(primary, 0, -40, 95);
+    heroBg  = adjustHsl(primary, 0, -40, 95);
+    ink     = adjustHsl(primary, 0, 20, 8);
+    inkMuted= adjustHsl(primary, 0, 10, 40);
+    line    = adjustHsl(primary, 0, -40, 90);
+  }
+
+  // motifs using the extracted primary color
+  const r1 = hexToRgba(accent, .10);
+  const r2 = hexToRgba(accent2, .06);
+  const r3 = hexToRgba(accent, .18);
+  const r4 = hexToRgba(accent, .08);
+
+  // pick motif pattern based on industry feel
+  const hay = (company+" "+industry+" "+(url||"")).toLowerCase();
+  let motifSide, motifCard, motifHero, motifOverlay, motifBrand;
+
+  if(/eco|sustain|green|plant|food|eat|farm|natur|organic/.test(hay)){
+    // soft radial blobs — natural
+    motifSide = `radial-gradient(40% 50% at 20% 90%, ${hexToRgba(accent,.16)}, transparent 70%)`;
+    motifCard = `radial-gradient(70% 80% at 100% 100%, ${hexToRgba(accent,.09)}, transparent 70%)`;
+    motifHero = `radial-gradient(50% 70% at 100% 100%, ${hexToRgba(accent,.20)}, transparent 70%), radial-gradient(40% 60% at 0% 0%, ${hexToRgba(accent2,.14)}, transparent 70%)`;
+    motifOverlay = `radial-gradient(60% 80% at 50% 50%, ${hexToRgba(accent,.11)}, transparent 70%)`;
+    motifBrand = `radial-gradient(60% 80% at 50% 100%, ${hexToRgba(accent,.16)}, transparent 70%)`;
+  } else if(/pay|bank|fin|capital|money|ledger|wallet|invest|fund/.test(hay)){
+    // grid lines — data/financial
+    motifSide = `linear-gradient(180deg, ${hexToRgba(accent,.08)}, ${hexToRgba(accent,0)}), repeating-linear-gradient(0deg, ${r2} 0 1px, transparent 1px 28px)`;
+    motifCard = `radial-gradient(80% 60% at 100% 0%, ${r4}, transparent 60%)`;
+    motifHero = `radial-gradient(60% 80% at 100% 0%, ${r3}, transparent 60%), repeating-linear-gradient(90deg, ${r2} 0 1px, transparent 1px 28px)`;
+    motifOverlay = `repeating-linear-gradient(45deg, ${hexToRgba(accent,.07)} 0 8px, transparent 8px 16px)`;
+    motifBrand = `radial-gradient(40% 60% at 80% 20%, ${r3}, transparent 60%)`;
+  } else if(/sport|nba|basket|foot|run|fit|gym|athlet|energy/.test(hay)){
+    // diagonal stripes — sport energy
+    motifSide = `repeating-linear-gradient(135deg, ${hexToRgba(accent,.10)} 0 8px, transparent 8px 18px)`;
+    motifCard = `linear-gradient(120deg, ${hexToRgba(accent,.09)}, transparent 50%)`;
+    motifHero = `repeating-linear-gradient(135deg, ${hexToRgba(accent,.12)} 0 10px, transparent 10px 22px), radial-gradient(60% 80% at 100% 0%, ${hexToRgba(accent,.18)}, transparent 70%)`;
+    motifOverlay = `repeating-linear-gradient(135deg, ${hexToRgba(accent,.12)} 0 10px, transparent 10px 22px)`;
+    motifBrand = `linear-gradient(120deg, ${hexToRgba(accent,.18)}, transparent 60%)`;
+  } else if(/ai|ml|tech|code|dev|build|data|cloud/.test(hay)){
+    // dot grid — technical
+    motifSide = `radial-gradient(${hexToRgba(accent,.09)} 1px, transparent 1px) 0 0/16px 16px`;
+    motifCard = `radial-gradient(${hexToRgba(accent,.07)} 1px, transparent 1px) 0 0/14px 14px`;
+    motifHero = `radial-gradient(60% 80% at 100% 0%, ${hexToRgba(accent,.18)}, transparent 70%), radial-gradient(${hexToRgba(accent,.09)} 1px, transparent 1px) 0 0/16px 16px`;
+    motifOverlay = `radial-gradient(${hexToRgba(accent,.10)} 1px, transparent 1px) 0 0/14px 14px`;
+    motifBrand = `radial-gradient(60% 80% at 100% 100%, ${hexToRgba(accent,.16)}, transparent 70%)`;
+  } else {
+    // default: soft radial glow — works for any brand
+    motifSide = `radial-gradient(60% 40% at 50% 0%, ${hexToRgba(accent,.10)}, transparent 70%)`;
+    motifCard = `radial-gradient(80% 60% at 100% 0%, ${hexToRgba(accent,.07)}, transparent 60%)`;
+    motifHero = `radial-gradient(60% 80% at 100% 0%, ${hexToRgba(accent,.18)}, transparent 70%)`;
+    motifOverlay = `radial-gradient(60% 80% at 50% 50%, ${hexToRgba(accent,.10)}, transparent 70%)`;
+    motifBrand = `radial-gradient(60% 80% at 0% 100%, ${hexToRgba(accent,.15)}, transparent 70%)`;
+  }
+
+  // Style profile: drives border-radius + typography overrides
+  const ss = styleSignals || {};
+  const styleProfile = ss.borderRadiusStyle === "sharp" ? "sharp"
+    : ss.borderRadiusStyle === "pill" ? "pill"
+    : "rounded";
+  const fontCase = ss.isUppercase ? "uppercase" : "none";
+  const tracking = ss.isTracked ? "0.07em" : ss.isUppercase ? "0.04em" : "normal";
+  const fontMono = ss.isMono;
+
+  return {
+    id: "custom-"+primary.replace("#",""),
+    name: company || "Your brand",
+    industry: industry || "Custom",
+    isDark,
+    styleProfile,
+    styleDescription: `Brand colours extracted from ${url || "your sources"}.`,
+    tokens:{ accent, accent2, accent3, bg, paper, ink, inkMuted, line, sideBg, heroBg },
+    motifs:{ side: motifSide, card: motifCard, hero: motifHero, overlay: motifOverlay, brand: motifBrand },
+    extractedColors: all,
+    fonts: fonts || { heading: null, body: null, names: [], googleUrls: [] },
+    fontStyle: { fontCase, tracking, fontMono },
+    logo: logo || null,
+    favicon: favicon || null,
+  };
+}
+
+/* ================================================================
+   NEUTRAL / FALLBACK THEME (pre-detection only)
+================================================================ */
+const NEUTRAL = {
+  id:"neutral", name:"Default", industry:"none",
+  styleDescription:"Clean white workspace, no brand applied yet.",
+  tokens:{ accent:"#0F1115", accent2:"#5B6470", accent3:"#ECECEC",
+    bg:"#ffffff", paper:"#ffffff", ink:"#0F1115", inkMuted:"#5B6470", line:"#ECECEC",
+    sideBg:"#FAFAF9", heroBg:"#FAFAF9" },
+  motifs:{ side:"none", card:"none", hero:"none", overlay:"none", brand:"none" },
+  extractedColors:[], fonts:{ heading:null, body:null, names:[], googleUrls:[] },
+  logo:null, favicon:null,
+};
+
+/* ================================================================
+   INDUSTRY MOTIF CATEGORIES (for pattern/motif only — colors come from real site)
+================================================================ */
+function applyTheme(t){
+  if(!t || !t.tokens) return;
+  const r = document.documentElement;
+
+  // Colours
+  r.style.setProperty("--bg", t.tokens.bg);
+  r.style.setProperty("--paper", t.tokens.paper);
+  r.style.setProperty("--ink", t.tokens.ink);
+  r.style.setProperty("--ink-muted", t.tokens.inkMuted);
+  r.style.setProperty("--line", t.tokens.line);
+  r.style.setProperty("--accent", t.tokens.accent);
+  r.style.setProperty("--accent-2", t.tokens.accent2);
+  r.style.setProperty("--accent-3", t.tokens.accent3);
+  r.style.setProperty("--side-bg", t.tokens.sideBg);
+  r.style.setProperty("--hero-bg", t.tokens.heroBg);
+  r.style.setProperty("--side-pattern", t.motifs.side);
+  r.style.setProperty("--card-pattern", t.motifs.card);
+  r.style.setProperty("--hero-pattern", t.motifs.hero);
+  r.style.setProperty("--overlay-pattern", t.motifs.overlay);
+  r.style.setProperty("--brand-pattern", t.motifs.brand);
+  document.body.style.background = t.tokens.bg;
+  document.body.style.color = t.tokens.ink;
+
+  // Fonts — load Google Fonts then apply via CSS variables
+  if(t.fonts){
+    const { googleUrls, heading, body } = t.fonts;
+
+    // Inject Google Fonts <link> tags (deduplicated)
+    if(googleUrls && googleUrls.length){
+      googleUrls.forEach(href=>{
+        if(!document.querySelector(`link[href="${href}"]`)){
+          const link = document.createElement("link");
+          link.rel = "stylesheet"; link.href = href;
+          document.head.appendChild(link);
+        }
+      });
+    }
+
+    // Apply font-family CSS variables
+    const sysStack = `-apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", Helvetica, Arial, sans-serif`;
+    const headingStack = heading ? `"${heading}", ${sysStack}` : sysStack;
+    const bodyStack    = body    ? `"${body}", ${sysStack}`    : sysStack;
+    r.style.setProperty("--font-heading", headingStack);
+    r.style.setProperty("--font-body",    bodyStack);
+    document.body.style.fontFamily = bodyStack;
+  }
+
+  // Style profile — border radius + typography overrides
+  const profile = t.styleProfile || "rounded";
+  document.documentElement.setAttribute("data-style", profile);
+  // Radius tokens
+  const radMap = { sharp: ["2px","4px","6px"], pill: ["20px","28px","999px"], rounded: ["8px","14px","20px"] };
+  const [rsm, rmd, rlg] = radMap[profile] || radMap.rounded;
+  r.style.setProperty("--radius-sm", rsm);
+  r.style.setProperty("--radius-md", rmd);
+  r.style.setProperty("--radius-lg", rlg);
+  // Typography tokens
+  if(t.fontStyle){
+    r.style.setProperty("--font-case", t.fontStyle.fontCase || "none");
+    r.style.setProperty("--tracking", t.fontStyle.tracking || "normal");
+  }
+  // Dark mode attribute for CSS targeting
+  if(t.isDark) document.documentElement.setAttribute("data-dark", "true");
+  else document.documentElement.removeAttribute("data-dark");
+
+  // Favicon
+  if(t.favicon){
+    let link = document.querySelector("link[rel~='icon']");
+    if(!link){ link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
+    link.href = t.favicon;
+  }
+}
+
+/* ================================================================
+   MOCK DATA
+================================================================ */
+const FRAMEWORKS = [
+  {id:"spin", name:"SPIN Selling", summary:"Diagnose pain before pitching the cure.", steps:["Situation","Problem","Implication","Need-payoff"], whenToUse:"Enterprise/long sales cycle decks."},
+  {id:"belief", name:"Belief Chain", summary:"Stack the beliefs the investor must accept in order.", steps:["World is changing","Old way breaks","New way wins","We are the new way"], whenToUse:"Category-creation pitches."},
+  {id:"risk", name:"Risk Reversal", summary:"Surface the obvious risk and dismantle it on the spot.", steps:["Name the risk","Quantify it","Show our hedge","Show proof"], whenToUse:"Skeptical / late-stage investors."},
+  {id:"category", name:"Category Creation", summary:"Define a new game where you are already winning.", steps:["Old category","New category","Stakes","Frontier metric"], whenToUse:"Market-defining pitches."},
+  {id:"jtbd", name:"Jobs To Be Done", summary:"Frame the customer hire, not the customer profile.", steps:["Job","Hire","Fire","Outcome"], whenToUse:"Consumer / horizontal products."},
+  {id:"bab", name:"Before-After-Bridge", summary:"Paint pain, paint relief, name the bridge.", steps:["Before","After","Bridge","Proof"], whenToUse:"Short / demo-led decks."},
+];
+
+const VC_LENSES = [
+  {id:"seed", name:"Generalist Seed", fundType:"Seed VC ($1–4M check)", focus:"Founder, story, wedge.",
+    questions:["What unfair insight do you have?","Why now and why you?","What does the first 100 customers look like?","How do you reach them cheaply?","What kills this in 12 months?"],
+    tips:["Lead with the insight, not the market size.","Show one screenshot, not five."]},
+  {id:"a", name:"Series A Lead", fundType:"Series A ($8–15M check)", focus:"Repeatable GTM and metrics.",
+    questions:["What is the magic number?","Payback period in months?","Net revenue retention?","Top 3 cohorts and why?","Hiring plan vs revenue plan?"],
+    tips:["Open with traction, not vision.","Be specific about pipeline coverage."]},
+  {id:"angel", name:"Operator Angel", fundType:"Angel ($25–250k)", focus:"Founder bet, market texture.",
+    questions:["Who are you really building for?","What did you try that failed?","Who else is in the round?"],
+    tips:["Be human. Tell the moment you decided to do this."]},
+  {id:"strategic", name:"Strategic", fundType:"Corp dev / strategic", focus:"Fit, distribution, eventual M&A.",
+    questions:["Where do we plug into your roadmap?","What's the integration cost?","What does success at year 2 look like together?"],
+    tips:["Speak in their org chart language."]},
+  {id:"internal", name:"Internal Deck", fundType:"Team / board", focus:"Alignment + decisions.",
+    questions:["What changed since last quarter?","What are we asking for?","What is the smallest ask that still works?"],
+    tips:["Lead with the decision, not the context."]},
+];
+
+const SLIDES_INIT = [
+  {id:"s1", order:1, title:"The old way is broken", layout:"Hook", body:"Founders raise on hope. Investors decide on pattern matching. Both lose.", notes:"30s. Tone: frank.", claimIds:["c1"], frameworkId:"belief", status:"Ready"},
+  {id:"s2", order:2, title:"The customer is stuck", layout:"Problem", body:"Most decks are written for the founder, not the room.", notes:"45s. Land the contradiction.", claimIds:["c2","c3"], frameworkId:"belief", status:"Ready"},
+  {id:"s3", order:3, title:"What we built", layout:"Product", body:"SignalDeck reads your sources, learns your brand, builds your story.", notes:"60s. Show one screen.", claimIds:["c4"], frameworkId:"belief", status:"Drafting"},
+  {id:"s4", order:4, title:"Why now", layout:"Why now", body:"AI moved from autocomplete to whole-document. Founders expect more.", notes:"30s.", claimIds:["c5"], frameworkId:"category", status:"Drafting"},
+  {id:"s5", order:5, title:"How it works", layout:"How", body:"Sources → Brand → Story → Slides → Signals → Follow-up.", notes:"45s.", claimIds:[], frameworkId:"jtbd", status:"Drafting"},
+  {id:"s6", order:6, title:"Traction", layout:"Traction", body:"Early founders running pre-seed and seed pitches against this loop.", notes:"30s. Show two real numbers only.", claimIds:["c6"], frameworkId:"risk", status:"Outline"},
+  {id:"s7", order:7, title:"Business model", layout:"Model", body:"Per-deck and per-seat. Pricing tracks deck send volume.", notes:"30s.", claimIds:[], frameworkId:"jtbd", status:"Outline"},
+  {id:"s8", order:8, title:"Competition", layout:"Competition", body:"Generic deck tools optimize aesthetics. We optimize signal.", notes:"30s.", claimIds:["c7"], frameworkId:"category", status:"Outline"},
+  {id:"s9", order:9, title:"Team", layout:"Team", body:"Operators who shipped pitch + analytics tooling at prior companies.", notes:"30s.", claimIds:[], frameworkId:"belief", status:"Outline"},
+  {id:"s10", order:10, title:"The ask", layout:"Ask", body:"Raising a focused round to finish the loop and ship signals at scale.", notes:"30s. End on the ask.", claimIds:[], frameworkId:"risk", status:"Outline"},
+];
+
+const CLAIMS = [
+  {id:"c1", text:"Founders raise on hope.", slideId:"s1", classification:"founder-thesis", confidence:.6},
+  {id:"c2", text:"Most decks are written for the founder, not the room.", slideId:"s2", classification:"founder-thesis", confidence:.7},
+  {id:"c3", text:"Investors decide in under 3 minutes per deck.", slideId:"s2", classification:"needs-source", confidence:.5},
+  {id:"c4", text:"SignalDeck adapts the entire UI to brand sources.", slideId:"s3", classification:"supported", sourceId:"src-product", confidence:.95},
+  {id:"c5", text:"AI moved from autocomplete to whole-document generation.", slideId:"s4", classification:"supported", sourceId:"src-trend", confidence:.85},
+  {id:"c6", text:"Pre-seed founders pitch 30+ times.", slideId:"s6", classification:"risky", confidence:.4},
+  {id:"c7", text:"Generic deck tools optimize aesthetics, not signal.", slideId:"s8", classification:"founder-thesis", confidence:.65},
+];
+
+const STYLE_LIB = {
+  transitions: [
+    {id:"t1", name:"Calm fade", generic:false},
+    {id:"t2", name:"Type-on headline", generic:false},
+    {id:"t3", name:"Slide-up reveal", generic:true},
+    {id:"t4", name:"Cinematic wipe", generic:false},
+  ],
+  layouts: [
+    {id:"l1", name:"Centered hero", generic:false},
+    {id:"l2", name:"Split: claim + proof", generic:false},
+    {id:"l3", name:"Three-column metric", generic:true},
+    {id:"l4", name:"Quote on canvas", generic:false},
+  ],
+  palettes: [
+    {id:"p1", name:"Trust teal", swatches:["#0EA5A4","#0B5F6B","#E6F7F6"], generic:false},
+    {id:"p2", name:"Corporate blue", swatches:["#1E3A8A","#0F1F4D","#E5EAF6"], generic:true},
+    {id:"p3", name:"Court red and blue", swatches:["#C8102E","#1D428A","#ffffff"], generic:false},
+  ],
+  moods: [
+    {id:"m1", name:"Calm conviction", generic:false},
+    {id:"m2", name:"Bold and loud", generic:false},
+    {id:"m3", name:"Glassy startup", generic:true},
+  ],
+};
+
+const SOURCES_INIT = [
+  {id:"src-logo", type:"logo", name:"Logo (mark + wordmark)", status:"Ready"},
+  {id:"src-site", type:"website", name:"company.com", status:"Ready"},
+  {id:"src-deck", type:"deck", name:"old_pitch_v3.pdf", status:"Processing"},
+  {id:"src-notes", type:"notes", name:"Founder voice notes", status:"Ready"},
+  {id:"src-voice", type:"voice", name:"Voice sample (54s)", status:"Ready"},
+  {id:"src-screens", type:"refImage", name:"3 product screenshots", status:"Added"},
+];
+
+const SIGNALS = {
+  perSlide: SLIDES_INIT.map((s,i)=>({slideId:s.id, viewSec:[18,42,55,12,38,28,22,15,9,11][i], engagementPct:[92,78,96,43,61,52,48,40,30,55][i]})),
+  returns: [
+    {hash:"a16z-•-9f", returnCount:3, lastSeen:"2h ago"},
+    {hash:"sequoia-•-3c", returnCount:2, lastSeen:"yesterday"},
+    {hash:"angel-•-77", returnCount:1, lastSeen:"3d ago"},
+  ],
+  demoTimeSec: 124,
+  dropOff: SLIDES_INIT.map((s,i)=>({slideId:s.id, dropPct:[5,8,4,33,12,18,10,8,6,9][i]})),
+};
+
+const VC_TIPS = [
+  {id:"t1", severity:"warn", title:"Slide 4 has a 33% drop-off", body:"Why-now claim isn't earning attention yet. Consider opening with the data point, not the framing.", slideRef:"s4"},
+  {id:"t2", severity:"risk", title:"Two claims are unsourced", body:"Slide 2 and slide 6 reference investor decision time and pitch frequency without sources.", slideRef:"s2"},
+  {id:"t3", severity:"good", title:"Hook engagement is strong", body:"92% of viewers stay through slide 1. Keep the cold open as-is.", slideRef:"s1"},
+];
+
+const DEPLOY_TARGETS = [
+  {id:"vercel", name:"Vercel", desc:"One-click deploy, share link in 30s."},
+  {id:"netlify", name:"Netlify", desc:"Custom subdomain and view tracking."},
+  {id:"cf", name:"Cloudflare", desc:"Pages with edge analytics."},
+  {id:"export", name:"HTML Export", desc:"Static bundle you control."},
+];
+
+const DEPLOY_HISTORY = [
+  {id:"d1", target:"Vercel", url:"signaldeck-pitch.vercel.app", at:"2h ago", status:"Live"},
+  {id:"d2", target:"HTML Export", url:"pitch_v3.zip", at:"yesterday", status:"Downloaded"},
+];
+
+/* ================================================================
+   ICONS (no emojis, simple svg)
+================================================================ */
+const I = {
+  spark:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.5 5.5l4 4M14.5 14.5l4 4M18.5 5.5l-4 4M9.5 14.5l-4 4"/></svg>,
+  layers:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>,
+  palette:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2-.6-1.4.4-2.5 1.7-2.5H17a4 4 0 004-4 9 9 0 00-9-9z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="9.5" cy="6.5" r="1"/><circle cx="14" cy="6" r="1"/><circle cx="17" cy="10" r="1"/></svg>,
+  eye:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>,
+  check:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12l5 5L20 6"/></svg>,
+  upload:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>,
+  mic:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>,
+  play:(p)=> <svg {...p} viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7V5z"/></svg>,
+  rocket:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 14c0-5 4-11 9-11 5 0 5 6 0 11-3 3-6 4-9 0z"/><path d="M5 14c-2 1-3 3-3 6 3 0 5-1 6-3"/><circle cx="14" cy="8" r="1.5"/></svg>,
+  bolt:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>,
+  list:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 6h16M4 12h16M4 18h16"/></svg>,
+  star:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 3l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"/></svg>,
+  cards:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>,
+  signal:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 20V14M9 20V10M14 20V6M19 20V2"/></svg>,
+  send:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 11l18-7-7 18-3-8-8-3z"/></svg>,
+  cog:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.4.8a7 7 0 00-2-1.2L14 3h-4l-.5 2.5a7 7 0 00-2 1.2l-2.4-.8-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.4-.8c.6.5 1.3.9 2 1.2L10 21h4l.5-2.5c.7-.3 1.4-.7 2-1.2l2.4.8 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>,
+  search:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>,
+  globe:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>,
+  doc:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 3h9l5 5v13H6z"/><path d="M14 3v6h6"/></svg>,
+  image:(p)=> <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 17l-5-5-9 9"/></svg>,
+};
+
+/* ================================================================
+   PRIMITIVES
+================================================================ */
+function Btn({children, onClick, variant="primary", size="md", className="", ...rest}){
+  const sz = size==="sm"? "h-8 px-3 text-[13px]" : size==="lg"? "h-12 px-5 text-[15px]" : "h-10 px-4 text-[14px]";
+  if(variant==="primary")
+    return <button onClick={onClick} {...rest} className={`${sz} rounded-xl font-medium accent-bg text-white shadow-card hover:opacity-95 active:opacity-90 focus-ring inline-flex items-center gap-2 ${className}`}>{children}</button>;
+  if(variant==="secondary")
+    return <button onClick={onClick} {...rest} className={`${sz} rounded-xl font-medium paper hairline ink hover:bg-[var(--surface)] focus-ring inline-flex items-center gap-2 ${className}`}>{children}</button>;
+  return <button onClick={onClick} {...rest} className={`${sz} rounded-xl font-medium ink-muted hover:bg-[var(--surface)] focus-ring inline-flex items-center gap-2 ${className}`}>{children}</button>;
+}
+
+function Card({children, className="", pattern=false}){
+  return <div className={`paper hairline rounded-[18px] shadow-card ${pattern?"card-pattern":""} ${className}`}>{children}</div>;
+}
+
+function Pill({children, tone="neutral"}){
+  const map = {
+    neutral:"bg-[var(--surface)] ink-muted",
+    accent:"text-white accent-bg",
+    soft:"bg-[var(--accent-3)] accent-text",
+    good:"bg-[#E8F4EE] text-[#137A4A]",
+    warn:"bg-[#FBF1DD] text-[#A86A00]",
+    risk:"bg-[#FBE8E5] text-[#B0322B]",
+  };
+  return <span className={`inline-flex items-center text-[12px] px-2 py-[2px] rounded-full font-medium ${map[tone]}`}>{children}</span>;
+}
+
+function Field({label, children, hint}){
+  return <label className="block">
+    <div className="text-[13px] ink-muted mb-1.5">{label}</div>
+    {children}
+    {hint && <div className="text-[12px] ink-muted mt-1">{hint}</div>}
+  </label>;
+}
+
+function Input(props){
+  return <input {...props} className={`w-full h-10 paper hairline rounded-xl px-3 focus-ring ${props.className||""}`} />;
+}
+function Textarea(props){
+  return <textarea {...props} className={`w-full paper hairline rounded-xl p-3 focus-ring ${props.className||""}`} />;
+}
+function Select({children, ...rest}){
+  return <select {...rest} className={`w-full h-10 paper hairline rounded-xl px-3 focus-ring ${rest.className||""}`}>{children}</select>;
+}
+
+/* ================================================================
+   APP CONTEXT
+================================================================ */
+const AppCtx = createContext(null);
+const useApp = ()=> useContext(AppCtx);
+
+const INDUSTRIES = ["Fintech","Climate","Health","AI","Sports","Enterprise","Developer Tools","Consumer","Education","Other"];
+
+function emptyAppData(){
+  return {
+    company:"", oneLiner:"", industry:"", stage:"Pre-seed",
+    realStory:"", promptsUsed:[],
+    audience:"Seed VC", goal:"Raise", slideCount:12,
+    brandSources:{ logo:"", websiteUrl:"", deckUrl:"", refImages:[], designNotes:"" },
+    voice:{ transcript:"", durationSec:0 },
+  };
+}
+
+/* ================================================================
+   INTAKE FLOW
+================================================================ */
+function StepProgress({step, total}){
+  return <div className="w-full h-1.5 rounded-full bg-[var(--surface)] overflow-hidden">
+    <div className="h-full accent-bg transition-all" style={{width:`${(step/total)*100}%`}}/>
+  </div>;
+}
+
+function IntakeShell({children, step, total, onBack, onNext, nextLabel="Continue", canNext=true}){
+  return <div className="min-h-screen flex flex-col">
+    <header className="px-8 py-6 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg accent-bg"/>
+        <div className="font-semibold tracking-tight">SignalDeck</div>
+      </div>
+      <div className="text-[13px] ink-muted">Step {step} of {total}</div>
+    </header>
+    <div className="px-8"><StepProgress step={step} total={total}/></div>
+    <main className="flex-1 flex items-start justify-center px-6 py-10">
+      <div className="w-full max-w-[680px]">
+        <Card className="p-8 sm:p-10">
+          {children}
+          <div className="mt-8 flex items-center justify-between">
+            <Btn variant="ghost" onClick={onBack} disabled={step===1} className={step===1?"opacity-40 pointer-events-none":""}>Back</Btn>
+            <Btn onClick={onNext} disabled={!canNext} className={!canNext?"opacity-40 pointer-events-none":""}>{nextLabel}</Btn>
+          </div>
+        </Card>
+      </div>
+    </main>
+  </div>;
+}
+
+function IntakeBasics({data, set, next}){
+  return <IntakeShell step={1} total={5} onNext={next} canNext={!!data.company}>
+    <h1 className="text-[28px] font-semibold tracking-tight">Tell us about your startup</h1>
+    <p className="ink-muted mt-2 max-w-[520px]">
+      Add anything that helps us understand your company. Your logo, website, old pitch deck, notes, business details, product links, brand assets, screenshots, or documents. These will become your sources.
+    </p>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+      <Field label="Startup name"><Input value={data.company} onChange={e=>set({company:e.target.value})} placeholder="SyncPay" /></Field>
+      <Field label="Industry">
+        <Select value={data.industry} onChange={e=>set({industry:e.target.value})}>
+          <option value="">Select</option>
+          {INDUSTRIES.map(i=> <option key={i}>{i}</option>)}
+        </Select>
+      </Field>
+      <Field label="One-liner" hint="What do you do, in one sentence."><Input value={data.oneLiner} onChange={e=>set({oneLiner:e.target.value})} placeholder="Programmable payouts for marketplaces." /></Field>
+      <Field label="Stage">
+        <Select value={data.stage} onChange={e=>set({stage:e.target.value})}>
+          {["Pre-seed","Seed","Series A","Series B+","Bootstrapped"].map(i=> <option key={i}>{i}</option>)}
+        </Select>
+      </Field>
+    </div>
+  </IntakeShell>;
+}
+
+const PROMPTS = ["What broke?","Who is hurting?","Why are you the one?","What did you try first?","What changed?"];
+function IntakeStory({data, set, next, back}){
+  const toggle = (p)=>{
+    const used = data.promptsUsed.includes(p) ? data.promptsUsed.filter(x=>x!==p) : [...data.promptsUsed, p];
+    set({promptsUsed: used});
+  };
+  return <IntakeShell step={2} total={5} onBack={back} onNext={next}>
+    <h1 className="text-[28px] font-semibold tracking-tight">The real story</h1>
+    <p className="ink-muted mt-2">Skip the polish. Tell us what made you start this.</p>
+    <div className="flex flex-wrap gap-2 mt-5">
+      {PROMPTS.map(p=> {
+        const active = data.promptsUsed.includes(p);
+        return <button key={p} onClick={()=>toggle(p)}
+          className={`text-[13px] px-3 h-8 rounded-full hairline focus-ring ${active?"accent-bg text-white border-transparent":"paper ink"}`}>{p}</button>;
+      })}
+    </div>
+    <div className="mt-5">
+      <Textarea rows={8} value={data.realStory} onChange={e=>set({realStory:e.target.value})}
+        placeholder="The first time we saw a marketplace lose a seller because payout failed silently, we knew this had to exist." />
+    </div>
+  </IntakeShell>;
+}
+
+function IntakePurpose({data, set, next, back}){
+  const audiences = ["Seed VC","Series A","Angel","Strategic","Internal"];
+  const goals = [
+    {id:"Raise", title:"Raise capital", desc:"Pitch to an investor."},
+    {id:"Partner", title:"Partner", desc:"Land a strategic partner."},
+    {id:"Hire", title:"Hire", desc:"Recruit a key role."},
+    {id:"Sell", title:"Sell", desc:"Customer or board pitch."},
+  ];
+  return <IntakeShell step={3} total={5} onBack={back} onNext={next}>
+    <h1 className="text-[28px] font-semibold tracking-tight">Deck purpose</h1>
+    <p className="ink-muted mt-2">Who is this pitch going to, and what should happen after they read it?</p>
+
+    <div className="mt-6">
+      <div className="text-[13px] ink-muted mb-2">Audience</div>
+      <div className="flex flex-wrap gap-2">
+        {audiences.map(a=> {
+          const active = data.audience===a;
+          return <button key={a} onClick={()=>set({audience:a})}
+            className={`text-[13px] px-3 h-9 rounded-xl hairline focus-ring ${active?"accent-bg text-white border-transparent":"paper ink"}`}>{a}</button>;
+        })}
+      </div>
+    </div>
+
+    <div className="mt-6">
+      <div className="text-[13px] ink-muted mb-2">Goal</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {goals.map(g=>{
+          const active = data.goal===g.id;
+          return <button key={g.id} onClick={()=>set({goal:g.id})}
+            className={`text-left p-3 rounded-xl hairline focus-ring ${active?"accent-border":"paper"}`}>
+            <div className="font-medium text-[14px]">{g.title}</div>
+            <div className="text-[12px] ink-muted">{g.desc}</div>
+          </button>;
+        })}
+      </div>
+    </div>
+
+    <div className="mt-6">
+      <div className="text-[13px] ink-muted mb-2 flex items-center justify-between">
+        <span>Deck length</span><span className="num">{data.slideCount} slides</span>
+      </div>
+      <input type="range" min="8" max="20" value={data.slideCount} onChange={e=>set({slideCount:+e.target.value})} className="w-full accent-[var(--accent)]"/>
+    </div>
+  </IntakeShell>;
+}
+
+function IntakeBrand({data, set, next, back}){
+  const b = data.brandSources;
+  const setB = (patch)=> set({brandSources:{...b, ...patch}});
+  const [detecting, setDetecting] = useState(false);
+  const [preview, setPreview] = useState(null); // {primary, secondary, all[]}
+  const [detectErr, setDetectErr] = useState(false);
+  const debounceRef = useRef(null);
+
+  const tryDetect = (url)=>{
+    if(!url || !url.startsWith("http")) return;
+    setDetecting(true); setDetectErr(false); setPreview(null);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async ()=>{
+      const result = await fetchBrandColors(url);
+      setDetecting(false);
+      if(result){ setPreview(result); }
+      else { setDetectErr(true); }
+    }, 900);
+  };
+
+  return <IntakeShell step={4} total={5} onBack={back} onNext={next}>
+    <h1 className="text-[28px] font-semibold tracking-tight">Brand and theme sources</h1>
+    <p className="ink-muted mt-2">Paste your website URL — we'll read the real colours and apply them across the whole UI.</p>
+
+    <div className="mt-6 space-y-1">
+      <div className="text-[13px] ink-muted">Website URL</div>
+      <div className="relative">
+        <Input
+          value={b.websiteUrl}
+          onChange={e=>{ setB({websiteUrl:e.target.value}); tryDetect(e.target.value); }}
+          placeholder="https://cleaneatsaustralia.com.au"
+        />
+        {detecting && <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin"/>}
+      </div>
+
+      {/* Live color preview */}
+      {preview && (
+        <div className="mt-3 p-3 rounded-xl surface flex items-center gap-3">
+          <div className="flex gap-1.5">
+            {preview.all.slice(0,5).map((c,i)=>
+              <div key={i} className="w-7 h-7 rounded-md hairline shadow-card" style={{background:c}} title={c}/>
+            )}
+          </div>
+          <div className="text-[13px]">
+            <div className="font-medium">Brand colors detected</div>
+            <div className="ink-muted">{preview.all.length} colours from {b.websiteUrl.replace(/https?:\/\//,"").split("/")[0]}</div>
+          </div>
+          <Pill tone="good">Ready</Pill>
+        </div>
+      )}
+      {detectErr && (
+        <div className="mt-2 text-[12px] ink-muted">Could not fetch colours automatically — you can still continue and set them manually.</div>
+      )}
+    </div>
+
+    <div className="mt-4">
+      <Field label="Existing deck or Figma URL">
+        <Input value={b.deckUrl} onChange={e=>setB({deckUrl:e.target.value})} placeholder="https://figma.com/file/…" />
+      </Field>
+    </div>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+      <UploadZone label="Logo" hint="PNG or SVG" value={b.logo} onChange={v=>setB({logo:v})} icon={<I.image className="w-5 h-5"/>}/>
+      <UploadZone label="Colour reference" hint="Brand screenshot or mood board" multi value={b.refImages} onChange={v=>setB({refImages:v})} icon={<I.palette className="w-5 h-5"/>}/>
+    </div>
+
+    <div className="mt-4">
+      <Field label="Design notes / inspiration" hint="A vibe, a reference, a colour code — anything.">
+        <Textarea rows={3} value={b.designNotes} onChange={e=>setB({designNotes:e.target.value})} placeholder="Natural greens, clean food brand, think earthy but modern."/>
+      </Field>
+    </div>
+  </IntakeShell>;
+}
+
+function UploadZone({label, hint, value, onChange, icon, multi=false}){
+  const has = multi ? (value && value.length>0) : !!value;
+  const onPick = (e)=>{
+    const files = Array.from(e.target.files||[]);
+    if(!files.length) return;
+    if(multi) onChange([...(value||[]), ...files.map(f=>f.name)]);
+    else onChange(files[0].name);
+  };
+  return <label className="block">
+    <div className="text-[13px] ink-muted mb-1.5">{label}</div>
+    <div className="rounded-xl hairline paper p-4 flex items-center gap-3 hover:bg-[var(--surface)] cursor-pointer overlay-pattern">
+      <div className="w-10 h-10 rounded-lg surface flex items-center justify-center accent-text">{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[14px] font-medium truncate">
+          {has ? (multi ? `${value.length} file(s) added` : value) : `Drop or browse ${label.toLowerCase()}`}
+        </div>
+        <div className="text-[12px] ink-muted">{hint}</div>
+      </div>
+      <input type="file" className="hidden" multiple={multi} onChange={onPick}/>
+      <Pill tone={has?"good":"neutral"}>{has?"Added":"Empty"}</Pill>
+    </div>
+  </label>;
+}
+
+function IntakeVoice({data, set, next, back}){
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(data.voice.durationSec || 0);
+  const recRef = useRef(null);
+  const recogRef = useRef(null);
+
+  useEffect(()=>{
+    let id;
+    if(recording){
+      id = setInterval(()=> setElapsed(e=> Math.min(60, e+1)), 1000);
+    }
+    return ()=> clearInterval(id);
+  },[recording]);
+
+  const start = async ()=>{
+    setElapsed(0); set({voice:{...data.voice, durationSec:0}});
+    setRecording(true);
+    // Try Web Speech API
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(SR){
+      const r = new SR(); r.continuous = true; r.interimResults = true; r.lang = "en-US";
+      let txt = "";
+      r.onresult = (e)=>{
+        txt = "";
+        for(let i=0;i<e.results.length;i++) txt += e.results[i][0].transcript + " ";
+        set({voice:{...data.voice, transcript: txt.trim(), durationSec: elapsed}});
+      };
+      r.onerror = ()=>{};
+      try{ r.start(); recogRef.current = r; }catch{}
+    }
+  };
+  const stop = ()=>{
+    setRecording(false);
+    if(recogRef.current){ try{ recogRef.current.stop(); }catch{} }
+    set({voice:{...data.voice, durationSec: elapsed}});
+  };
+
+  return <IntakeShell step={5} total={5} onBack={back} onNext={next} nextLabel="Build my workspace">
+    <h1 className="text-[28px] font-semibold tracking-tight">Voice sample</h1>
+    <p className="ink-muted mt-2">Talk for 30–60 seconds. We learn your phrasing and rhythm so the deck and follow-up sound like you.</p>
+
+    <div className="mt-6 rounded-2xl hairline paper p-6 flex items-center gap-5 overlay-pattern">
+      <button onClick={recording? stop : start}
+        className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-card focus-ring ${recording?"bg-[#B0322B]":"accent-bg"}`}>
+        <I.mic className="w-7 h-7"/>
+      </button>
+      <div className="flex-1">
+        <div className="font-medium">{recording? "Recording…" : (elapsed>0?"Saved sample":"Tap to record")}</div>
+        <div className="text-[13px] ink-muted">{elapsed}s {recording?"/ 60s":"captured"}</div>
+        <div className="mt-2 h-1.5 rounded-full bg-[var(--surface)] overflow-hidden">
+          <div className="h-full accent-bg transition-all" style={{width:`${(elapsed/60)*100}%`}}/>
+        </div>
+      </div>
+      <Btn variant="secondary" onClick={()=>{ set({voice:{transcript:"", durationSec:0}}); setElapsed(0); }}>Clear</Btn>
+    </div>
+
+    <div className="mt-4">
+      <Field label="Or type a sample (optional)">
+        <Textarea rows={4} value={data.voice.transcript} onChange={e=>set({voice:{...data.voice, transcript:e.target.value}})} placeholder="The way I usually pitch this is…"/>
+      </Field>
+    </div>
+    <div className="mt-3 text-[13px]"><button className="ink-muted hover:underline" onClick={next}>Skip this step</button></div>
+  </IntakeShell>;
+}
+
+/* ================================================================
+   BRAND DETECTION TRANSITION
+   — fetches real brand colors from the user's website, builds a
+     dynamic theme, then hands it back via onDone(theme)
+================================================================ */
+function BrandDetection({appData, onDone}){
+  const PHASES = [
+    "Reading sources",
+    "Fetching colours, fonts and logo from your site",
+    "Choosing motif pattern",
+    "Applying theme to workspace",
+  ];
+  const [phaseIdx, setPhaseIdx] = useState(0);
+  const [extractedColors, setExtractedColors] = useState([]);
+  const [builtTheme, setBuiltTheme] = useState(null);
+  const ran = useRef(false);
+
+  useEffect(()=>{
+    if(ran.current) return;
+    ran.current = true;
+
+    (async ()=>{
+      // Phase 0 → 1: read sources (short pause)
+      await delay(600);
+      setPhaseIdx(1);
+
+      // Phase 1: actually fetch brand colours
+      const url = appData.brandSources?.websiteUrl;
+      let brandResult = null;
+      if(url){
+        brandResult = await fetchBrandColors(url);
+      }
+
+      // If no website or fetch failed, fall back to a neutral warm white
+      if(!brandResult){
+        brandResult = {
+          primary: "#5B6470",
+          secondary: "#0F1115",
+          all: ["#5B6470","#0F1115","#ECECEC"],
+          url: url || "",
+          fonts: { heading: null, body: null, names: [], googleUrls: [] },
+          logo: null,
+          favicon: null,
+        };
+      }
+
+      setExtractedColors(brandResult.all || [brandResult.primary]);
+      setPhaseIdx(2);
+      await delay(500);
+
+      // Phase 2: build full theme object (colours + fonts + logo)
+      const theme = buildThemeFromBrand({
+        primary: brandResult.primary,
+        secondary: brandResult.secondary,
+        all: brandResult.all,
+        company: appData.company || "",
+        industry: appData.industry || "",
+        url: brandResult.url,
+        fonts: brandResult.fonts || null,
+        logo: brandResult.logo || null,
+        favicon: brandResult.favicon || null,
+        styleSignals: brandResult.styleSignals || null,
+      });
+      setBuiltTheme(theme);
+
+      // Apply immediately so it visually transitions during this screen
+      applyTheme(theme);
+      setPhaseIdx(3);
+      await delay(700);
+
+      setPhaseIdx(4);
+      await delay(500);
+      onDone(theme);
+    })();
+  }, []);
+
+  const company = appData.company || "your brand";
+  const domain = appData.brandSources?.websiteUrl
+    ? appData.brandSources.websiteUrl.replace(/https?:\/\//,"").split("/")[0]
+    : null;
+
+  return <div className="min-h-screen flex items-center justify-center px-6 hero-bg">
+    <Card className="w-full max-w-[560px] p-8" pattern>
+      <div className="flex items-center gap-2 mb-6">
+        <div className="w-7 h-7 rounded-lg accent-bg"/>
+        <div className="font-semibold tracking-tight">SignalDeck</div>
+      </div>
+      <h2 className="text-[22px] font-semibold tracking-tight">Building your workspace</h2>
+      <p className="ink-muted text-[14px] mt-1">
+        {domain
+          ? <>Reading <span className="ink font-medium">{domain}</span> and shaping the UI around {company}.</>
+          : <>Shaping the UI around <span className="ink font-medium">{company}</span>.</>}
+      </p>
+
+      <ul className="mt-6 space-y-3">
+        {PHASES.map((p,idx)=>{
+          const done = idx < phaseIdx;
+          const active = idx === phaseIdx;
+          return <li key={p} className="flex items-center gap-3">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${done?"accent-bg text-white": active?"hairline accent-text":"surface ink-muted"}`}>
+              {done
+                ? <I.check className="w-3.5 h-3.5"/>
+                : active
+                  ? <span className="w-3 h-3 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin block"/>
+                  : <span className="text-[11px] num">{idx+1}</span>}
+            </div>
+            <div className={`text-[14px] ${done||active?"ink":"ink-muted"}`}>{p}</div>
+          </li>;
+        })}
+      </ul>
+
+      {/* Live assets appear as they're extracted */}
+      {extractedColors.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Colour swatches */}
+            {extractedColors.slice(0,6).map((c,k)=>
+              <div key={k} className="w-8 h-8 rounded-lg hairline shadow-card" style={{background:c}} title={c}/>
+            )}
+          </div>
+          {builtTheme && builtTheme.logo && (
+            <div className="flex items-center gap-2">
+              <img src={builtTheme.logo} alt="Logo" className="h-8 max-w-[120px] object-contain rounded hairline p-1 bg-white"
+                onError={e=>e.target.style.display="none"}/>
+              <span className="text-[12px] ink-muted">Logo detected</span>
+            </div>
+          )}
+          {builtTheme && builtTheme.fonts?.names?.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {builtTheme.fonts.names.slice(0,2).map((f,i)=>(
+                <span key={i} className="text-[12px] px-2 py-1 rounded-lg surface hairline"
+                  style={{fontFamily:`"${f}"`}}>{f}</span>
+              ))}
+              <span className="text-[12px] ink-muted">fonts loaded</span>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  </div>;
+}
+
+function delay(ms){ return new Promise(r=> setTimeout(r, ms)); }
+
+/* ================================================================
+   WORKSPACE SHELL
+================================================================ */
+const NAV = [
+  {group:"Build", items:[
+    {id:"overview", label:"Overview", icon:"layers"},
+    {id:"sources", label:"Sources", icon:"doc"},
+    {id:"theme", label:"Theme", icon:"palette"},
+    {id:"deck", label:"Deck Build", icon:"cards"},
+    {id:"style", label:"Style Library", icon:"star"},
+    {id:"frameworks", label:"Frameworks", icon:"list"},
+  ]},
+  {group:"Insights", items:[
+    {id:"vclens", label:"VC Lens", icon:"eye"},
+    {id:"audit", label:"Audit", icon:"check"},
+    {id:"claims", label:"Claims", icon:"bolt"},
+    {id:"signals", label:"Signals", icon:"signal"},
+  ]},
+  {group:"Ship", items:[
+    {id:"demo", label:"Demo Layer", icon:"play"},
+    {id:"present", label:"Present", icon:"spark"},
+    {id:"deploy", label:"Deploy", icon:"rocket"},
+    {id:"followup", label:"Follow-up", icon:"send"},
+    {id:"settings", label:"Settings", icon:"cog"},
+  ]},
+];
+
+function BrandLogo({theme, size="md"}){
+  const sz = size==="sm" ? "w-7 h-7" : "w-9 h-9";
+  if(theme.logo){
+    return <img src={theme.logo} alt={theme.name} className={`${sz} rounded-lg object-contain hairline bg-white`}
+      onError={e=>{ e.target.style.display="none"; e.target.nextSibling.style.display="flex"; }}
+    />;
+  }
+  return <div className={`${sz} rounded-lg accent-bg flex items-center justify-center text-white text-[13px] font-semibold`}>
+    {(theme.name||"S").slice(0,1).toUpperCase()}
+  </div>;
+}
+
+function Sidebar({active, setActive, theme}){
+  const fontNote = theme.fonts?.names?.length ? theme.fonts.names[0] : null;
+  return <aside className="w-[260px] shrink-0 side-bg hairline border-y-0 border-l-0 h-screen sticky top-0 hidden lg:flex flex-col">
+    <div className="px-5 py-5 flex items-center gap-2.5">
+      <BrandLogo theme={theme}/>
+      <div style={{display:"none"}} className="w-9 h-9 rounded-lg accent-bg flex items-center justify-center text-white text-[13px] font-semibold">
+        {(theme.name||"S").slice(0,1).toUpperCase()}
+      </div>
+      <div className="min-w-0">
+        <div className="font-semibold tracking-tight text-[15px] truncate">{theme.name}</div>
+        <div className="text-[12px] ink-muted truncate">
+          {fontNote ? fontNote : "SignalDeck workspace"}
+        </div>
+      </div>
+    </div>
+    <nav className="px-3 pb-6 overflow-y-auto scroll-fade flex-1">
+      {NAV.map(g=>(
+        <div key={g.group} className="mb-4">
+          <div className="px-2 text-[11px] uppercase tracking-wider ink-muted mb-1">{g.group}</div>
+          {g.items.map(it=>{
+            const Icon = I[it.icon];
+            const isActive = active===it.id;
+            return <button key={it.id} onClick={()=>setActive(it.id)}
+              className={`w-full flex items-center gap-2.5 px-2.5 h-9 rounded-lg text-[14px] focus-ring text-left ${isActive?"accent-bg text-white":"ink hover:bg-[var(--surface)]"}`}>
+              <Icon className="w-4 h-4"/>{it.label}
+            </button>;
+          })}
+        </div>
+      ))}
+    </nav>
+  </aside>;
+}
+
+function Topbar({title, subtitle, theme, onOpenTheme, onPresent, onMenuClick}){
+  return <div className="hairline border-x-0 border-t-0 paper sticky top-0 z-10">
+    <div className="px-4 lg:px-8 h-14 flex items-center gap-3">
+      {/* Hamburger — visible only when sidebar is hidden (< lg) */}
+      <button
+        onClick={onMenuClick}
+        className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[rgba(0,0,0,0.05)] transition-colors focus-ring flex-shrink-0"
+        aria-label="Open menu"
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <line x1="2" y1="4.5" x2="16" y2="4.5"/><line x1="2" y1="9" x2="16" y2="9"/><line x1="2" y1="13.5" x2="16" y2="13.5"/>
+        </svg>
+      </button>
+      <div className="flex items-center gap-2 min-w-0">
+        <div className="text-[15px] font-semibold tracking-tight truncate">{title}</div>
+        {subtitle && <div className="ink-muted text-[13px] truncate hidden sm:block">— {subtitle}</div>}
+      </div>
+      <div className="flex-1"/>
+      <div className="hidden md:flex items-center gap-2">
+        <Pill tone="soft">8 of {12} slides ready</Pill>
+        <button onClick={onOpenTheme} className="hairline rounded-full h-8 pl-1 pr-3 inline-flex items-center gap-2 text-[13px] focus-ring paper">
+          <span className="w-6 h-6 rounded-full" style={{background:`linear-gradient(135deg, var(--accent), var(--accent-2))`}}/>
+          {theme.name}
+        </button>
+      </div>
+      <Btn onClick={onPresent}><I.play className="w-3.5 h-3.5"/>Present</Btn>
+      <div className="w-9 h-9 rounded-full surface hairline flex items-center justify-center text-[13px] font-medium flex-shrink-0">YO</div>
+    </div>
+  </div>;
+}
+
+/* ================================================================
+   WORKSPACE SCREENS
+================================================================ */
+function ScreenOverview(){
+  const {appData} = useApp();
+  return <div className="p-6 lg:p-8 space-y-6">
+    <Card className="p-6 sm:p-8 hero-bg overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-end gap-6">
+        <div>
+          <div className="text-[12px] uppercase tracking-wider ink-muted">Today</div>
+          <h1 className="text-[28px] font-semibold tracking-tight mt-1">Your deck is starting to take shape</h1>
+          <p className="ink-muted mt-1 max-w-xl">Brand direction detected. 8 of 12 slides ready. One claim needs a source before you send.</p>
+          <div className="flex gap-2 mt-4">
+            <Btn>Generate pitch deck</Btn>
+            <Btn variant="secondary">Review story</Btn>
+          </div>
+        </div>
+        <div className="ml-auto hidden md:block w-[260px] h-[140px] rounded-2xl hairline paper brand-pattern relative overflow-hidden">
+          <div className="absolute inset-0 grid-bg opacity-30"/>
+          <div className="absolute bottom-3 left-3 right-3">
+            <Pill tone="accent">{appData.company || "Your startup"}</Pill>
+            <div className="mt-2 text-[12px] ink-muted">Live deck preview</div>
+          </div>
+        </div>
+      </div>
+    </Card>
+
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {[
+        {label:"Audit score", value:"74", sub:"Out of 100"},
+        {label:"Claims to fix", value:"2", sub:"Of 7 total"},
+        {label:"Slides drafted", value:"8 / 12", sub:"4 in outline"},
+        {label:"Signals received", value:"6", sub:"Last 24h"},
+      ].map((m,i)=>(
+        <Card key={i} className="p-5 card-pattern">
+          <div className="text-[12px] ink-muted">{m.label}</div>
+          <div className="text-[26px] font-semibold tracking-tight mt-1 num">{m.value}</div>
+          <div className="text-[12px] ink-muted">{m.sub}</div>
+        </Card>
+      ))}
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <Card className="lg:col-span-2 p-5">
+        <div className="flex items-center justify-between">
+          <div className="font-semibold">Pick up where you left off</div>
+          <Pill tone="soft">3 items</Pill>
+        </div>
+        <ul className="mt-3 divide-y divide-[var(--line)]">
+          {[
+            ["Slide 4 — Why now","Open in deck builder"],
+            ["Add source for slide 2 claim","Open claims"],
+            ["Pick a framework for slide 8","Open frameworks"],
+          ].map(([a,b],i)=>(
+            <li key={i} className="py-3 flex items-center justify-between">
+              <div className="text-[14px]">{a}</div>
+              <button className="text-[13px] accent-text hover:underline">{b}</button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card className="p-5">
+        <div className="font-semibold">Recent activity</div>
+        <ul className="mt-3 space-y-3 text-[13px] ink-muted">
+          <li><span className="ink">a16z viewer</span> opened slide 4 twice — 2h ago</li>
+          <li><span className="ink">Sequoia viewer</span> stayed 96s on demo — yesterday</li>
+          <li>Story audit re-ran — yesterday</li>
+        </ul>
+      </Card>
+    </div>
+  </div>;
+}
+
+function ScreenSources(){
+  const {appData} = useApp();
+  const [sources, setSources] = useState(SOURCES_INIT);
+  const [filter, setFilter] = useState("All");
+  const FILTERS = ["All","Brand","Story","Voice","Deck"];
+  const filtered = sources.filter(s=> filter==="All" || (
+    (filter==="Brand" && ["logo","refImage","website"].includes(s.type)) ||
+    (filter==="Story" && ["notes"].includes(s.type)) ||
+    (filter==="Voice" && s.type==="voice") ||
+    (filter==="Deck" && s.type==="deck")
+  ));
+  const TYPE_ICON = { logo:"image", website:"globe", deck:"doc", notes:"list", voice:"mic", refImage:"image" };
+
+  return <div className="p-6 lg:p-8 space-y-5">
+    <div className="flex flex-wrap items-center gap-3">
+      <h1 className="text-[22px] font-semibold tracking-tight">Sources</h1>
+      <p className="ink-muted text-[14px]">These become the brain of your deck. Add anything that explains the business.</p>
+    </div>
+    <div className="flex flex-wrap items-center gap-2">
+      {FILTERS.map(f=>(
+        <button key={f} onClick={()=>setFilter(f)}
+          className={`text-[13px] h-8 px-3 rounded-full hairline ${filter===f?"accent-bg text-white border-transparent":"paper ink"}`}>{f}</button>
+      ))}
+      <div className="ml-auto"><Btn variant="secondary"><I.upload className="w-4 h-4"/>Add source</Btn></div>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {filtered.map(s=>{
+        const Icon = I[TYPE_ICON[s.type]] || I.doc;
+        const tone = s.status==="Ready"?"good": s.status==="Processing"?"warn":"soft";
+        return <Card key={s.id} className="p-5 card-pattern">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-lg surface flex items-center justify-center accent-text"><Icon className="w-5 h-5"/></div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-[14px] truncate">{s.name}</div>
+              <div className="text-[12px] ink-muted capitalize">{s.type}</div>
+            </div>
+            <Pill tone={tone}>{s.status}</Pill>
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-[12px] ink-muted">Added just now</span>
+            <button className="text-[13px] accent-text hover:underline">Open</button>
+          </div>
+        </Card>;
+      })}
+      <Card className="p-5 overlay-pattern flex flex-col items-center justify-center text-center min-h-[140px]">
+        <div className="w-10 h-10 rounded-full accent-bg text-white flex items-center justify-center"><I.upload className="w-5 h-5"/></div>
+        <div className="font-medium mt-2">Add another source</div>
+        <div className="text-[12px] ink-muted">Logos, sites, decks, notes, screenshots, audio.</div>
+      </Card>
+    </div>
+  </div>;
+}
+
+function ColorSwatch({c}){ return <div className="w-8 h-8 rounded-md hairline" style={{background:c}} title={c}/>; }
+
+// Three demo brands to show in the "how the theme adapts" panel
+const DEMO_BRANDS = [
+  { primary:"#0EA5A4", secondary:"#0B5F6B", all:["#0EA5A4","#0B5F6B","#E6F7F6"], company:"SyncPay", industry:"Fintech", url:"syncpay.com" },
+  { primary:"#C8102E", secondary:"#1D428A", all:["#C8102E","#1D428A","#ffffff"], company:"NBA", industry:"Sports", url:"nba.com" },
+  { primary:"#3B7D4F", secondary:"#2A5A38", all:["#3B7D4F","#2A5A38","#EAF3EC"], company:"Clean Eats", industry:"Food", url:"cleaneatsaustralia.com.au" },
+];
+
+function ScreenTheme(){
+  const {appData, theme, setTheme, recommended} = useApp();
+  const extracted = theme.extractedColors || [];
+  const domain = appData.brandSources?.websiteUrl
+    ? appData.brandSources.websiteUrl.replace(/https?:\/\//,"").split("/")[0]
+    : null;
+
+  // Manually override with a custom hex
+  const [manualHex, setManualHex] = useState("");
+  const applyManual = ()=>{
+    const hex = manualHex.startsWith("#") ? manualHex : "#"+manualHex;
+    if(!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+    const t = buildThemeFromBrand({ primary:hex, secondary: adjustHsl(hex,0,-5,-18), all:[hex], company:appData.company, industry:appData.industry, url:"" });
+    setTheme(t);
+  };
+
+  return <div className="p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <Card className="p-5 lg:col-span-1 card-pattern">
+      <div className="font-semibold">Brand intelligence</div>
+      <p className="text-[13px] ink-muted">
+        {domain ? <>Colours extracted from <span className="ink font-medium">{domain}</span></> : "From your sources."}
+      </p>
+      <div className="mt-4 space-y-4">
+        <div>
+          <div className="text-[12px] ink-muted mb-1">Extracted colours</div>
+          <div className="flex flex-wrap gap-1.5">
+            {(extracted.length ? extracted : [theme.tokens.accent, theme.tokens.accent2, theme.tokens.accent3]).map((c,i)=>
+              <button key={i} onClick={()=>{ const t=buildThemeFromBrand({primary:c,secondary:adjustHsl(c,0,-5,-18),all:[c],company:appData.company,industry:appData.industry,url:""}); setTheme(t); }}
+                className="w-8 h-8 rounded-md hairline shadow-card hover:ring-2 ring-[var(--accent)]" style={{background:c}} title={c}/>
+            )}
+          </div>
+          <div className="text-[11px] ink-muted mt-1">Click any colour to apply it as the primary</div>
+        </div>
+        {/* Logo */}
+        {theme.logo && (
+          <div>
+            <div className="text-[12px] ink-muted mb-1">Brand logo</div>
+            <img src={theme.logo} alt={theme.name}
+              className="h-10 max-w-[140px] object-contain rounded hairline p-1 bg-white"
+              onError={e=>e.target.style.display="none"}/>
+          </div>
+        )}
+        <div>
+          <div className="text-[12px] ink-muted mb-1">Industry</div>
+          <Pill tone="soft">{theme.industry || appData.industry || "Custom"}</Pill>
+        </div>
+        {/* Fonts */}
+        {theme.fonts?.names?.length > 0 && (
+          <div>
+            <div className="text-[12px] ink-muted mb-1">Detected fonts</div>
+            <div className="space-y-1">
+              {theme.fonts.names.slice(0,3).map((f,i)=>(
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-[11px] px-1.5 py-0.5 rounded surface ink-muted">{i===0?"Heading":"Body"}</span>
+                  <span className="text-[13px]" style={{fontFamily:`"${f}"`}}>{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <div>
+          <div className="text-[12px] ink-muted mb-1">Applied colours</div>
+          <div className="flex gap-1.5">
+            {[theme.tokens.accent, theme.tokens.accent2, theme.tokens.accent3].map((c,i)=>
+              <div key={i} className="w-7 h-7 rounded-md hairline" style={{background:c}}/>
+            )}
+          </div>
+        </div>
+        <div>
+          <div className="text-[12px] ink-muted mb-2">Override with a hex</div>
+          <div className="flex gap-2">
+            <input value={manualHex} onChange={e=>setManualHex(e.target.value)}
+              placeholder="#3B7D4F"
+              className="flex-1 h-9 paper hairline rounded-lg px-3 text-[13px] focus-ring"/>
+            <Btn size="sm" onClick={applyManual}>Apply</Btn>
+          </div>
+        </div>
+        <div className="pt-1">
+          <Btn variant="secondary" onClick={()=>setTheme(recommended)}><I.spark className="w-4 h-4"/>Reset to detected</Btn>
+        </div>
+      </div>
+    </Card>
+
+    <div className="lg:col-span-2 space-y-5">
+      <Card className="p-5 hero-bg">
+        <div className="font-semibold">How the UI adapts to brand</div>
+        <p className="text-[13px] ink-muted">Same product, real colours from three different companies.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          {DEMO_BRANDS.map(b=>{
+            const t = buildThemeFromBrand(b);
+            return <div key={b.company} className="space-y-1">
+              <MiniWorkspacePreview t={t}/>
+              <div className="text-[11px] ink-muted text-center">{b.domain || b.url}</div>
+            </div>;
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <div className="font-semibold">Current theme preview</div>
+        <div className="mt-3">
+          <MiniWorkspacePreview t={theme}/>
+        </div>
+        <div className="mt-3 text-[13px] ink-muted">{theme.styleDescription}</div>
+      </Card>
+    </div>
+  </div>;
+}
+
+function ThemeCard({t, active, recommended, onClick}){
+  return <button onClick={onClick}
+    className={`text-left rounded-xl hairline paper p-3 focus-ring relative overflow-hidden ${active?"ring-2 ring-[var(--accent)]":""}`}>
+    <div className="h-16 rounded-lg" style={{
+      background: `linear-gradient(135deg, ${t.tokens.accent}, ${t.tokens.accent2})`,
+      backgroundImage: t.motifs.brand
+    }}/>
+    <div className="mt-2 flex items-center justify-between">
+      <div className="text-[13px] font-medium truncate">{t.name}</div>
+      {recommended && <Pill tone="soft">Auto</Pill>}
+    </div>
+    <div className="text-[11px] ink-muted truncate">{t.industry}</div>
+  </button>;
+}
+
+function MiniWorkspacePreview({t}){
+  return <div className="rounded-xl overflow-hidden hairline" style={{background:t.tokens.bg, color:t.tokens.ink}}>
+    <div className="h-24 flex" style={{background:t.tokens.heroBg, backgroundImage:t.motifs.hero, backgroundSize:"cover"}}>
+      <div className="w-12 shrink-0" style={{background:t.tokens.sideBg, backgroundImage:t.motifs.side}}/>
+      <div className="flex-1 p-2 flex flex-col">
+        <div className="h-2 w-1/2 rounded-full" style={{background:t.tokens.accent}}/>
+        <div className="mt-1 h-1.5 w-2/3 rounded-full" style={{background:t.tokens.line}}/>
+        <div className="mt-auto flex gap-1">
+          <div className="h-2 w-6 rounded-full" style={{background:t.tokens.accent}}/>
+          <div className="h-2 w-3 rounded-full" style={{background:t.tokens.accent2}}/>
+        </div>
+      </div>
+    </div>
+    <div className="p-2 text-[11px] flex items-center justify-between" style={{background:t.tokens.paper}}>
+      <span>{t.name}</span>
+      <span style={{color:t.tokens.inkMuted}}>preview</span>
+    </div>
+  </div>;
+}
+
+function ScreenVCLens(){
+  const [activeId, setActiveId] = useState(VC_LENSES[0].id);
+  const lens = VC_LENSES.find(l=>l.id===activeId);
+  return <div className="p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <Card className="p-3 lg:col-span-1">
+      <div className="px-2 py-2 font-semibold">Investor archetypes</div>
+      <ul>
+        {VC_LENSES.map(l=>{
+          const active = l.id===activeId;
+          return <li key={l.id}>
+            <button onClick={()=>setActiveId(l.id)} className={`w-full text-left p-3 rounded-xl ${active?"surface":"hover:bg-[var(--surface)]"}`}>
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-[14px]">{l.name}</div>
+                {active && <Pill tone="accent">Selected</Pill>}
+              </div>
+              <div className="text-[12px] ink-muted">{l.fundType}</div>
+            </button>
+          </li>;
+        })}
+      </ul>
+    </Card>
+    <div className="lg:col-span-2 space-y-5">
+      <Card className="p-5 card-pattern">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold">{lens.name}</div>
+            <div className="text-[13px] ink-muted">{lens.fundType} — {lens.focus}</div>
+          </div>
+          <Btn variant="secondary">Apply lens to deck</Btn>
+        </div>
+      </Card>
+      <Card className="p-5">
+        <div className="font-semibold">Likely questions</div>
+        <ul className="mt-3 space-y-2">
+          {lens.questions.map((q,i)=>(
+            <li key={i} className="flex gap-3 p-3 rounded-xl surface">
+              <div className="w-6 h-6 rounded-full accent-bg text-white text-[12px] num flex items-center justify-center shrink-0">{i+1}</div>
+              <div className="text-[14px]">{q}</div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card className="p-5">
+        <div className="font-semibold">Lens tips</div>
+        <ul className="mt-3 space-y-2 text-[14px] ink-muted">
+          {lens.tips.map((t,i)=> <li key={i} className="flex gap-2"><I.check className="w-4 h-4 mt-0.5 accent-text"/><span className="ink">{t}</span></li>)}
+        </ul>
+      </Card>
+    </div>
+  </div>;
+}
+
+function ScreenAudit(){
+  const scores = {clarity:78, momentum:64, evidence:58, conviction:81};
+  return <div className="p-6 lg:p-8 space-y-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {Object.entries(scores).map(([k,v])=>(
+        <Card key={k} className="p-5 card-pattern">
+          <div className="text-[12px] ink-muted capitalize">{k}</div>
+          <div className="flex items-end gap-2 mt-1">
+            <div className="text-[28px] font-semibold tracking-tight num">{v}</div>
+            <div className="text-[12px] ink-muted mb-1">/ 100</div>
+          </div>
+          <div className="mt-3 h-2 rounded-full surface overflow-hidden">
+            <div className="h-full accent-bg" style={{width:`${v}%`}}/>
+          </div>
+        </Card>
+      ))}
+    </div>
+    <Card className="p-5">
+      <div className="flex items-center justify-between">
+        <div className="font-semibold">VC tips</div>
+        <Btn variant="secondary"><I.spark className="w-4 h-4"/>Re-run audit</Btn>
+      </div>
+      <ul className="mt-3 space-y-3">
+        {VC_TIPS.map(t=>(
+          <li key={t.id} className="p-4 rounded-xl hairline">
+            <div className="flex items-center gap-2">
+              <Pill tone={t.severity==="warn"?"warn": t.severity==="risk"?"risk":"good"}>{t.severity}</Pill>
+              <div className="font-medium text-[14px]">{t.title}</div>
+            </div>
+            <div className="text-[13px] ink-muted mt-1">{t.body}</div>
+            <div className="mt-2"><button className="text-[13px] accent-text hover:underline">Apply to slide {t.slideRef}</button></div>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  </div>;
+}
+
+function ScreenClaims(){
+  const [filter, setFilter] = useState("all");
+  const TONES = {supported:"good","needs-source":"warn",risky:"risk","founder-thesis":"soft"};
+  const LABELS = {supported:"Supported","needs-source":"Needs source",risky:"Risky","founder-thesis":"Founder thesis"};
+  const filt = CLAIMS.filter(c=> filter==="all" || c.classification===filter);
+  return <div className="p-6 lg:p-8 space-y-5">
+    <div className="flex flex-wrap items-center gap-2">
+      {[["all","All"],["supported","Supported"],["needs-source","Needs source"],["risky","Risky"],["founder-thesis","Founder thesis"]].map(([id,lbl])=>(
+        <button key={id} onClick={()=>setFilter(id)}
+          className={`text-[13px] h-8 px-3 rounded-full hairline ${filter===id?"accent-bg text-white border-transparent":"paper ink"}`}>{lbl}</button>
+      ))}
+    </div>
+    <Card className="p-2">
+      <ul className="divide-y divide-[var(--line)]">
+        {filt.map(c=>(
+          <li key={c.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex-1">
+              <div className="text-[14px] ink">{c.text}</div>
+              <div className="text-[12px] ink-muted mt-1">Slide {c.slideId.replace("s","")} · confidence {Math.round(c.confidence*100)}%</div>
+            </div>
+            <Pill tone={TONES[c.classification]}>{LABELS[c.classification]}</Pill>
+            <div className="flex gap-2">
+              <Btn size="sm" variant="secondary">Attach source</Btn>
+              <Btn size="sm" variant="ghost">Soften</Btn>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  </div>;
+}
+
+function ScreenFrameworks(){
+  const [picked, setPicked] = useState(null);
+  return <div className="p-6 lg:p-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {FRAMEWORKS.map(f=>(
+        <Card key={f.id} className={`p-5 card-pattern ${picked===f.id?"ring-2 ring-[var(--accent)]":""}`}>
+          <div className="font-semibold">{f.name}</div>
+          <div className="text-[13px] ink-muted mt-1">{f.summary}</div>
+          <ol className="mt-3 space-y-1 text-[13px]">
+            {f.steps.map((s,i)=> <li key={i} className="flex gap-2"><span className="w-5 h-5 rounded-full surface text-[11px] num flex items-center justify-center">{i+1}</span>{s}</li>)}
+          </ol>
+          <div className="mt-3 text-[12px] ink-muted">When to use: {f.whenToUse}</div>
+          <div className="mt-4 flex gap-2">
+            <Btn size="sm" onClick={()=>setPicked(f.id)}>{picked===f.id?"Applied":"Apply to deck"}</Btn>
+            <Btn size="sm" variant="secondary">Preview restructure</Btn>
+          </div>
+        </Card>
+      ))}
+    </div>
+  </div>;
+}
+
+function ScreenStyleLib(){
+  const [tab, setTab] = useState("transitions");
+  const [antiGeneric, setAntiGeneric] = useState(true);
+  const items = STYLE_LIB[tab].filter(i=> !antiGeneric || !i.generic);
+  return <div className="p-6 lg:p-8 space-y-5">
+    <Card className="p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        {["transitions","layouts","palettes","moods"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)}
+            className={`text-[13px] h-8 px-3 rounded-full hairline capitalize ${tab===t?"accent-bg text-white border-transparent":"paper ink"}`}>{t}</button>
+        ))}
+        <div className="ml-auto flex items-center gap-2 text-[13px]">
+          <span className="ink-muted">Anti-generic filter</span>
+          <button onClick={()=>setAntiGeneric(v=>!v)} className={`w-10 h-6 rounded-full p-0.5 ${antiGeneric?"accent-bg":"surface hairline"}`}>
+            <span className={`block w-5 h-5 bg-white rounded-full transition-all ${antiGeneric?"translate-x-4":""}`}/>
+          </button>
+        </div>
+      </div>
+    </Card>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {items.map(i=>(
+        <Card key={i.id} className="p-4 card-pattern">
+          <div className="h-20 rounded-lg" style={{background:`linear-gradient(135deg, var(--accent), var(--accent-2))`, backgroundImage:"var(--card-pattern)"}}/>
+          {i.swatches && <div className="flex gap-1 mt-2">{i.swatches.map((c,k)=> <div key={k} className="w-5 h-5 rounded hairline" style={{background:c}}/>)}</div>}
+          <div className="mt-2 flex items-center justify-between">
+            <div className="text-[13px] font-medium">{i.name}</div>
+            {i.generic && <Pill tone="warn">Generic</Pill>}
+          </div>
+          <div className="text-[11px] ink-muted">Used by 12% in your industry</div>
+        </Card>
+      ))}
+    </div>
+  </div>;
+}
+
+function ScreenDeck(){
+  const [slides, setSlides] = useState(SLIDES_INIT);
+  const [activeId, setActiveId] = useState("s1");
+  const active = slides.find(s=>s.id===activeId);
+
+  const move = (id, dir)=>{
+    const idx = slides.findIndex(s=>s.id===id);
+    const j = idx+dir;
+    if(j<0||j>=slides.length) return;
+    const next = [...slides];
+    const [it] = next.splice(idx,1); next.splice(j,0,it);
+    setSlides(next.map((s,i)=>({...s, order:i+1})));
+  };
+  const update = (patch)=> setSlides(slides.map(s=> s.id===activeId? {...s,...patch} : s));
+
+  return <div className="p-4 lg:p-6 grid grid-cols-12 gap-4 min-h-[calc(100vh-56px)]">
+    <Card className="col-span-12 lg:col-span-3 p-3 self-start">
+      <div className="px-2 py-1 font-semibold flex items-center justify-between">
+        <span>Outline</span><Pill tone="soft">{slides.length}</Pill>
+      </div>
+      <ul className="mt-1 max-h-[70vh] overflow-y-auto">
+        {slides.map(s=>(
+          <li key={s.id} className={`flex items-center gap-2 p-2 rounded-lg ${activeId===s.id?"surface":"hover:bg-[var(--surface)]"}`}>
+            <div className="cursor-grab text-[16px] ink-muted leading-none select-none">⋮⋮</div>
+            <button onClick={()=>setActiveId(s.id)} className="flex-1 text-left">
+              <div className="text-[13px] font-medium truncate">{s.order}. {s.title}</div>
+              <div className="text-[11px] ink-muted">{s.layout}</div>
+            </button>
+            <button onClick={()=>move(s.id,-1)} className="ink-muted hover:ink text-[12px]">↑</button>
+            <button onClick={()=>move(s.id,1)} className="ink-muted hover:ink text-[12px]">↓</button>
+          </li>
+        ))}
+      </ul>
+    </Card>
+
+    <div className="col-span-12 lg:col-span-6 space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        {slides.slice(0,6).map(s=>(
+          <button key={s.id} onClick={()=>setActiveId(s.id)} className={`text-left rounded-xl hairline paper overflow-hidden focus-ring ${activeId===s.id?"ring-2 ring-[var(--accent)]":""}`}>
+            <div className="aspect-[16/9] brand-pattern relative" style={{background:`linear-gradient(135deg, var(--accent-3), var(--paper))`}}>
+              <div className="absolute inset-0 p-3 flex flex-col">
+                <Pill tone="soft">{s.layout}</Pill>
+                <div className="mt-auto font-semibold text-[14px] leading-tight">{s.title}</div>
+                <div className="text-[11px] ink-muted truncate">{s.body}</div>
+              </div>
+            </div>
+            <div className="p-2 flex items-center justify-between">
+              <div className="text-[12px] ink-muted">Slide {s.order}</div>
+              <Pill tone={s.status==="Ready"?"good": s.status==="Drafting"?"warn":"soft"}>{s.status}</Pill>
+            </div>
+          </button>
+        ))}
+      </div>
+      <Card className="p-3">
+        <div className="text-[12px] ink-muted px-2">Live preview</div>
+        <div className="aspect-[16/9] rounded-xl mt-1 brand-pattern relative overflow-hidden" style={{background:`linear-gradient(135deg, var(--accent-3), var(--paper))`}}>
+          <div className="absolute inset-0 p-6 flex flex-col">
+            <Pill tone="accent">{active.layout}</Pill>
+            <div className="mt-auto">
+              <div className="text-[28px] sm:text-[36px] font-semibold tracking-tight leading-tight ink">{active.title}</div>
+              <div className="ink-muted mt-1 max-w-[80%]">{active.body}</div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+
+    <Card className="col-span-12 lg:col-span-3 p-4 self-start">
+      <div className="font-semibold">Inspector</div>
+      <div className="space-y-3 mt-2">
+        <Field label="Title"><Input value={active.title} onChange={e=>update({title:e.target.value})}/></Field>
+        <Field label="Body"><Textarea rows={3} value={active.body} onChange={e=>update({body:e.target.value})}/></Field>
+        <Field label="Speaker notes"><Textarea rows={3} value={active.notes} onChange={e=>update({notes:e.target.value})}/></Field>
+        <Field label="Framework">
+          <Select value={active.frameworkId||""} onChange={e=>update({frameworkId:e.target.value})}>
+            <option value="">None</option>
+            {FRAMEWORKS.map(f=> <option key={f.id} value={f.id}>{f.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Status">
+          <Select value={active.status} onChange={e=>update({status:e.target.value})}>
+            {["Outline","Drafting","Ready"].map(s=> <option key={s}>{s}</option>)}
+          </Select>
+        </Field>
+      </div>
+    </Card>
+  </div>;
+}
+
+function ScreenDemo(){
+  const [mode, setMode] = useState("app");
+  const MODES = [
+    {id:"app", title:"App embed", desc:"Drop the live product into the deck."},
+    {id:"auto", title:"Autoplay video", desc:"Pre-recorded walkthrough loop."},
+    {id:"speaker", title:"Speaker-led", desc:"You drive the demo on a call."},
+  ];
+  return <div className="p-6 lg:p-8 space-y-5">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {MODES.map(m=> (
+        <button key={m.id} onClick={()=>setMode(m.id)}
+          className={`text-left p-5 rounded-2xl hairline paper card-pattern focus-ring ${mode===m.id?"ring-2 ring-[var(--accent)]":""}`}>
+          <div className="font-semibold">{m.title}</div>
+          <div className="text-[13px] ink-muted mt-1">{m.desc}</div>
+        </button>
+      ))}
+    </div>
+    <Card className="p-5">
+      <div className="font-semibold">Configuration</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+        {mode==="app" && <Field label="App URL"><Input placeholder="https://app.syncpay.com/demo"/></Field>}
+        {mode==="auto" && <Field label="Video URL"><Input placeholder="https://cdn.../walkthrough.mp4"/></Field>}
+        {mode==="speaker" && <Field label="Beats (one per line)"><Textarea rows={4} placeholder={`Open dashboard\nShow payout\nClose with metrics`}/></Field>}
+        <Field label="Estimated time" hint="Suggested for this lens">
+          <div className="text-[26px] font-semibold num">{mode==="speaker"?"3:00":mode==="auto"?"1:20":"2:00"}</div>
+        </Field>
+      </div>
+    </Card>
+  </div>;
+}
+
+function ScreenSignals(){
+  return <div className="p-6 lg:p-8 space-y-5">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {[
+        {l:"Returning viewers", v:SIGNALS.returns.length, s:"Last 7 days"},
+        {l:"Demo time", v:`${Math.floor(SIGNALS.demoTimeSec/60)}:${(SIGNALS.demoTimeSec%60+"").padStart(2,"0")}`, s:"Median"},
+        {l:"Avg drop-off", v:`${Math.round(SIGNALS.dropOff.reduce((a,b)=>a+b.dropPct,0)/SIGNALS.dropOff.length)}%`, s:"Across slides"},
+        {l:"Hook engagement", v:"92%", s:"Slide 1"},
+      ].map((m,i)=>(
+        <Card key={i} className="p-5 card-pattern">
+          <div className="text-[12px] ink-muted">{m.l}</div>
+          <div className="text-[26px] font-semibold tracking-tight num mt-1">{m.v}</div>
+          <div className="text-[12px] ink-muted">{m.s}</div>
+        </Card>
+      ))}
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <Card className="p-5">
+        <div className="font-semibold">Per-slide engagement</div>
+        <ul className="mt-3 space-y-2.5">
+          {SIGNALS.perSlide.map((p,i)=>(
+            <li key={p.slideId} className="flex items-center gap-3">
+              <div className="w-8 text-[12px] ink-muted num">S{i+1}</div>
+              <div className="flex-1 h-2.5 rounded-full surface overflow-hidden">
+                <div className="h-full rounded-full" style={{width:`${p.engagementPct}%`, background:`linear-gradient(90deg, var(--accent), var(--accent-2))`}}/>
+              </div>
+              <div className="w-10 text-right text-[12px] num">{p.engagementPct}%</div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card className="p-5">
+        <div className="font-semibold">Returning viewers</div>
+        <ul className="mt-3 divide-y divide-[var(--line)]">
+          {SIGNALS.returns.map((r,i)=>(
+            <li key={i} className="py-3 flex items-center justify-between">
+              <div>
+                <div className="text-[14px] font-medium">{r.hash}</div>
+                <div className="text-[12px] ink-muted">{r.lastSeen}</div>
+              </div>
+              <Pill tone="soft">{r.returnCount}× returns</Pill>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
+    <Card className="p-5">
+      <div className="font-semibold">Drop-off</div>
+      <div className="mt-4 grid grid-cols-10 gap-2 items-end h-40">
+        {SIGNALS.dropOff.map((d,i)=>(
+          <div key={d.slideId} className="flex flex-col items-center gap-1 h-full justify-end">
+            <div className="w-full rounded-t" style={{height:`${d.dropPct*2.5}%`, background:`var(--accent)`, opacity:.85}}/>
+            <div className="text-[11px] ink-muted num">S{i+1}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  </div>;
+}
+
+function ScreenPresent(){
+  const [idx, setIdx] = useState(0);
+  const slides = SLIDES_INIT;
+  const cur = slides[idx], nxt = slides[idx+1];
+  const [t, setT] = useState(0);
+  const [running, setRunning] = useState(false);
+  useEffect(()=>{ if(!running) return; const id = setInterval(()=> setT(x=>x+1), 1000); return ()=> clearInterval(id); },[running]);
+
+  return <div className="p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <Card className="lg:col-span-2 p-0 overflow-hidden">
+      <div className="aspect-[16/9] brand-pattern relative" style={{background:`linear-gradient(135deg, var(--accent-3), var(--paper))`}}>
+        <div className="absolute inset-0 p-8 flex flex-col">
+          <Pill tone="accent">{cur.layout}</Pill>
+          <div className="mt-auto">
+            <div className="text-[44px] font-semibold tracking-tight leading-tight">{cur.title}</div>
+            <div className="ink-muted mt-2 max-w-[80%]">{cur.body}</div>
+          </div>
+        </div>
+      </div>
+      <div className="p-3 flex items-center gap-2 justify-between">
+        <div className="flex items-center gap-2">
+          <Btn variant="secondary" size="sm" onClick={()=>setIdx(Math.max(0, idx-1))}>Prev</Btn>
+          <Btn size="sm" onClick={()=>setIdx(Math.min(slides.length-1, idx+1))}>Next</Btn>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="num text-[14px] ink-muted">{Math.floor(t/60)}:{(t%60+"").padStart(2,"0")}</span>
+          <Btn variant="secondary" size="sm" onClick={()=>setRunning(r=>!r)}>{running?"Pause":"Start timer"}</Btn>
+          <Btn variant="ghost" size="sm" onClick={()=>{setT(0); setRunning(false);}}>Reset</Btn>
+        </div>
+      </div>
+      <div className="px-3 pb-3 flex gap-1 overflow-x-auto">
+        {slides.map((s,i)=>(
+          <button key={s.id} onClick={()=>setIdx(i)} className={`shrink-0 px-2 py-1 rounded-md text-[11px] ${i===idx?"accent-bg text-white":"surface ink-muted"}`}>S{i+1}</button>
+        ))}
+      </div>
+    </Card>
+    <div className="space-y-4">
+      <Card className="p-5">
+        <div className="font-semibold">Speaker notes</div>
+        <p className="text-[13px] ink mt-1">{cur.notes}</p>
+      </Card>
+      <Card className="p-5">
+        <div className="font-semibold">Up next</div>
+        {nxt ? <>
+          <Pill tone="soft">{nxt.layout}</Pill>
+          <div className="text-[16px] font-semibold mt-1">{nxt.title}</div>
+          <div className="text-[13px] ink-muted">{nxt.body}</div>
+        </> : <div className="text-[13px] ink-muted">Last slide.</div>}
+      </Card>
+      <Card className="p-5">
+        <div className="font-semibold">Q&A prep</div>
+        <ul className="mt-2 space-y-1.5 text-[13px] ink-muted">
+          {VC_LENSES[0].questions.slice(0,4).map((q,i)=> <li key={i} className="flex gap-2"><span className="ink">•</span><span className="ink">{q}</span></li>)}
+        </ul>
+      </Card>
+    </div>
+  </div>;
+}
+
+function ScreenDeploy({toast}){
+  return <div className="p-6 lg:p-8 space-y-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {DEPLOY_TARGETS.map(t=>(
+        <Card key={t.id} className="p-5 card-pattern">
+          <div className="w-10 h-10 rounded-lg accent-bg text-white flex items-center justify-center mb-3"><I.rocket className="w-5 h-5"/></div>
+          <div className="font-semibold">{t.name}</div>
+          <div className="text-[13px] ink-muted mt-1">{t.desc}</div>
+          <div className="mt-4"><Btn size="sm" onClick={()=>toast(`Deploying to ${t.name}…`)}>Deploy</Btn></div>
+        </Card>
+      ))}
+    </div>
+    <Card className="p-5">
+      <div className="font-semibold">Deploy history</div>
+      <ul className="mt-3 divide-y divide-[var(--line)]">
+        {DEPLOY_HISTORY.map(d=>(
+          <li key={d.id} className="py-3 flex items-center justify-between">
+            <div>
+              <div className="text-[14px] font-medium">{d.target}</div>
+              <div className="text-[12px] ink-muted">{d.url} · {d.at}</div>
+            </div>
+            <Pill tone={d.status==="Live"?"good":"soft"}>{d.status}</Pill>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  </div>;
+}
+
+function ScreenFollowup({toast}){
+  const {appData} = useApp();
+  const [subject, setSubject] = useState(`Quick follow-up on ${appData.company || "our chat"}`);
+  const [body, setBody] = useState(`Thanks for the time today. Wanted to send the deck and a one-liner answer to the question you raised on slide 4.\n\nShort version: the why-now is moving faster than we expected. Happy to dig in.`);
+  return <div className="p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <Card className="p-5">
+      <div className="font-semibold">Compose follow-up</div>
+      <div className="space-y-3 mt-3">
+        <Field label="To"><Input defaultValue="partner@a16z.com"/></Field>
+        <Field label="Subject"><Input value={subject} onChange={e=>setSubject(e.target.value)}/></Field>
+        <Field label="Message"><Textarea rows={8} value={body} onChange={e=>setBody(e.target.value)}/></Field>
+        <div className="flex flex-wrap gap-2">
+          <Pill tone="soft">deck.pdf</Pill>
+          <Pill tone="soft">one-pager.pdf</Pill>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <Btn onClick={()=>toast("Follow-up queued.")}><I.send className="w-4 h-4"/>Send</Btn>
+          <Btn variant="secondary">Save draft</Btn>
+        </div>
+      </div>
+    </Card>
+    <Card className="p-5 brand-pattern">
+      <div className="font-semibold">Voice-match preview</div>
+      <p className="text-[13px] ink-muted">Tone tuned to your voice sample.</p>
+      <div className="mt-3 paper hairline rounded-xl p-4">
+        <div className="text-[13px] ink-muted">Subject</div>
+        <div className="font-medium">{subject}</div>
+        <div className="mt-3 text-[14px] whitespace-pre-line">{body}</div>
+      </div>
+    </Card>
+  </div>;
+}
+
+function ScreenSettings(){
+  const {appData, setApp, theme, recommended, setTheme} = useApp();
+  return <div className="p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <Card className="p-5 lg:col-span-1">
+      <div className="font-semibold">Profile</div>
+      <div className="space-y-3 mt-3">
+        <Field label="Founder name"><Input defaultValue="You"/></Field>
+        <Field label="Company"><Input value={appData.company} onChange={e=>setApp({company:e.target.value})}/></Field>
+        <Field label="Industry">
+          <Select value={appData.industry} onChange={e=>setApp({industry:e.target.value})}>
+            {INDUSTRIES.map(i=> <option key={i}>{i}</option>)}
+          </Select>
+        </Field>
+      </div>
+    </Card>
+    <Card className="p-5 lg:col-span-1">
+      <div className="font-semibold">Brand override</div>
+      <div className="text-[13px] ink-muted mt-1">Currently using colours from <span className="ink font-medium">{appData.brandSources?.websiteUrl?.replace(/https?:\/\//,"").split("/")[0] || appData.company || "your sources"}</span>.</div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {(theme.extractedColors||[theme.tokens.accent,theme.tokens.accent2]).map((c,i)=>(
+          <button key={i} onClick={()=>{ const t=buildThemeFromBrand({primary:c,secondary:adjustHsl(c,0,-5,-18),all:[c],company:appData.company,industry:appData.industry,url:""}); setTheme(t); }}
+            className="w-10 h-10 rounded-lg hairline shadow-card hover:ring-2 ring-[var(--accent)]" style={{background:c}} title={c}/>
+        ))}
+      </div>
+      <div className="mt-3"><Btn size="sm" variant="secondary" onClick={()=>setTheme(recommended)}>Reset to detected</Btn></div>
+    </Card>
+    <Card className="p-5 lg:col-span-1">
+      <div className="font-semibold">Exports</div>
+      <ul className="mt-3 space-y-2 text-[14px]">
+        <li className="flex items-center justify-between"><span>Deck PDF</span><Btn size="sm" variant="secondary">Export</Btn></li>
+        <li className="flex items-center justify-between"><span>HTML bundle</span><Btn size="sm" variant="secondary">Export</Btn></li>
+        <li className="flex items-center justify-between"><span>Speaker notes</span><Btn size="sm" variant="secondary">Export</Btn></li>
+      </ul>
+      <div className="font-semibold mt-6 text-[#B0322B]">Danger zone</div>
+      <ul className="mt-2 space-y-2 text-[14px]">
+        <li className="flex items-center justify-between"><span>Reset workspace</span><Btn size="sm" variant="secondary">Reset</Btn></li>
+        <li className="flex items-center justify-between"><span>Delete account</span><Btn size="sm" variant="secondary">Delete</Btn></li>
+      </ul>
+    </Card>
+  </div>;
+}
+
+/* ================================================================
+   TOP-LEVEL APP
+================================================================ */
+function Toast({msg, onClose}){
+  useEffect(()=>{ if(!msg) return; const id = setTimeout(onClose, 2200); return ()=> clearTimeout(id); },[msg]);
+  if(!msg) return null;
+  return <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <div className="paper hairline rounded-full px-4 py-2 shadow-pop text-[13px]">{msg}</div>
+  </div>;
+}
+
+function Workspace({theme, recommended, setTheme}){
+  const [active, setActive] = useState("overview");
+  const [toastMsg, setToastMsg] = useState("");
+  const toast = (m)=> setToastMsg(m);
+
+  const TITLES = {
+    overview:["Overview","Your deck at a glance"],
+    sources:["Sources","Materials shaping your deck"],
+    theme:["Theme","Brand intelligence and overrides"],
+    vclens:["VC Lens","Pitch through the investor's eyes"],
+    audit:["Audit","Story scoring and tips"],
+    claims:["Claims","Every assertion, classified"],
+    frameworks:["Frameworks","Pick a narrative spine"],
+    style:["Style Library","Transitions, layouts, palettes, moods"],
+    deck:["Deck Build","Outline, slides, inspector"],
+    demo:["Demo Layer","How the product appears"],
+    signals:["Signals","Engagement and drop-off"],
+    present:["Present","Run the room"],
+    deploy:["Deploy","Send the deck live"],
+    followup:["Follow-up","Voice-matched email"],
+    settings:["Settings","Profile, brand, exports"],
+  };
+
+  const SCREENS = {
+    overview:<ScreenOverview/>,
+    sources:<ScreenSources/>,
+    theme:<ScreenTheme/>,
+    vclens:<ScreenVCLens/>,
+    audit:<ScreenAudit/>,
+    claims:<ScreenClaims/>,
+    frameworks:<ScreenFrameworks/>,
+    style:<ScreenStyleLib/>,
+    deck:<ScreenDeck/>,
+    demo:<ScreenDemo/>,
+    signals:<ScreenSignals/>,
+    present:<ScreenPresent/>,
+    deploy:<ScreenDeploy toast={toast}/>,
+    followup:<ScreenFollowup toast={toast}/>,
+    settings:<ScreenSettings/>,
+  };
+
+  const [t1, t2] = TITLES[active];
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const closeSidebar = ()=> setSidebarOpen(false);
+
+  return <div className="theme-transition flex min-h-screen">
+    {/* Mobile overlay backdrop */}
+    {sidebarOpen && (
+      <div
+        className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+        onClick={closeSidebar}
+      />
+    )}
+    {/* Sidebar: always visible on lg+, slide-in drawer on mobile */}
+    <div className={[
+      "fixed lg:static inset-y-0 left-0 z-30 lg:z-auto",
+      "transition-transform duration-250 ease-out",
+      sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+    ].join(" ")}>
+      <Sidebar active={active} setActive={(s)=>{ setActive(s); closeSidebar(); }} theme={theme}/>
+    </div>
+    <div className="flex-1 min-w-0 flex flex-col">
+      <Topbar
+        title={t1} subtitle={t2} theme={theme}
+        onOpenTheme={()=>{ setActive("theme"); closeSidebar(); }}
+        onPresent={()=>{ setActive("present"); closeSidebar(); }}
+        onMenuClick={()=> setSidebarOpen(o => !o)}
+      />
+      <div className="flex-1">{SCREENS[active]}</div>
+    </div>
+    <Toast msg={toastMsg} onClose={()=>setToastMsg("")}/>
+  </div>;
+}
+
+function App(){
+  const [phase, setPhase] = useState("intake"); // intake | detect | workspace
+  const [step, setStep] = useState(1);
+  const [appData, setAppData] = useState(emptyAppData());
+  // theme and recommended are full theme objects (not IDs)
+  const [theme, setThemeObj] = useState(NEUTRAL);
+  const [recommended, setRecommended] = useState(NEUTRAL);
+
+  const set = (patch)=> setAppData(d=> ({...d, ...patch}));
+
+  // Apply CSS variables whenever theme changes
+  useEffect(()=> applyTheme(theme), [theme]);
+
+  const setTheme = (t)=> setThemeObj(t);
+
+  // Called by BrandDetection when it finishes fetching + building
+  const onDetectDone = (builtTheme)=>{
+    setThemeObj(builtTheme);
+    setRecommended(builtTheme);
+    setPhase("workspace");
+  };
+
+  if(phase==="intake"){
+    const next = ()=> { if(step<5) setStep(step+1); else setPhase("detect"); };
+    const back = ()=> setStep(Math.max(1, step-1));
+    if(step===1) return <IntakeBasics data={appData} set={set} next={next}/>;
+    if(step===2) return <IntakeStory data={appData} set={set} next={next} back={back}/>;
+    if(step===3) return <IntakePurpose data={appData} set={set} next={next} back={back}/>;
+    if(step===4) return <IntakeBrand data={appData} set={set} next={next} back={back}/>;
+    if(step===5) return <IntakeVoice data={appData} set={set} next={next} back={back}/>;
+  }
+
+  if(phase==="detect"){
+    return <BrandDetection appData={appData} onDone={onDetectDone}/>;
+  }
+
+  return <AppCtx.Provider value={{ appData, setApp:set, theme, recommended, setTheme }}>
+    <Workspace theme={theme} recommended={recommended} setTheme={setTheme}/>
+  </AppCtx.Provider>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

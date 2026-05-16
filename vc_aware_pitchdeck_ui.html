@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignalDeck UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #06080d;
+      --panel: #0a0e17;
+      --panel2: #0f1521;
+      --panel3: #121a2a;
+      --line: #1b2941;
+      --line2: rgba(255,255,255,.08);
+      --text: #eef2f7;
+      --muted: #7a8fa8;
+      --muted2: #4e637c;
+      --teal: #00e5c3;
+      --teal2: #00bfa0;
+      --tealSoft: rgba(0,229,195,.08);
+      --red: #ff4d6d;
+      --gold: #ffb800;
+      --green: #00d084;
+      --blue: #5e8cff;
+      --shadow: 0 30px 80px rgba(0,0,0,.35);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 16% 10%, rgba(0,229,195,.12), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(94,140,255,.12), transparent 26%),
+        linear-gradient(180deg, #06080d 0%, #080c14 55%, #05070b 100%);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(circle at 50% 20%, black 0%, transparent 75%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+    }
+
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px;
+      border-right: 1px solid var(--line);
+      background: rgba(6,8,13,.72);
+      backdrop-filter: blur(24px);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--teal), #66ffe8);
+      color: #03110f;
+      display: grid;
+      place-items: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      box-shadow: 0 0 30px rgba(0,229,195,.28);
+    }
+
+    .brand h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: .6px;
+    }
+
+    .project-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+      border-radius: 18px;
+    }
+
+    .mini-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--teal);
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    .project-card h2 {
+      font-size: 15px;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--tealSoft);
+      border: 1px solid rgba(0,229,195,.2);
+      color: var(--teal);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 12px var(--teal);
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav button {
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      padding: 13px 14px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      text-align: left;
+      transition: .2s ease;
+    }
+
+    .nav button:hover,
+    .nav button.active {
+      color: var(--text);
+      background: rgba(255,255,255,.045);
+      border-color: var(--line);
+    }
+
+    .nav button.active {
+      background: rgba(0,229,195,.08);
+      border-color: rgba(0,229,195,.22);
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: var(--panel2);
+      font-size: 13px;
+    }
+
+    .side-footer {
+      margin-top: auto;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    main {
+      padding: 28px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+
+    .search {
+      flex: 1;
+      max-width: 560px;
+      height: 48px;
+      border: 1px solid var(--line);
+      background: rgba(10,14,23,.8);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .search input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .2s ease;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(0,229,195,.35);
+    }
+
+    .btn-primary {
+      background: var(--teal);
+      color: #03110f;
+      border-color: var(--teal);
+      box-shadow: 0 12px 30px rgba(0,229,195,.18);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 90% 20%, rgba(0,229,195,.14), transparent 28%),
+        linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+      border-radius: var(--radius);
+      padding: 34px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .hero::after {
+      content: "VC LENS";
+      position: absolute;
+      right: -12px;
+      bottom: -24px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(110px, 14vw, 210px);
+      font-weight: 900;
+      line-height: 1;
+      color: rgba(255,255,255,.035);
+      letter-spacing: -4px;
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h2 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(48px, 6vw, 94px);
+      line-height: .9;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+      margin: 16px 0 18px;
+      max-width: 780px;
+    }
+
+    .hero h2 span {
+      color: var(--teal);
+      font-style: italic;
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 620px;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      flex-wrap: wrap;
+    }
+
+    .lens-card {
+      align-self: stretch;
+      border: 1px solid rgba(0,229,195,.18);
+      background: rgba(0,229,195,.055);
+      border-radius: 20px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .select-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .select-row label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+    }
+
+    .fake-select {
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(6,8,13,.55);
+      border-radius: 12px;
+      padding: 13px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 800;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(10,14,23,.82);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .panel-head h3 {
+      font-size: 18px;
+      letter-spacing: -.2px;
+    }
+
+    .panel-head p {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .panel-body {
+      padding: 22px;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .score {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+    }
+
+    .score .num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: 42px;
+      line-height: 1;
+      color: var(--teal);
+    }
+
+    .score .label {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 8px;
+      line-height: 1.35;
+    }
+
+    .tips {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tip {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      border-radius: 16px;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .tip-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .warn { background: rgba(255,184,0,.1); color: var(--gold); }
+    .good { background: rgba(0,208,132,.1); color: var(--green); }
+    .risk { background: rgba(255,77,109,.1); color: var(--red); }
+
+    .tip h4 {
+      font-size: 13px;
+      margin-bottom: 5px;
+    }
+
+    .tip p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .slides {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .slide-card {
+      min-height: 170px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+      border-radius: 18px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: .2s ease;
+    }
+
+    .slide-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(0,229,195,.32);
+    }
+
+    .slide-card::after {
+      content: attr(data-num);
+      position: absolute;
+      right: -4px;
+      bottom: -18px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 72px;
+      font-weight: 900;
+      color: rgba(255,255,255,.035);
+    }
+
+    .slide-card .kind {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--teal);
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .slide-card h4 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 28px;
+      line-height: .95;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .slide-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      position: relative;
+      z-index: 1;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .preview-wrap {
+      display: grid;
+      grid-template-columns: 1.25fr .75fr;
+      gap: 24px;
+    }
+
+    .deck-preview {
+      min-height: 460px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 70% 30%, rgba(0,229,195,.14), transparent 30%),
+        linear-gradient(180deg, #080c14, #05070b);
+      overflow: hidden;
+      position: relative;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .deck-preview::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: .7;
+      pointer-events: none;
+    }
+
+    .preview-top,
+    .preview-bottom {
+      position: relative;
+      z-index: 1;
+    }
+
+    .preview-top .tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--teal);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .deck-preview h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(54px, 7vw, 96px);
+      line-height: .88;
+      text-transform: uppercase;
+      letter-spacing: -1px;
+      max-width: 720px;
+    }
+
+    .deck-preview h3 span {
+      color: var(--teal);
+      font-style: italic;
+    }
+
+    .preview-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+    }
+
+    .preview-bottom p {
+      color: var(--muted);
+      max-width: 460px;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .motion-chip {
+      padding: 10px 12px;
+      border: 1px solid rgba(0,229,195,.24);
+      color: var(--teal);
+      background: var(--tealSoft);
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .8px;
+      white-space: nowrap;
+    }
+
+    .right-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      border-radius: 18px;
+      padding: 17px;
+    }
+
+    .mini-card h4 {
+      font-size: 13px;
+      margin-bottom: 9px;
+    }
+
+    .mini-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 13px;
+      margin-top: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 88px 1fr 38px;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .bar {
+      height: 8px;
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal), #66ffe8);
+      border-radius: 999px;
+      box-shadow: 0 0 12px rgba(0,229,195,.35);
+    }
+
+    .deploy-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .deploy-card {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .deploy-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      display: grid;
+      place-items: center;
+      margin-bottom: 14px;
+      font-weight: 900;
+    }
+
+    .deploy-card h4 {
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .deploy-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .signals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .signal-card {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .signal-card .big {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 54px;
+      color: var(--teal);
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .signal-card h4 {
+      margin: 10px 0 6px;
+      font-size: 14px;
+    }
+
+    .signal-card p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .activity {
+      display: grid;
+      gap: 12px;
+    }
+
+    .activity-row {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      border-radius: 16px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: var(--panel3);
+      display: grid;
+      place-items: center;
+      color: var(--teal);
+      font-weight: 900;
+    }
+
+    .activity-row h4 {
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
+    .activity-row p {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .time {
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .mobile-top {
+      display: none;
+    }
+
+    @media (max-width: 1180px) {
+      .app { grid-template-columns: 1fr; }
+      aside { display: none; }
+      .mobile-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      .hero-grid,
+      .grid,
+      .preview-wrap { grid-template-columns: 1fr; }
+      .slides { grid-template-columns: repeat(2, 1fr); }
+      .deploy-grid,
+      .signals-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      main { padding: 18px; }
+      .topbar { flex-direction: column; align-items: stretch; }
+      .top-actions { width: 100%; }
+      .btn { flex: 1; }
+      .hero { padding: 24px; }
+      .hero h2 { font-size: 56px; }
+      .score-grid,
+      .slides,
+      .deploy-grid,
+      .signals-grid { grid-template-columns: 1fr; }
+      .preview-bottom { flex-direction: column; align-items: start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand">
+        <div class="mark">S</div>
+        <div>
+          <h1>SignalDeck</h1>
+          <p>VC-aware pitch system</p>
+        </div>
+      </div>
+
+      <div class="project-card">
+        <div class="mini-label">Current project</div>
+        <h2>SyncPay investor deck</h2>
+        <span class="status-pill">Audit in progress</span>
+      </div>
+
+      <div class="nav">
+        <button class="active"><span class="nav-icon">01</span> Story intake</button>
+        <button><span class="nav-icon">02</span> VC lens</button>
+        <button><span class="nav-icon">03</span> Story audit</button>
+        <button><span class="nav-icon">04</span> Deck build</button>
+        <button><span class="nav-icon">05</span> Deploy</button>
+        <button><span class="nav-icon">06</span> Signals</button>
+      </div>
+
+      <div class="side-footer">
+        The product turns raw founder notes into a coded pitch story, then tracks what investors care about after they open it.
+      </div>
+    </aside>
+
+    <main>
+      <div class="mobile-top">
+        <div class="brand">
+          <div class="mark">S</div>
+          <div>
+            <h1>SignalDeck</h1>
+            <p>VC-aware pitch system</p>
+          </div>
+        </div>
+        <button class="btn btn-primary">Build deck</button>
+      </div>
+
+      <div class="topbar">
+        <div class="search">
+          <span>⌕</span>
+          <input value="SyncPay fintech infrastructure deck for pre-seed investors" />
+        </div>
+        <div class="top-actions">
+          <button class="btn">Preview</button>
+          <button class="btn btn-primary">Generate deck</button>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div class="hero-grid">
+          <div>
+            <div class="mini-label">Product dashboard</div>
+            <h2>Build the right pitch for the right <span>investor</span></h2>
+            <p>Founders submit their rough story, notes, screenshots, target audience, and preferred slide flow. SignalDeck audits the pitch, applies a VC lens, builds an interactive HTML deck, deploys it anywhere, and tracks viewer engagement slide by slide.</p>
+            <div class="hero-actions">
+              <button class="btn btn-primary">Start story audit</button>
+              <button class="btn">View HTML deck</button>
+            </div>
+          </div>
+
+          <div class="lens-card">
+            <div class="select-row">
+              <label>Product type</label>
+              <div class="fake-select">Fintech infrastructure <span>⌄</span></div>
+            </div>
+            <div class="select-row">
+              <label>Audience</label>
+              <div class="fake-select">Pre-seed VC <span>⌄</span></div>
+            </div>
+            <div class="select-row">
+              <label>Investor lens</label>
+              <div class="fake-select">Workflow pain + wedge <span>⌄</span></div>
+            </div>
+            <div class="tip">
+              <div class="tip-badge good">✓</div>
+              <div>
+                <h4>Recommended deck logic</h4>
+                <p>Lead with the broken workflow, show the wedge, then prove why this can become infrastructure.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Investor readiness audit</h3>
+              <p>Scored from founder notes and selected VC lens</p>
+            </div>
+            <span class="status-pill">VC lens active</span>
+          </div>
+          <div class="panel-body">
+            <div class="score-grid">
+              <div class="score">
+                <div class="num">8.2</div>
+                <div class="label">Story clarity</div>
+              </div>
+              <div class="score">
+                <div class="num">6.4</div>
+                <div class="label">Proof strength</div>
+              </div>
+              <div class="score">
+                <div class="num">7.1</div>
+                <div class="label">Investor fit</div>
+              </div>
+              <div class="score">
+                <div class="num">5.8</div>
+                <div class="label">Market logic</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>VC tips</h3>
+              <p>Blunt notes before the deck is built</p>
+            </div>
+          </div>
+          <div class="panel-body tips">
+            <div class="tip">
+              <div class="tip-badge warn">!</div>
+              <div>
+                <h4>Market slide is too broad</h4>
+                <p>For this lens, show the first reachable wedge before the full category size.</p>
+              </div>
+            </div>
+            <div class="tip">
+              <div class="tip-badge risk">×</div>
+              <div>
+                <h4>Competition misses the real alternative</h4>
+                <p>Add manual reconciliation, receipt scanning, and accounting workarounds.</p>
+              </div>
+            </div>
+            <div class="tip">
+              <div class="tip-badge good">✓</div>
+              <div>
+                <h4>Founder fit is strong</h4>
+                <p>The lived pain should move earlier because it explains why this insight exists.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel wide" style="margin-bottom:24px;">
+        <div class="panel-head">
+          <div>
+            <h3>Generated slide map</h3>
+            <p>Template changes based on product type, stage, and investor audience</p>
+          </div>
+          <button class="btn">Edit flow</button>
+        </div>
+        <div class="panel-body">
+          <div class="slides">
+            <div class="slide-card" data-num="01">
+              <div class="kind">Hook</div>
+              <h4>The broken workflow</h4>
+              <p>Start with the exact pain that makes the company obvious.</p>
+            </div>
+            <div class="slide-card" data-num="02">
+              <div class="kind">Problem</div>
+              <h4>Payments are blind</h4>
+              <p>Show the gap between payment data and business records.</p>
+            </div>
+            <div class="slide-card" data-num="03">
+              <div class="kind">Why now</div>
+              <h4>Rails changed</h4>
+              <p>Explain why this was not possible before, but is now needed.</p>
+            </div>
+            <div class="slide-card" data-num="04">
+              <div class="kind">Product</div>
+              <h4>Context layer</h4>
+              <p>Show the product simply before going technical.</p>
+            </div>
+            <div class="slide-card" data-num="05">
+              <div class="kind">Wedge</div>
+              <h4>Start with accountants</h4>
+              <p>Make the first customer segment clear and believable.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel wide" style="margin-bottom:24px;">
+        <div class="panel-head">
+          <div>
+            <h3>HTML deck build</h3>
+            <p>Interactive coded deck with motion, story pacing, and demo sections</p>
+          </div>
+          <span class="motion-chip">scroll snap + analytics</span>
+        </div>
+        <div class="panel-body preview-wrap">
+          <div class="deck-preview">
+            <div class="preview-top">
+              <div class="tag">Slide 01 · investor hook</div>
+              <h3>Every payment leaves a gap. <span>SyncPay fills it.</span></h3>
+            </div>
+            <div class="preview-bottom">
+              <p>Motion is chosen by the story. Problem slides feel tense, product slides feel hands-on, proof slides feel sharp, and vision slides feel bigger.</p>
+              <span class="motion-chip">transition: zoom passage</span>
+            </div>
+          </div>
+
+          <div class="right-stack">
+            <div class="mini-card">
+              <div class="mini-label">Story rewrite</div>
+              <h4>Before</h4>
+              <p>We help businesses collect receipts and connect them to payments.</p>
+            </div>
+            <div class="mini-card">
+              <div class="mini-label">After</div>
+              <h4>Investor version</h4>
+              <p>Payments show that money moved. They do not show what actually happened. SyncPay connects the record to the payment.</p>
+            </div>
+            <div class="mini-card">
+              <div class="mini-label">Deck assets</div>
+              <p>Logo, screenshots, live demo, customer quotes, founder story, motion rules, and PDF fallback are bundled into the final export.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Deploy anywhere</h3>
+              <p>Hosted link, exportable code, or push to the founder’s stack</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="deploy-grid">
+              <div class="deploy-card">
+                <div class="deploy-icon">V</div>
+                <h4>Vercel</h4>
+                <p>Push the deck to a live route like /pitch.</p>
+              </div>
+              <div class="deploy-card">
+                <div class="deploy-icon">N</div>
+                <h4>Netlify</h4>
+                <p>Static deploy with fast preview links.</p>
+              </div>
+              <div class="deploy-card">
+                <div class="deploy-icon">C</div>
+                <h4>Cloudflare</h4>
+                <p>Ship to Pages with custom domain support.</p>
+              </div>
+              <div class="deploy-card">
+                <div class="deploy-icon">ZIP</div>
+                <h4>Export</h4>
+                <p>Download HTML, CSS, JS, and assets.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Slide engagement</h3>
+              <p>Track what the viewer cared about</p>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="bar-list">
+              <div class="bar-row"><span>Hook</span><div class="bar"><span style="width:92%"></span></div><b>92%</b></div>
+              <div class="bar-row"><span>Problem</span><div class="bar"><span style="width:78%"></span></div><b>78%</b></div>
+              <div class="bar-row"><span>Product</span><div class="bar"><span style="width:96%"></span></div><b>96%</b></div>
+              <div class="bar-row"><span>Market</span><div class="bar"><span style="width:43%"></span></div><b>43%</b></div>
+              <div class="bar-row"><span>Ask</span><div class="bar"><span style="width:61%"></span></div><b>61%</b></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel wide">
+        <div class="panel-head">
+          <div>
+            <h3>Investor signals</h3>
+            <p>Named links, viewer behaviour, and follow-up guidance</p>
+          </div>
+          <button class="btn btn-primary">Create investor link</button>
+        </div>
+        <div class="panel-body">
+          <div class="signals-grid" style="margin-bottom:14px;">
+            <div class="signal-card">
+              <div class="big">3</div>
+              <h4>Return visits</h4>
+              <p>This investor came back after the first view.</p>
+            </div>
+            <div class="signal-card">
+              <div class="big">2m</div>
+              <h4>Product demo time</h4>
+              <p>Most attention went to the demo section.</p>
+            </div>
+            <div class="signal-card">
+              <div class="big">43%</div>
+              <h4>Market drop-off</h4>
+              <p>The market story may need to be clearer.</p>
+            </div>
+          </div>
+
+          <div class="activity">
+            <div class="activity-row">
+              <div class="avatar">B</div>
+              <div>
+                <h4>Blackbird link opened</h4>
+                <p>Viewed 11 slides, spent longest on product demo, clicked book a call.</p>
+              </div>
+              <div class="time">9:42 AM</div>
+            </div>
+            <div class="activity-row">
+              <div class="avatar">F</div>
+              <div>
+                <h4>Folklore link returned</h4>
+                <p>Second visit detected. Rewatched the workflow and traction slides.</p>
+              </div>
+              <div class="time">11:18 AM</div>
+            </div>
+            <div class="activity-row">
+              <div class="avatar">AI</div>
+              <div>
+                <h4>Follow-up suggestion</h4>
+                <p>Lead with product depth. Offer a short walkthrough and mention integration readiness.</p>
+              </div>
+              <div class="time">Now</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

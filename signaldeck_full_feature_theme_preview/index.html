@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SignalDeck Full Theme Preview</title>
+  <style>
+    :root {
+      --bg: #f7f5f0;
+      --paper: #fffdf8;
+      --panel: #ffffff;
+      --text: #1f2522;
+      --muted: #6f7773;
+      --soft: #ece8df;
+      --line: #ded8cc;
+      --accent: #111111;
+      --accent2: #666666;
+      --accent3: #f7f5f0;
+      --accentSoft: rgba(17,17,17,.08);
+      --shadow: 0 20px 60px rgba(34,28,20,.08);
+      --brandPattern: none;
+      --motif: "";
+      --logoMark: "S";
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(255,255,255,.9), transparent 38%),
+        linear-gradient(180deg, var(--bg), var(--accent3));
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Arial, sans-serif;
+      overflow-x: hidden;
+      transition: background .45s ease, color .35s ease;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; animation: fade .28s ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .intake-shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+    }
+
+    .intake-card {
+      width: min(1120px, 100%);
+      background: rgba(255,253,248,.92);
+      border: 1px solid var(--line);
+      border-radius: 34px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .intake-top {
+      padding: 26px 30px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: rgba(255,255,255,.68);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: #111;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 950;
+      letter-spacing: -1px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mark::after {
+      content: var(--motif);
+      position: absolute;
+      right: -6px;
+      bottom: -10px;
+      font-size: 28px;
+      opacity: .18;
+    }
+
+    .brand h1 { font-size: 20px; letter-spacing: -.03em; }
+    .brand p { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+    .progress-wrap { min-width: 250px; }
+    .progress-label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .progress { height: 8px; background: var(--soft); border-radius: 999px; overflow: hidden; }
+    .progress span { display: block; height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: .25s ease; }
+
+    .intake-body { display: grid; grid-template-columns: .85fr 1.15fr; gap: 0; }
+
+    .intro-panel {
+      padding: 42px;
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.18));
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.65);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    .intro-panel h2 {
+      margin-top: 22px;
+      font-size: clamp(46px, 6vw, 76px);
+      line-height: .92;
+      letter-spacing: -.07em;
+      max-width: 520px;
+    }
+
+    .intro-panel h2 span { color: var(--accent); }
+
+    .intro-panel p {
+      margin-top: 22px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 480px;
+      font-size: 15px;
+    }
+
+    .notice {
+      margin-top: 28px;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.68);
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .notice strong { color: var(--text); }
+
+    .form-panel { padding: 34px; }
+    .step { display: none; }
+    .step.active { display: block; animation: fade .25s ease both; }
+    .step-head { margin-bottom: 22px; }
+    .step-head h3 { font-size: 28px; letter-spacing: -.04em; margin-bottom: 8px; }
+    .step-head p { color: var(--muted); line-height: 1.55; font-size: 14px; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid.two { grid-template-columns: 1fr 1fr; }
+
+    .field { display: grid; gap: 8px; }
+    .field label { font-size: 13px; color: var(--text); font-weight: 850; letter-spacing: -.01em; }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    input, textarea, select {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      border-radius: 16px;
+      padding: 14px 15px;
+      color: var(--text);
+      outline: none;
+      transition: .18s ease;
+      width: 100%;
+    }
+
+    textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accentSoft);
+    }
+
+    .missing {
+      border-color: #c24141 !important;
+      box-shadow: 0 0 0 4px rgba(194,65,65,.08) !important;
+    }
+
+    .voice-box {
+      border: 1px dashed var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      background: rgba(255,255,255,.5);
+      display: grid;
+      gap: 13px;
+    }
+
+    .voice-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+    .mic {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      background: #fff;
+      font-size: 24px;
+      transition: .2s ease;
+    }
+
+    .mic.recording {
+      background: var(--accent);
+      color: #fff;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 var(--accentSoft); }
+      70% { box-shadow: 0 0 0 16px rgba(0,0,0,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+    }
+
+    .btn-row {
+      margin-top: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 16px;
+      padding: 13px 18px;
+      font-weight: 950;
+      transition: .18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); border-color: var(--accent); }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+    .error {
+      color: #c24141;
+      font-size: 13px;
+      font-weight: 800;
+      display: none;
+    }
+
+    .error.show { display: block; }
+
+    .loading-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background: var(--paper);
+    }
+
+    .loading-card {
+      width: min(720px, 100%);
+      text-align: center;
+      padding: 54px;
+      border-radius: 34px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .wheel {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      border: 8px solid var(--soft);
+      border-top-color: var(--accent);
+      margin: 0 auto 28px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-card h2 {
+      font-size: 46px;
+      letter-spacing: -.06em;
+      margin-bottom: 12px;
+    }
+
+    .loading-card p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .boom {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, var(--accentSoft), transparent 40%),
+        radial-gradient(circle at 30% 40%, rgba(255,255,255,.8), transparent 20%);
+      opacity: 0;
+      pointer-events: none;
+      animation: boom 1.2s ease forwards;
+      animation-delay: 2.2s;
+    }
+
+    @keyframes boom {
+      0% { opacity: 0; transform: scale(.8); }
+      35% { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 0; transform: scale(1.35); }
+    }
+
+    .workspace {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 292px 1fr;
+      background:
+        var(--brandPattern),
+        radial-gradient(circle at 80% 10%, var(--accentSoft), transparent 34%),
+        linear-gradient(180deg, var(--bg), var(--accent3));
+      transition: background .45s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .workspace::before {
+      content: var(--motif);
+      position: fixed;
+      right: -6vw;
+      bottom: -10vh;
+      font-size: clamp(180px, 30vw, 520px);
+      opacity: .055;
+      pointer-events: none;
+      transform: rotate(-12deg);
+      z-index: 0;
+    }
+
+    .workspace::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: var(--overlayPattern);
+      pointer-events: none;
+      opacity: .9;
+      z-index: 0;
+    }
+
+    .workspace aside, .workspace main {
+      position: relative;
+      z-index: 1;
+    }
+
+    .workspace aside {
+      border-right: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.54)),
+        var(--sidePattern);
+      backdrop-filter: blur(20px);
+      padding: 22px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .workspace .brand { margin-bottom: 24px; }
+
+    .workspace .mark {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+
+    .side-nav { display: grid; gap: 8px; }
+
+    .side-nav button {
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+      background: transparent;
+      padding: 12px 13px;
+      border-radius: 15px;
+      font-weight: 900;
+      color: var(--muted);
+      transition: .18s ease;
+    }
+
+    .side-nav button.active, .side-nav button:hover {
+      color: var(--text);
+      background: rgba(255,255,255,.86);
+      border-color: var(--line);
+      box-shadow: 0 10px 28px rgba(0,0,0,.04);
+    }
+
+    .main { padding: 24px; }
+
+    .topbar {
+      background: rgba(255,255,255,.76);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.035);
+    }
+
+    .search { color: var(--muted); font-size: 14px; }
+
+    .workspace-screen { display: none; }
+    .workspace-screen.active { display: block; animation: fade .25s ease both; }
+
+    .hero {
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.90), rgba(255,255,255,.64)),
+        var(--heroPattern);
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      padding: 38px;
+      box-shadow: var(--shadow);
+      margin-bottom: 22px;
+      overflow: hidden;
+      position: relative;
+      min-height: 300px;
+    }
+
+    .hero::before {
+      content: var(--motif);
+      position: absolute;
+      right: 28px;
+      top: 12px;
+      font-size: 150px;
+      opacity: .06;
+      transform: rotate(-10deg);
+    }
+
+    .hero h2 {
+      font-size: clamp(48px, 7vw, 86px);
+      letter-spacing: -.08em;
+      line-height: .92;
+      max-width: 880px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero h2 span { color: var(--accent); }
+
+    .hero p {
+      margin-top: 18px;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.7;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cards { display: grid; gap: 14px; }
+    .cards.three { grid-template-columns: repeat(3, 1fr); }
+    .cards.four { grid-template-columns: repeat(4, 1fr); }
+    .cards.two { grid-template-columns: repeat(2, 1fr); }
+
+    .mini-card {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.9), rgba(255,255,255,.7)),
+        var(--cardPattern);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 12px 40px rgba(34,28,20,.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mini-card::after {
+      content: var(--motif);
+      position: absolute;
+      right: -8px;
+      bottom: -18px;
+      font-size: 74px;
+      opacity: .045;
+    }
+
+    .mini-card h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      letter-spacing: -.02em;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mini-card p, .mini-card li {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .big {
+      font-size: 48px;
+      font-weight: 950;
+      letter-spacing: -.06em;
+      color: var(--accent);
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .deck-preview {
+      min-height: 520px;
+      border-radius: 30px;
+      border: 1px solid var(--line);
+      padding: 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        var(--brandPattern),
+        radial-gradient(circle at 70% 30%, var(--accentSoft), transparent 32%),
+        linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.72));
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+
+    .deck-preview::before {
+      content: var(--motif);
+      position: absolute;
+      right: -28px;
+      top: -44px;
+      font-size: 240px;
+      opacity: .06;
+      transform: rotate(-10deg);
+    }
+
+    .deck-preview h2 {
+      font-size: clamp(58px, 8vw, 112px);
+      line-height: .86;
+      letter-spacing: -.08em;
+      max-width: 850px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .deck-preview h2 span { color: var(--accent); }
+
+    .deck-preview p {
+      max-width: 650px;
+      color: var(--muted);
+      line-height: 1.65;
+      position: relative;
+      z-index: 1;
+    }
+
+    .slide-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .slide {
+      background: rgba(255,255,255,.78);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 16px;
+      min-height: 155px;
+      transition: .18s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide::after {
+      content: var(--motif);
+      position: absolute;
+      right: -8px;
+      bottom: -16px;
+      font-size: 58px;
+      opacity: .05;
+    }
+
+    .slide:hover, .slide.active {
+      border-color: var(--accent);
+      background: var(--accentSoft);
+      transform: translateY(-2px);
+    }
+
+    .slide h4 {
+      font-size: 21px;
+      letter-spacing: -.04em;
+      line-height: 1.05;
+      margin: 12px 0 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .slide p {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 110px 1fr 46px;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .bar {
+      height: 9px;
+      background: var(--soft);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar span {
+      height: 100%;
+      display: block;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 999px;
+      transition: .35s ease;
+    }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: min(420px, calc(100vw - 48px));
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(16px);
+      pointer-events: none;
+      transition: .24s ease;
+      z-index: 20;
+    }
+
+    .toast.show { opacity: 1; transform: none; }
+    .toast h4 { color: var(--accent); margin-bottom: 5px; }
+    .toast p { color: var(--muted); line-height: 1.45; font-size: 13px; }
+
+    @media (max-width: 980px) {
+      .intake-body, .workspace { grid-template-columns: 1fr; }
+      .intro-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+      .workspace aside { display: none; }
+      .grid.two, .cards.three, .cards.four, .cards.two, .slide-grid { grid-template-columns: 1fr; }
+      .progress-wrap { display: none; }
+      .topbar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <section class="screen active" id="intakeScreen">
+    <div class="intake-shell">
+      <div class="intake-card">
+        <div class="intake-top">
+          <div class="brand">
+            <div class="mark">S</div>
+            <div>
+              <h1>SignalDeck</h1>
+              <p>Tell us about your startup</p>
+            </div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Intake progress</span><strong id="progressText">0%</strong></div>
+            <div class="progress"><span id="progressBar"></span></div>
+          </div>
+        </div>
+
+        <div class="intake-body">
+          <div class="intro-panel">
+            <span class="eyebrow">Raw founder mode</span>
+            <h2>Tell us about your <span>startup</span></h2>
+            <p>This first page becomes your source layer. Your logo, website, old deck, design references, voice, business notes, and raw answers shape the pitch story and the entire product UI.</p>
+            <div class="notice"><strong>Important:</strong> answer in your own words first. Do not use AI here. Messy is fine. We need to understand how you explain the company before we rewrite it.</div>
+          </div>
+
+          <div class="form-panel">
+            <div class="step active" data-step="0">
+              <div class="step-head"><h3>The basics</h3><p>We need the company, customer, and what the product actually does.</p></div>
+              <div class="grid two">
+                <div class="field required"><label>Company name</label><input id="company" placeholder="e.g. NBA, GreenFlow, MedPilot" /></div>
+                <div class="field required"><label>Industry</label>
+                  <select id="industry">
+                    <option value="">Choose industry</option>
+                    <option>Fintech</option>
+                    <option>Eco / climate</option>
+                    <option>Health</option>
+                    <option>AI</option>
+                    <option>Sports / energy</option>
+                    <option>Enterprise SaaS</option>
+                    <option>Developer tools</option>
+                    <option>Consumer</option>
+                    <option>Education</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field required"><label>What does your company do?</label><textarea id="what" placeholder="Explain it like you are talking to a smart friend."></textarea></div>
+              <div class="field required"><label>Who is it for?</label><textarea id="who" placeholder="Be specific. Who feels this pain most?"></textarea></div>
+            </div>
+
+            <div class="step" data-step="1">
+              <div class="step-head"><h3>The real story</h3><p>This is where we pull out founder-market fit and the actual pitch.</p></div>
+              <div class="field required"><label>What happened that made you think this should exist?</label><textarea id="origin" placeholder="Do not make it sound impressive. Just say what happened."></textarea></div>
+              <div class="field required"><label>What do people do today instead?</label><textarea id="alternative" placeholder="This reveals the real competitor."></textarea></div>
+              <div class="field required"><label>Why are you the right founder for this?</label><textarea id="founderFit" placeholder="Lived pain, skills, unfair access, product insight, execution edge."></textarea></div>
+            </div>
+
+            <div class="step" data-step="2">
+              <div class="step-head"><h3>Deck purpose</h3><p>The deck changes depending on whether it is spoken, sent, or demo-led.</p></div>
+              <div class="field required"><label>Who is this pitch going to?</label><input id="audience" placeholder="VC, angel, accelerator, customer, partner, grant panel..." /></div>
+              <div class="field required"><label>What do you want them to do after reading it?</label><input id="outcome" placeholder="Book a call, invest, join pilot, intro us, approve grant..." /></div>
+              <div class="field required"><label>How will this deck be used?</label>
+                <select id="deckUse">
+                  <option value="">Choose one</option>
+                  <option>Mostly sent as a link</option>
+                  <option>I will speak over it live</option>
+                  <option>Demo day presentation</option>
+                  <option>Interactive product demo</option>
+                  <option>Autoplay video-style deck</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="step" data-step="3">
+              <div class="step-head"><h3>Brand and theme sources</h3><p>These inputs will later become source files in the backend.</p></div>
+              <div class="grid two">
+                <div class="field"><label>Current website</label><input id="website" placeholder="https://yourstartup.com" /></div>
+                <div class="field"><label>Logo file name or logo note</label><input id="logo" placeholder="logo.svg or 'orange basketball logo'" /></div>
+              </div>
+              <div class="field"><label>Old pitch deck or notes</label><textarea id="oldDeck" placeholder="Paste key notes, or say what the old deck looked like."></textarea></div>
+              <div class="field"><label>Design reference or theme</label><textarea id="designRef" placeholder="Example: NBA colours, basketball texture, matrix style background, Apple clean, eco green, finance blue, etc."></textarea></div>
+            </div>
+
+            <div class="step" data-step="4">
+              <div class="step-head"><h3>Voice sample</h3><p>We use your speaking style to shape speaker notes and make the pitch sound like you.</p></div>
+              <div class="voice-box">
+                <div class="voice-row">
+                  <button class="mic" id="micBtn" onclick="toggleVoice()" type="button">🎙</button>
+                  <div>
+                    <strong id="voiceStatus">Voice sample not started</strong>
+                    <p class="hint">Click the mic and talk for 15 to 30 seconds. Browser support may vary, so you can also type it below.</p>
+                  </div>
+                </div>
+                <div class="field required"><label>Voice transcript or typed sample</label><textarea id="voiceText" placeholder="Say or type how you would explain the startup naturally."></textarea></div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn" id="backBtn" onclick="prevStep()" disabled>Back</button>
+              <div class="error" id="errorMsg">Please answer all required questions before moving forward.</div>
+              <button class="btn primary" id="nextBtn" onclick="nextStep()">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="loadingScreen">
+    <div class="loading-screen">
+      <div class="loading-card">
+        <div class="boom"></div>
+        <div class="wheel"></div>
+        <h2>Designing your system</h2>
+        <p id="loadingText">Reading your startup story, brand, voice, website, and industry.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="workspaceScreen">
+    <div class="workspace">
+      <aside>
+        <div class="brand">
+          <div class="mark" id="brandMark">S</div>
+          <div>
+            <h1 id="sideCompany">Your Startup</h1>
+            <p id="sideIndustry">Adaptive pitch workspace</p>
+          </div>
+        </div>
+        <div class="side-nav" id="sideNav"></div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="search" id="workspaceSearch">Your startup workspace</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" onclick="workspaceGo('theme')">Theme settings</button>
+            <button class="btn primary" onclick="toast('Deck generated','Your adaptive pitch deck preview has been refreshed.')">Generate deck</button>
+          </div>
+        </div>
+
+        <section class="workspace-screen active" id="w-overview">
+          <div class="hero">
+            <span class="eyebrow">Generated workspace</span>
+            <h2 id="workspaceHero">Your startup now has an <span>adaptive system</span></h2>
+            <p id="workspaceSub">The whole UI changed based on the startup details, industry, design reference, voice sample, audience, and deck purpose.</p>
+          </div>
+          <div class="cards four">
+            <div class="mini-card"><div class="big" id="sourceCount">8</div><h3>Source inputs</h3><p>Answers, website, logo, old deck, design notes, and voice sample.</p></div>
+            <div class="mini-card"><div class="big">12</div><h3>Required questions</h3><p>The founder cannot move forward until the raw story is complete.</p></div>
+            <div class="mini-card"><div class="big">1k+</div><h3>Style modules</h3><p>Transitions, layouts, palettes, motifs, and industry patterns from the database.</p></div>
+            <div class="mini-card"><div class="big">Live</div><h3>Signals</h3><p>Investor links can track slide time, drop-off, return visits, and CTA clicks.</p></div>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-sources">
+          <div class="hero"><span class="eyebrow">Source layer</span><h2>Everything becomes <span>structured source material</span></h2><p>Later this will save into Supabase and feed Claude, ChatGPT, claim checking, style matching, and deck rendering.</p></div>
+          <div class="cards three" id="sourceCards"></div>
+        </section>
+
+        <section class="workspace-screen" id="w-theme">
+          <div class="hero"><span class="eyebrow">Theme engine</span><h2>The whole product shell becomes <span>their brand</span></h2><p>The sidebar, background, cards, hero, deck preview, motifs, logo area, and visual patterns all shift from the source material.</p></div>
+          <div class="cards two">
+            <div class="mini-card">
+              <h3>Detected style</h3>
+              <p id="detectedStyle">Waiting for generated style.</p>
+              <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn" onclick="manualTheme('Fintech')">Fintech</button>
+                <button class="btn" onclick="manualTheme('Eco / climate')">Eco</button>
+                <button class="btn" onclick="manualTheme('Sports / energy')">Sports</button>
+                <button class="btn" onclick="manualTheme('AI')">AI</button>
+                <button class="btn" onclick="manualTheme('NBA')">NBA style</button>
+              </div>
+            </div>
+            <div class="mini-card">
+              <h3>Theme intelligence</h3>
+              <p id="themeIntelligence">The system reads industry, company name, logo notes, website, old deck notes, and design references to create a branded UI and pitch deck environment.</p>
+            </div>
+          </div>
+        </section>
+
+
+        <section class="workspace-screen" id="w-lens">
+          <div class="hero"><span class="eyebrow">VC lens</span><h2>Different investors need <span>different stories</span></h2><p>The product adjusts structure, proof order, style, and critique based on product type, stage, audience, and public investor signals.</p></div>
+          <div class="cards three">
+            <div class="mini-card"><h3>Investor profile</h3><p id="vcProfile">Based on the audience, the system will test clarity, urgency, wedge, proof, and founder fit.</p></div>
+            <div class="mini-card"><h3>Selected lens</h3><p id="selectedLens">Workflow pain, wedge, proof, and market expansion.</p></div>
+            <div class="mini-card"><h3>Likely questions</h3><p>Why now? Who pays? What is the wedge? What stops incumbents from copying this?</p></div>
+          </div>
+          <div class="mini-card" style="margin-top:16px">
+            <h3>Choose a lens</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+              <button class="btn" onclick="setLens('Workflow pain + wedge')">Workflow pain</button>
+              <button class="btn" onclick="setLens('Product depth + defensibility')">Product depth</button>
+              <button class="btn" onclick="setLens('Founder insight + market size')">Founder insight</button>
+              <button class="btn" onclick="setLens('Growth loop + retention')">Growth loop</button>
+              <button class="btn" onclick="setLens('Enterprise ROI + adoption risk')">Enterprise ROI</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-audit">
+          <div class="hero"><span class="eyebrow">Story audit</span><h2>Make weak parts visible <span>before investors do</span></h2><p>The system scores story clarity, proof strength, investor fit, market logic, founder fit, and design originality.</p></div>
+          <div class="cards four">
+            <div class="mini-card"><div class="big" id="scoreStory">8.2</div><h3>Story clarity</h3><p>How clearly the pitch explains the company.</p></div>
+            <div class="mini-card"><div class="big" id="scoreProof">6.4</div><h3>Proof strength</h3><p>How well the deck supports its claims.</p></div>
+            <div class="mini-card"><div class="big" id="scoreFit">7.1</div><h3>Investor fit</h3><p>How well it matches the target audience.</p></div>
+            <div class="mini-card"><div class="big" id="scoreMarket">5.8</div><h3>Market logic</h3><p>How believable the wedge and expansion are.</p></div>
+          </div>
+          <div class="cards three" style="margin-top:16px">
+            <div class="mini-card"><h3>VC tip</h3><p>Lead with the painful workflow before explaining the mechanism.</p></div>
+            <div class="mini-card"><h3>Risk</h3><p>Market sizing needs clearer source material or safer wording.</p></div>
+            <div class="mini-card"><h3>Fix</h3><p>Move founder insight earlier and add one customer quote to the problem slide.</p></div>
+          </div>
+          <button class="btn primary" style="margin-top:16px" onclick="runWorkspaceAudit()">Regenerate audit</button>
+        </section>
+
+        <section class="workspace-screen" id="w-claims">
+          <div class="hero"><span class="eyebrow">Claim checker</span><h2>Find weak claims before investors <span>do</span></h2><p>Every market number, traction point, competitive claim, and big promise gets a confidence level and safer rewrite.</p></div>
+          <div class="cards three" id="claimCards"></div>
+        </section>
+
+        <section class="workspace-screen" id="w-frameworks">
+          <div class="hero"><span class="eyebrow">Framework engine</span><h2>The deck thinks with <span>pitch frameworks</span></h2><p>Founders answer simple questions. Under the hood, SignalDeck uses story, sales, investor psychology, and positioning frameworks.</p></div>
+          <div class="cards three">
+            <div class="mini-card"><h3>SPIN selling</h3><p>Situation, problem, implication, need-payoff. Best for B2B, SaaS, fintech, and enterprise stories.</p></div>
+            <div class="mini-card"><h3>Belief chain</h3><p>Maps what the investor must believe, where proof exists, and where belief breaks.</p></div>
+            <div class="mini-card"><h3>Risk reversal</h3><p>Identifies product, market, distribution, trust, competition, and timing risks.</p></div>
+            <div class="mini-card"><h3>Category creation</h3><p>Old category, broken assumption, new category, why now, first wedge, expansion path.</p></div>
+            <div class="mini-card"><h3>Jobs To Be Done</h3><p>Finds the real job the customer is hiring the product to do.</p></div>
+            <div class="mini-card"><h3>Before After Bridge</h3><p>Shows the old painful world, the better future, and the product as the bridge.</p></div>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-style">
+          <div class="hero"><span class="eyebrow">Style library</span><h2>Thousands of styles and transitions matched to the <span>brand world</span></h2><p>Transitions, layouts, motifs, palettes, deck moods, interaction patterns, and design systems are chosen from a database, then adapted to the founder’s company.</p></div>
+          <div class="cards four">
+            <div class="mini-card"><div class="big">1k+</div><h3>Transitions</h3><p>Zooms, folds, reveals, scroll snaps, demos, product flows, and cinematic moments.</p></div>
+            <div class="mini-card"><div class="big">250</div><h3>Layouts</h3><p>Hooks, proof grids, demo flows, timelines, market maps, and ask slides.</p></div>
+            <div class="mini-card"><div class="big">80</div><h3>Palettes</h3><p>Industry colours, brand-derived palettes, website-matched themes, and mood systems.</p></div>
+            <div class="mini-card"><div class="big">40</div><h3>Deck moods</h3><p>Serious, premium, warm, technical, cinematic, playful, minimal, urgent, trusted.</p></div>
+          </div>
+          <div class="cards three" style="margin-top:16px">
+            <div class="mini-card"><h3>Anti-generic filter</h3><p>Blocks generic AI gradients, random 3D blobs, fake glassmorphism, overused fonts, and cliché startup icons.</p></div>
+            <div class="mini-card"><h3>Industry matching</h3><p>Eco becomes green and organic. Fintech becomes trusted and precise. Sports becomes energetic and bold.</p></div>
+            <div class="mini-card"><h3>Reference matching</h3><p>If their website has a matrix style or basketball feel, the product shell and deck can inherit that world.</p></div>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-deck">
+          <div class="slide-grid" id="slideGrid"></div>
+          <div class="deck-preview">
+            <div>
+              <div class="eyebrow" id="slideTag">Slide 01 · Hook</div>
+              <h2 id="deckTitle">The old way is broken. <span>The new system starts here.</span></h2>
+            </div>
+            <p id="deckBody">This preview changes based on product type, voice, audience, design reference, and deck purpose.</p>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-demo">
+          <div class="hero"><span class="eyebrow">Interactive demo layer</span><h2>If the product can be shown, we put a <span>demo moment</span> near the bottom</h2><p>For an app like Uber, the deck can show a fast app flow. For a website product, it can show a clickable website preview. For a sent deck, this can autoplay like a product video.</p></div>
+          <div class="cards three">
+            <div class="mini-card"><h3>Interactive app demo</h3><p>Clickable phone, browser, or workflow simulation inside the pitch.</p></div>
+            <div class="mini-card"><h3>Autoplay demo</h3><p>Good when the deck is sent and the founder is not speaking live.</p></div>
+            <div class="mini-card"><h3>Speaker-led demo</h3><p>Good for demo day or investor meetings where the founder talks over the flow.</p></div>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-signals">
+          <div class="hero"><span class="eyebrow">Signals</span><h2>Track what investors actually <span>care about</span></h2><p>Named links, slide time, drop-off, return visits, CTA clicks, and follow-up recommendations.</p></div>
+          <div class="cards three">
+            <div class="mini-card"><div class="big" id="returns">3</div><h3>Return visits</h3><p>Investor came back after first view.</p></div>
+            <div class="mini-card"><div class="big" id="demoTime">2m</div><h3>Demo time</h3><p>Most attention went to product flow.</p></div>
+            <div class="mini-card"><div class="big" id="dropOff">43%</div><h3>Drop-off</h3><p>Market explanation may need work.</p></div>
+          </div>
+          <div class="mini-card" style="margin-top:16px">
+            <h3>Slide engagement</h3>
+            <div id="bars" style="margin-top:16px"></div>
+            <button class="btn primary" style="margin-top:12px" onclick="simulateSignal()">Simulate new view</button>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-present">
+          <div class="hero"><span class="eyebrow">Present mode</span><h2>Build the deck for how it will be <span>used live</span></h2><p>Speaker notes, timing, Q&A prep, demo mode, and voice-matched scripts change depending on whether the founder is speaking over the pitch.</p></div>
+          <div class="cards three">
+            <div class="mini-card"><h3>Speaker notes</h3><p>Generated from the founder’s voice sample so the pitch sounds like them, not like generic AI.</p></div>
+            <div class="mini-card"><h3>Q&A prep</h3><p>Likely investor questions, strong answers, weak answers to avoid, and evidence needed.</p></div>
+            <div class="mini-card"><h3>Timing mode</h3><p>2-minute, 5-minute, 10-minute, investor meeting, or demo day pacing.</p></div>
+          </div>
+          <div class="mini-card" style="margin-top:16px"><h3>Sample speaker note</h3><p id="speakerNote">Start with the pain in the customer’s world. Do not explain the product too early. Make the viewer feel the old workflow first.</p></div>
+        </section>
+
+        <section class="workspace-screen" id="w-deploy">
+          <div class="hero"><span class="eyebrow">Deploy</span><h2>Publish the deck anywhere as a <span>tracked link</span></h2><p>Push to Vercel, Netlify, Cloudflare Pages, export HTML, create investor-specific links, or embed on the founder’s website.</p></div>
+          <div class="cards four">
+            <div class="mini-card"><h3>Vercel</h3><p>Publish to a live route like /pitch or /deck/investor-name.</p></div>
+            <div class="mini-card"><h3>Cloudflare</h3><p>Use Pages for fast static hosting and custom domains.</p></div>
+            <div class="mini-card"><h3>Netlify</h3><p>Generate public preview links and fast deploys.</p></div>
+            <div class="mini-card"><h3>HTML export</h3><p>Download index.html, CSS, JS, assets, and a PDF fallback.</p></div>
+          </div>
+          <div class="mini-card" style="margin-top:16px"><h3>Investor links</h3><p id="investorLinks">/deck/blackbird · /deck/folklore · /deck/angel-intro</p></div>
+        </section>
+
+        <section class="workspace-screen" id="w-followup">
+          <div class="hero"><span class="eyebrow">Follow-up intelligence</span><h2>Use signal data to send the <span>right next message</span></h2><p>If they watched product, send a walkthrough. If they dropped near market, simplify the wedge. If they returned twice, follow up now.</p></div>
+          <div class="cards two">
+            <div class="mini-card">
+              <h3>Suggested email</h3>
+              <p id="followupEmail" style="white-space:pre-line">Hi,
+
+Thanks for taking a look at the deck.
+
+The product flow seems like the clearest next thing to unpack. Happy to walk you through how it works in 10 minutes.
+
+Best</p>
+            </div>
+            <div class="mini-card">
+              <h3>Next action</h3>
+              <p>Lead with the most-viewed slide. Do not send a long generic follow-up. Make the next step specific.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace-screen" id="w-settings">
+          <div class="hero"><span class="eyebrow">Settings</span><h2>Control privacy, quality gates, and <span>design rules</span></h2><p>Set tracking consent, claim requirements, export formats, blocklists, accessibility checks, and whether generic styles are allowed.</p></div>
+          <div class="cards three">
+            <div class="mini-card"><h3>Privacy</h3><p>Named links, anonymous links, password protection, expiry dates, consent banner, and disable download.</p></div>
+            <div class="mini-card"><h3>Quality gates</h3><p>Block unsourced numbers, require clear ask, check mobile layout, and flag weak claims before publishing.</p></div>
+            <div class="mini-card"><h3>Style rules</h3><p>Block generic AI styles and fonts unless the user explicitly requests them.</p></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"><h4 id="toastTitle">Updated</h4><p id="toastText">Action complete.</p></div>
+
+<script>
+  const requiredByStep = [
+    ["company","industry","what","who"],
+    ["origin","alternative","founderFit"],
+    ["audience","outcome","deckUse"],
+    [],
+    ["voiceText"]
+  ];
+
+  let currentStep = 0;
+  let recording = false;
+  let recognition = null;
+  let appData = {};
+  let activeW = "overview";
+  let activeSlide = 0;
+  let signalData = { returns: 3, demoTime: 2, dropOff: 43, engagement: [92,78,96,43,61] };
+
+  const workspaceNav = [
+    ["overview","Overview"],
+    ["sources","Sources"],
+    ["lens","VC lens"],
+    ["audit","Audit"],
+    ["claims","Claims"],
+    ["frameworks","Frameworks"],
+    ["style","Style library"],
+    ["theme","Theme"],
+    ["deck","Deck build"],
+    ["present","Present"],
+    ["demo","Demo layer"],
+    ["deploy","Deploy"],
+    ["signals","Signals"],
+    ["followup","Follow-up"],
+    ["settings","Settings"]
+  ];
+
+  const slides = [
+    ["Hook","The old way is broken","Show the one painful thing that makes this company obvious."],
+    ["Problem","The customer is stuck","Name the workflow, pain, cost, or frustration clearly."],
+    ["Solution","A better system appears","Show the product as the bridge, not as a feature list."],
+    ["Proof","Why this is real","Bring in sources, quotes, screenshots, traction, or early signals."],
+    ["Demo","Show the product","Interactive or autoplay depending on how the deck will be used."],
+    ["Ask","Make the next step clear","Investment, pilot, intro, grant, meeting, or partner next step."]
+  ];
+
+  const themes = {
+    "Fintech": {
+      accent:"#1663ff", accent2:"#6c2bd9", accent3:"#f3f6ff", bg:"#f5f7fb", paper:"#ffffff", motif:"◆",
+      pattern:"linear-gradient(rgba(22,99,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(22,99,255,.045) 1px, transparent 1px)",
+      overlay:"radial-gradient(circle at 20% 10%, rgba(22,99,255,.08), transparent 24%), radial-gradient(circle at 90% 20%, rgba(108,43,217,.07), transparent 24%)",
+      side:"linear-gradient(180deg, rgba(22,99,255,.06), transparent 42%)",
+      card:"linear-gradient(135deg, rgba(22,99,255,.045), transparent 45%)",
+      style:"Fintech system applied: blue trust cues, purple finance depth, grid backgrounds, clean cards, precise investor feel."
+    },
+    "Eco / climate": {
+      accent:"#2f9e44", accent2:"#74b816", accent3:"#eef7ec", bg:"#f3f7ee", paper:"#fffef7", motif:"●",
+      pattern:"radial-gradient(circle at 10% 20%, rgba(47,158,68,.11), transparent 28%), linear-gradient(120deg, rgba(116,184,22,.06), transparent 42%)",
+      overlay:"radial-gradient(circle at 80% 5%, rgba(47,158,68,.10), transparent 26%)",
+      side:"radial-gradient(circle at 20% 12%, rgba(47,158,68,.12), transparent 30%)",
+      card:"radial-gradient(circle at 90% 0%, rgba(116,184,22,.10), transparent 30%)",
+      style:"Eco system applied: green environment palette, soft organic gradients, calmer cards, impact-style atmosphere."
+    },
+    "Health": {
+      accent:"#228be6", accent2:"#20c997", accent3:"#f1f8fb", bg:"#f4f8fb", paper:"#ffffff", motif:"+",
+      pattern:"linear-gradient(135deg, rgba(34,139,230,.06), transparent 40%)",
+      overlay:"radial-gradient(circle at 70% 10%, rgba(32,201,151,.08), transparent 28%)",
+      side:"linear-gradient(180deg, rgba(34,139,230,.06), transparent 50%)",
+      card:"linear-gradient(135deg, rgba(34,139,230,.04), transparent 40%)",
+      style:"Health system applied: blue trust palette, calm surfaces, clinical clarity, evidence-first layout."
+    },
+    "AI": {
+      accent:"#7c3aed", accent2:"#0ea5e9", accent3:"#f6f0ff", bg:"#f8f5ff", paper:"#ffffff", motif:"✦",
+      pattern:"radial-gradient(circle at 80% 20%, rgba(124,58,237,.13), transparent 28%), linear-gradient(90deg, rgba(14,165,233,.06) 1px, transparent 1px)",
+      overlay:"radial-gradient(circle at 25% 8%, rgba(14,165,233,.08), transparent 26%)",
+      side:"radial-gradient(circle at 50% 0%, rgba(124,58,237,.12), transparent 36%)",
+      card:"radial-gradient(circle at 100% 0%, rgba(124,58,237,.12), transparent 34%)",
+      style:"AI system applied: purple intelligence cues, system-like patterns, agent flow energy, technical polish."
+    },
+    "Sports / energy": {
+      accent:"#e03131", accent2:"#2f9e44", accent3:"#fff2ec", bg:"#fff7f4", paper:"#ffffff", motif:"●",
+      pattern:"linear-gradient(120deg, rgba(224,49,49,.09), transparent 36%), radial-gradient(circle at 20% 80%, rgba(47,158,68,.09), transparent 28%)",
+      overlay:"repeating-linear-gradient(45deg, rgba(224,49,49,.045) 0 2px, transparent 2px 14px)",
+      side:"linear-gradient(180deg, rgba(224,49,49,.09), transparent 45%)",
+      card:"linear-gradient(135deg, rgba(224,49,49,.07), transparent 40%)",
+      style:"Sports energy system applied: red energy, green contrast, bolder panels, faster feeling, movement-led background."
+    },
+    "Enterprise SaaS": {
+      accent:"#364fc7", accent2:"#15aabf", accent3:"#f4f6fb", bg:"#f6f7fb", paper:"#ffffff", motif:"▣",
+      pattern:"linear-gradient(rgba(54,79,199,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(54,79,199,.04) 1px, transparent 1px)",
+      overlay:"radial-gradient(circle at 80% 10%, rgba(21,170,191,.08), transparent 30%)",
+      side:"linear-gradient(180deg, rgba(54,79,199,.07), transparent 50%)",
+      card:"linear-gradient(135deg, rgba(54,79,199,.05), transparent 38%)",
+      style:"Enterprise SaaS system applied: navy trust, ROI-friendly cards, workflow clarity, calm business tone."
+    },
+    "Developer tools": {
+      accent:"#0b7285", accent2:"#111827", accent3:"#eef7f8", bg:"#f2f7f8", paper:"#ffffff", motif:"⌘",
+      pattern:"linear-gradient(rgba(11,114,133,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(11,114,133,.055) 1px, transparent 1px)",
+      overlay:"repeating-linear-gradient(0deg, rgba(17,24,39,.035) 0 1px, transparent 1px 24px)",
+      side:"linear-gradient(180deg, rgba(11,114,133,.08), transparent 45%)",
+      card:"linear-gradient(135deg, rgba(11,114,133,.06), transparent 40%)",
+      style:"Developer tools system applied: technical grid, compact product feel, API-style precision, less decorative noise."
+    },
+    "Consumer": {
+      accent:"#f76707", accent2:"#e64980", accent3:"#fff3ea", bg:"#fff7ef", paper:"#fffefa", motif:"♥",
+      pattern:"radial-gradient(circle at 20% 20%, rgba(247,103,7,.12), transparent 26%), radial-gradient(circle at 90% 25%, rgba(230,73,128,.08), transparent 24%)",
+      overlay:"linear-gradient(120deg, rgba(247,103,7,.04), transparent 40%)",
+      side:"radial-gradient(circle at 20% 10%, rgba(247,103,7,.12), transparent 28%)",
+      card:"radial-gradient(circle at 100% 0%, rgba(230,73,128,.10), transparent 30%)",
+      style:"Consumer system applied: warm brand energy, human product feel, emotional cards, more memorable visuals."
+    },
+    "Education": {
+      accent:"#f59f00", accent2:"#228be6", accent3:"#fff6db", bg:"#fff9e8", paper:"#ffffff", motif:"★",
+      pattern:"linear-gradient(135deg, rgba(245,159,0,.10), transparent 36%)",
+      overlay:"radial-gradient(circle at 80% 15%, rgba(34,139,230,.07), transparent 28%)",
+      side:"linear-gradient(180deg, rgba(245,159,0,.11), transparent 48%)",
+      card:"linear-gradient(135deg, rgba(245,159,0,.08), transparent 42%)",
+      style:"Education system applied: warm guided progression, accessible cards, simple steps, learning-friendly tone."
+    },
+    "NBA": {
+      accent:"#17408B", accent2:"#C9082A", accent3:"#f4f6fb", bg:"#f7f8fc", paper:"#ffffff", motif:"🏀",
+      pattern:"radial-gradient(circle at 16px 16px, rgba(201,8,42,.08) 2px, transparent 3px), linear-gradient(90deg, rgba(23,64,139,.055) 1px, transparent 1px)",
+      overlay:"repeating-linear-gradient(120deg, rgba(23,64,139,.05) 0 2px, transparent 2px 18px), radial-gradient(circle at 85% 12%, rgba(201,8,42,.10), transparent 28%)",
+      side:"linear-gradient(180deg, rgba(23,64,139,.10), rgba(201,8,42,.04), transparent 55%)",
+      card:"linear-gradient(135deg, rgba(23,64,139,.07), rgba(201,8,42,.035), transparent 50%)",
+      style:"NBA-style system applied: blue and red sports palette, basketball motif, energetic layout, bold arena-like feel."
+    }
+  };
+
+  function $(id){ return document.getElementById(id); }
+
+  function showScreen(id){
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    $(id).classList.add("active");
+  }
+
+  function updateProgress(){
+    const total = requiredByStep.flat().length;
+    const answered = requiredByStep.flat().filter(id => ($(id)?.value || "").trim()).length;
+    const pct = Math.round((answered / total) * 100);
+    $("progressBar").style.width = pct + "%";
+    $("progressText").textContent = pct + "%";
+  }
+
+  document.addEventListener("input", updateProgress);
+  document.addEventListener("change", updateProgress);
+
+  function validateStep(){
+    const ids = requiredByStep[currentStep];
+    let ok = true;
+    ids.forEach(id => {
+      const el = $(id);
+      if(!el) return;
+      const filled = (el.value || "").trim().length > 0;
+      el.classList.toggle("missing", !filled);
+      if(!filled) ok = false;
+    });
+    $("errorMsg").classList.toggle("show", !ok);
+    return ok;
+  }
+
+  function nextStep(){
+    if(!validateStep()) return;
+    if(currentStep < 4){
+      currentStep++;
+    
+  function setLens(name){
+    $("selectedLens").textContent = name;
+    toast("VC lens updated", name + " lens applied to the workspace.");
+  }
+
+  function runWorkspaceAudit(){
+    const vals = [
+      (7.4 + Math.random() * 1.5).toFixed(1),
+      (5.8 + Math.random() * 1.8).toFixed(1),
+      (6.9 + Math.random() * 1.5).toFixed(1),
+      (5.4 + Math.random() * 1.6).toFixed(1)
+    ];
+    $("scoreStory").textContent = vals[0];
+    $("scoreProof").textContent = vals[1];
+    $("scoreFit").textContent = vals[2];
+    $("scoreMarket").textContent = vals[3];
+    toast("Audit regenerated","Scores updated based on the current source layer.");
+  }
+
+  function buildClaims(){
+    const claims = [
+      ["Supported", "The problem is clear in the founder’s own words.", "Low risk"],
+      ["Needs source", "Market size and industry numbers need evidence.", "High risk"],
+      ["Risky", "Avoid saying no one else does this.", "Rewrite"],
+      ["Founder thesis", "The product can become a broader platform if the wedge works.", "Medium risk"],
+      ["Voice signal", "Speaker notes should match the founder’s natural explanation.", "Useful"],
+      ["Design signal", "Theme should come from logo, website, and design references.", "High confidence"]
+    ];
+    $("claimCards").innerHTML = claims.map(([title, body, tag]) => `
+      <div class="mini-card"><span class="eyebrow">${tag}</span><h3>${title}</h3><p>${body}</p></div>
+    `).join("");
+  }
+
+  showStep();
+      return;
+    }
+    generateWorkspace();
+  }
+
+  function prevStep(){
+    if(currentStep > 0) currentStep--;
+  
+  function setLens(name){
+    $("selectedLens").textContent = name;
+    toast("VC lens updated", name + " lens applied to the workspace.");
+  }
+
+  function runWorkspaceAudit(){
+    const vals = [
+      (7.4 + Math.random() * 1.5).toFixed(1),
+      (5.8 + Math.random() * 1.8).toFixed(1),
+      (6.9 + Math.random() * 1.5).toFixed(1),
+      (5.4 + Math.random() * 1.6).toFixed(1)
+    ];
+    $("scoreStory").textContent = vals[0];
+    $("scoreProof").textContent = vals[1];
+    $("scoreFit").textContent = vals[2];
+    $("scoreMarket").textContent = vals[3];
+    toast("Audit regenerated","Scores updated based on the current source layer.");
+  }
+
+  function buildClaims(){
+    const claims = [
+      ["Supported", "The problem is clear in the founder’s own words.", "Low risk"],
+      ["Needs source", "Market size and industry numbers need evidence.", "High risk"],
+      ["Risky", "Avoid saying no one else does this.", "Rewrite"],
+      ["Founder thesis", "The product can become a broader platform if the wedge works.", "Medium risk"],
+      ["Voice signal", "Speaker notes should match the founder’s natural explanation.", "Useful"],
+      ["Design signal", "Theme should come from logo, website, and design references.", "High confidence"]
+    ];
+    $("claimCards").innerHTML = claims.map(([title, body, tag]) => `
+      <div class="mini-card"><span class="eyebrow">${tag}</span><h3>${title}</h3><p>${body}</p></div>
+    `).join("");
+  }
+
+  showStep();
+  }
+
+  function showStep(){
+    document.querySelectorAll(".step").forEach(step => step.classList.remove("active"));
+    document.querySelector(`.step[data-step="${currentStep}"]`).classList.add("active");
+    $("backBtn").disabled = currentStep === 0;
+    $("nextBtn").textContent = currentStep === 4 ? "Generate my workspace" : "Next";
+    $("errorMsg").classList.remove("show");
+    updateProgress();
+  }
+
+  function toggleVoice(){
+    const mic = $("micBtn");
+    const status = $("voiceStatus");
+
+    if(recording){
+      recording = false;
+      mic.classList.remove("recording");
+      status.textContent = "Voice sample stopped";
+      if(recognition) recognition.stop();
+      return;
+    }
+
+    recording = true;
+    mic.classList.add("recording");
+    status.textContent = "Listening. Speak naturally.";
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRecognition){
+      status.textContent = "Voice not supported here. Type your sample below.";
+      toast("Voice fallback","Your browser does not support speech recognition. Type the sample instead.");
+      return;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-AU";
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        transcript += event.results[i][0].transcript;
+      }
+      $("voiceText").value = ($("voiceText").value + " " + transcript).trim();
+      updateProgress();
+    };
+    recognition.onerror = () => {
+      status.textContent = "Voice capture failed. Type your sample below.";
+      mic.classList.remove("recording");
+      recording = false;
+    };
+    recognition.start();
+  }
+
+  function generateWorkspace(){
+    collectData();
+    showScreen("loadingScreen");
+
+    const lines = [
+      "Reading your startup story, brand, voice, website, and industry.",
+      "Turning raw founder words into a source layer.",
+      "Extracting industry colours, motifs, and layout energy.",
+      "Applying the theme to the whole product shell.",
+      "Building your adaptive pitch workspace."
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      $("loadingText").textContent = lines[i % lines.length];
+      i++;
+    }, 620);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      buildWorkspace();
+      showScreen("workspaceScreen");
+      toast("Workspace generated","The whole UI adapted to the company and industry.");
+    }, 3400);
+  }
+
+  function collectData(){
+    appData = {
+      company: $("company").value.trim(),
+      industry: $("industry").value,
+      what: $("what").value.trim(),
+      who: $("who").value.trim(),
+      origin: $("origin").value.trim(),
+      alternative: $("alternative").value.trim(),
+      founderFit: $("founderFit").value.trim(),
+      audience: $("audience").value.trim(),
+      outcome: $("outcome").value.trim(),
+      deckUse: $("deckUse").value,
+      website: $("website").value.trim(),
+      logo: $("logo").value.trim(),
+      oldDeck: $("oldDeck").value.trim(),
+      designRef: $("designRef").value.trim(),
+      voiceText: $("voiceText").value.trim()
+    };
+  }
+
+  function buildWorkspace(){
+    const company = appData.company || "Your Startup";
+    $("sideCompany").textContent = company;
+    $("sideIndustry").textContent = appData.industry + " pitch workspace";
+    $("workspaceSearch").textContent = company + " workspace · " + appData.deckUse;
+    $("workspaceHero").innerHTML = `${company} now has an <span>adaptive system</span>`;
+    $("workspaceSub").textContent = "The whole UI changed based on industry, brand notes, design references, voice sample, audience, and deck purpose.";
+    $("brandMark").textContent = company[0]?.toUpperCase() || "S";
+
+    buildNav();
+    applyTheme(detectTheme());
+    buildSources();
+    buildSlides();
+    buildBars();
+    buildClaims();
+  }
+
+  function detectTheme(){
+    const blob = `${appData.company} ${appData.industry} ${appData.logo} ${appData.designRef} ${appData.website}`.toLowerCase();
+    if(blob.includes("nba") || blob.includes("basketball")) return "NBA";
+    if(blob.includes("matrix")) return "Matrix";
+    return appData.industry || "Fintech";
+  }
+
+  function buildNav(){
+    $("sideNav").innerHTML = workspaceNav.map(([id,label]) => `
+      <button class="${id === activeW ? "active" : ""}" onclick="workspaceGo('${id}')" id="nav-${id}">${label}</button>
+    `).join("");
+  }
+
+  function workspaceGo(id){
+    activeW = id;
+    document.querySelectorAll(".workspace-screen").forEach(s => s.classList.remove("active"));
+    $("w-" + id).classList.add("active");
+    document.querySelectorAll(".side-nav button").forEach(b => b.classList.remove("active"));
+    $("nav-" + id)?.classList.add("active");
+  }
+
+  function applyTheme(themeName){
+    let t = themes[themeName] || themes.Fintech;
+
+    if(themeName === "Matrix"){
+      t = {
+        ...themes["Developer tools"],
+        accent:"#00a86b",
+        accent2:"#0b3d2e",
+        accent3:"#edf8f1",
+        bg:"#f1faf4",
+        motif:"▥",
+        pattern:"linear-gradient(rgba(0,168,107,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0,168,107,.08) 1px, transparent 1px)",
+        overlay:"repeating-linear-gradient(90deg, rgba(0,168,107,.045) 0 1px, transparent 1px 18px)",
+        side:"linear-gradient(180deg, rgba(0,168,107,.12), transparent 52%)",
+        card:"linear-gradient(135deg, rgba(0,168,107,.09), transparent 45%)",
+        style:"Matrix reference detected: green grid system applied across the shell, sidebar, cards, and deck preview without going full hacker cliché."
+      };
+    }
+
+    document.documentElement.style.setProperty("--accent", t.accent);
+    document.documentElement.style.setProperty("--accent2", t.accent2);
+    document.documentElement.style.setProperty("--accent3", t.accent3);
+    document.documentElement.style.setProperty("--bg", t.bg);
+    document.documentElement.style.setProperty("--paper", t.paper);
+    document.documentElement.style.setProperty("--accentSoft", hexToRgba(t.accent, .11));
+    document.documentElement.style.setProperty("--brandPattern", t.pattern);
+    document.documentElement.style.setProperty("--overlayPattern", t.overlay);
+    document.documentElement.style.setProperty("--sidePattern", t.side);
+    document.documentElement.style.setProperty("--heroPattern", t.pattern);
+    document.documentElement.style.setProperty("--cardPattern", t.card);
+    document.documentElement.style.setProperty("--motif", `"${t.motif}"`);
+
+    $("detectedStyle").textContent = t.style;
+    $("themeIntelligence").textContent = "This theme affects the full UI: sidebar, background, hero sections, cards, deck preview, motifs, buttons, progress, slide cards, and signal bars.";
+  }
+
+  function manualTheme(name){
+    applyTheme(name);
+    toast("Full UI theme changed", name + " theme applied across the product shell.");
+  }
+
+  function buildSources(){
+    const sources = [
+      ["Company", appData.company],
+      ["Industry", appData.industry],
+      ["What it does", appData.what],
+      ["Who it is for", appData.who],
+      ["Origin story", appData.origin],
+      ["Current alternative", appData.alternative],
+      ["Founder fit", appData.founderFit],
+      ["Audience", appData.audience],
+      ["Outcome", appData.outcome],
+      ["Deck use", appData.deckUse],
+      ["Website", appData.website || "Not provided"],
+      ["Logo", appData.logo || "Not provided"],
+      ["Old deck notes", appData.oldDeck || "Not provided"],
+      ["Design reference", appData.designRef || "Not provided"],
+      ["Voice sample", appData.voiceText]
+    ];
+    $("sourceCards").innerHTML = sources.map(([title, body]) => `
+      <div class="mini-card"><span class="eyebrow">${title}</span><p style="margin-top:12px">${escapeHtml(body)}</p></div>
+    `).join("");
+    $("sourceCount").textContent = sources.length;
+  }
+
+  function buildSlides(){
+    $("slideGrid").innerHTML = slides.map((s, i) => `
+      <button class="slide ${i === activeSlide ? "active" : ""}" onclick="setSlide(${i})">
+        <span class="eyebrow">0${i+1} · ${s[0]}</span>
+        <h4>${s[1]}</h4>
+        <p>${s[2]}</p>
+      </button>
+    `).join("");
+    setSlide(activeSlide);
+  }
+
+  function setSlide(i){
+    activeSlide = i;
+    document.querySelectorAll(".slide").forEach((s, idx) => s.classList.toggle("active", idx === i));
+    const s = slides[i];
+    $("slideTag").textContent = `Slide 0${i+1} · ${s[0]}`;
+    $("deckTitle").innerHTML = `${s[1]}. <span>${appData.company || "Your startup"} makes it clear.</span>`;
+    $("deckBody").textContent = s[2] + " This can later become interactive or autoplay depending on how the pitch is used.";
+  }
+
+  function buildBars(){
+    const labels = ["Hook","Problem","Product","Demo","Ask"];
+    $("bars").innerHTML = labels.map((label, i) => `
+      <div class="bar-row"><span>${label}</span><div class="bar"><span style="width:${signalData.engagement[i]}%"></span></div><strong>${signalData.engagement[i]}%</strong></div>
+    `).join("");
+  }
+
+  function simulateSignal(){
+    signalData.returns += 1;
+    signalData.demoTime += 1;
+    signalData.dropOff = Math.max(20, signalData.dropOff - Math.floor(Math.random() * 8));
+    signalData.engagement = signalData.engagement.map(v => Math.max(30, Math.min(99, v + Math.floor(Math.random() * 14 - 3))));
+    $("returns").textContent = signalData.returns;
+    $("demoTime").textContent = signalData.demoTime + "m";
+    $("dropOff").textContent = signalData.dropOff + "%";
+    buildBars();
+    toast("New view tracked","Signals updated with slide engagement and drop-off.");
+  }
+
+  function toast(title, text){
+    $("toastTitle").textContent = title;
+    $("toastText").textContent = text;
+    $("toast").classList.add("show");
+    setTimeout(() => $("toast").classList.remove("show"), 2600);
+  }
+
+  function hexToRgba(hex, alpha){
+    const c = hex.replace("#","");
+    const bigint = parseInt(c,16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
+  }
+
+
+  function setLens(name){
+    $("selectedLens").textContent = name;
+    toast("VC lens updated", name + " lens applied to the workspace.");
+  }
+
+  function runWorkspaceAudit(){
+    const vals = [
+      (7.4 + Math.random() * 1.5).toFixed(1),
+      (5.8 + Math.random() * 1.8).toFixed(1),
+      (6.9 + Math.random() * 1.5).toFixed(1),
+      (5.4 + Math.random() * 1.6).toFixed(1)
+    ];
+    $("scoreStory").textContent = vals[0];
+    $("scoreProof").textContent = vals[1];
+    $("scoreFit").textContent = vals[2];
+    $("scoreMarket").textContent = vals[3];
+    toast("Audit regenerated","Scores updated based on the current source layer.");
+  }
+
+  function buildClaims(){
+    const claims = [
+      ["Supported", "The problem is clear in the founder’s own words.", "Low risk"],
+      ["Needs source", "Market size and industry numbers need evidence.", "High risk"],
+      ["Risky", "Avoid saying no one else does this.", "Rewrite"],
+      ["Founder thesis", "The product can become a broader platform if the wedge works.", "Medium risk"],
+      ["Voice signal", "Speaker notes should match the founder’s natural explanation.", "Useful"],
+      ["Design signal", "Theme should come from logo, website, and design references.", "High confidence"]
+    ];
+    $("claimCards").innerHTML = claims.map(([title, body, tag]) => `
+      <div class="mini-card"><span class="eyebrow">${tag}</span><h3>${title}</h3><p>${body}</p></div>
+    `).join("");
+  }
+
+  showStep();
+</script>
+</body>
+</html>
