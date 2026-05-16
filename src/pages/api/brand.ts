@@ -22,7 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const colors = extractColors(html)
-  return res.status(200).json({ colors })
+  const logo = extractLogo(html, base)
+  return res.status(200).json({ colors, logo })
 }
 
 async function fetchHtml(url: string): Promise<string> {
@@ -76,6 +77,31 @@ function normalizeHex(hex: string): string | null {
   }
   if (!/^#[0-9a-f]{6}$/.test(hex)) return null
   return hex
+}
+
+function extractLogo(html: string, base: string): string | null {
+  const resolve = (rel: string) => {
+    try {
+      return new URL(rel, base).href
+    } catch { return null }
+  }
+
+  // og:image
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+           || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  if (og?.[1]) return resolve(og[1])
+
+  // apple-touch-icon
+  const apple = html.match(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i)
+              || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon["']/i)
+  if (apple?.[1]) return resolve(apple[1])
+
+  // favicon
+  const fav = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i)
+  if (fav?.[1]) return resolve(fav[1])
+
+  // /favicon.ico fallback
+  try { return new URL('/favicon.ico', base).href } catch { return null }
 }
 
 function isGrayish(hex: string): boolean {

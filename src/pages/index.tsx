@@ -49,6 +49,7 @@ export default function Home() {
   const [error, setError] = useState('')
   const [detecting, setDetecting] = useState(false)
   const [detectedColors, setDetectedColors] = useState<string[]>([])
+  const [logoUrl, setLogoUrl] = useState('')
   const debounceRef = useRef<any>(null)
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
@@ -90,6 +91,7 @@ export default function Home() {
           setDetectedColors(data.colors)
           set('accentColor', data.colors[0])
         }
+        if (data.logo) setLogoUrl(data.logo)
       } catch {}
       setDetecting(false)
     }, 900)
@@ -148,12 +150,14 @@ export default function Home() {
         accentColor={form.accentColor}
         generatedHtml={generatedHtml}
         generatedContent={generatedContent}
+        logoUrl={logoUrl}
         onRestart={() => {
           setStep('basics')
           setForm(empty)
           setGeneratedHtml('')
           setGeneratedContent(null)
           setDetectedColors([])
+          setLogoUrl('')
           document.documentElement.style.setProperty('--accent', empty.accentColor)
         }}
       />

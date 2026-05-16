@@ -70,9 +70,10 @@ interface WorkspaceProps {
   generatedHtml: string
   generatedContent: any
   onRestart: () => void
+  logoUrl?: string
 }
 
-export default function Workspace({ company, accentColor, generatedHtml, generatedContent, onRestart }: WorkspaceProps) {
+export default function Workspace({ company, accentColor, generatedHtml, generatedContent, onRestart, logoUrl }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [vercelToken, setVercelToken] = useState('')
@@ -338,14 +339,16 @@ export default function Workspace({ company, accentColor, generatedHtml, generat
 
         {/* Brand */}
         <div className="px-5 py-5 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center text-white text-[13px] font-semibold"
-            style={{ background: accentColor }}>
-            {initials}
-          </div>
-          <div className="min-w-0">
-            <div className="font-semibold tracking-tight text-[14px] truncate">{company || 'SignalDeck'}</div>
-            <div className="text-[11px] ink-muted">Workspace</div>
-          </div>
+          {logoUrl && (
+            <img src={logoUrl} alt={company}
+              className="w-9 h-9 rounded-lg flex-shrink-0 object-contain"
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+          )}
+          {company && (
+            <div className="min-w-0">
+              <div className="font-semibold tracking-tight text-[14px] truncate">{company}</div>
+            </div>
+          )}
         </div>
 
         {/* Nav */}
