@@ -56,9 +56,12 @@ export default function Home() {
   const [step, setStep] = useState<Step>('company')
   const [form, setForm] = useState<FormData>(empty)
   const [generatedHtml, setGeneratedHtml] = useState('')
+  const [generatedContent, setGeneratedContent] = useState<any>(null)
   const [deployUrl, setDeployUrl] = useState('')
   const [error, setError] = useState('')
   const [deployMode, setDeployMode] = useState<'vercel' | 'download' | null>(null)
+  const [isRefining, setIsRefining] = useState(false)
+  const [isRefined, setIsRefined] = useState(false)
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
 
@@ -74,6 +77,8 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setGeneratedHtml(data.html)
+      setGeneratedContent(data.content)
+      setIsRefined(false)
       setStep('done')
     } catch (e: any) {
       setError(e.message)
@@ -117,6 +122,27 @@ export default function Home() {
     a.download = `${form.company.toLowerCase()}-pitchdeck.html`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function refineWithGpt() {
+    setIsRefining(true)
+    setError('')
+    try {
+      const res = await fetch('/api/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: generatedContent, input: form }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setGeneratedHtml(data.html)
+      setGeneratedContent(data.content)
+      setIsRefined(true)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setIsRefining(false)
+    }
   }
 
   const Field = ({ label, name, type = 'text', placeholder = '', rows = 0 }: any) => (
@@ -166,6 +192,25 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button onClick={download} style={btnPrimaryStyle}>Download HTML</button>
 
+            {!isRefined && !isRefining && (
+              <button onClick={refineWithGpt} style={{ ...btnSecondaryStyle, borderColor: '#6366f1', color: '#a5b4fc' }}>
+                ✦ Refine copy with GPT-4o →
+              </button>
+            )}
+
+            {isRefining && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', border: '1px solid #6366f1', borderRadius: 10, color: '#a5b4fc', fontSize: 13 }}>
+                <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>◐</span>
+                GPT-4o is critiquing and sharpening your copy...
+              </div>
+            )}
+
+            {isRefined && (
+              <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 10, padding: '10px 16px', fontSize: 12, color: '#a5b4fc', fontFamily: 'monospace', letterSpacing: 1 }}>
+                ✓ GPT-4O REFINED — copy sharpened by pitch coach
+              </div>
+            )}
+
             {!deployMode && (
               <button onClick={() => setDeployMode('vercel')} style={btnSecondaryStyle}>Deploy to Vercel →</button>
             )}
@@ -178,7 +223,7 @@ export default function Home() {
               </div>
             )}
 
-            <button onClick={() => { setStep('brand'); setGeneratedHtml(''); setDeployUrl(''); setDeployMode(null) }} style={{ ...btnSecondaryStyle, opacity: 0.6 }}>← Regenerate</button>
+            <button onClick={() => { setStep('brand'); setGeneratedHtml(''); setGeneratedContent(null); setDeployUrl(''); setDeployMode(null); setIsRefined(false) }} style={{ ...btnSecondaryStyle, opacity: 0.6 }}>← Regenerate</button>
           </div>
         </div>
       </div>
