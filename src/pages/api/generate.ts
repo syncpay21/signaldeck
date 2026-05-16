@@ -12,18 +12,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const input = req.body
     if (!input.company) return res.status(400).json({ error: 'company required' })
 
+    // Accept either free-form story or structured fields
+    const storyBlock = input.realStory
+      ? `Founder story:\n${input.realStory}`
+      : [
+          input.problem && `Problem: ${input.problem}`,
+          input.solution && `Solution: ${input.solution}`,
+          input.howItWorks && `How it works: ${input.howItWorks}`,
+          input.traction && `Traction: ${input.traction}`,
+          input.market && `Market: ${input.market}`,
+          input.businessModel && `Business model: ${input.businessModel}`,
+          input.competition && `Competition: ${input.competition}`,
+          input.team && `Team: ${input.team}`,
+          input.ask && `Ask: ${input.ask}`,
+        ].filter(Boolean).join('\n')
+
     const prompt = `Create a cinematic VC pitch deck for:
 Company: ${input.company}
 One-liner: ${input.oneLiner}
-Problem: ${input.problem}
-Solution: ${input.solution}
-How it works: ${input.howItWorks}
-Traction: ${input.traction}
-Market: ${input.market}
-Business model: ${input.businessModel}
-Competition: ${input.competition}
-Team: ${input.team}
-Ask: ${input.ask}
+Industry: ${input.industry || ''}
+Stage: ${input.stage || ''}
+Audience: ${input.audience || ''}
+${storyBlock}
 ${input.demoDescription ? 'Demo: ' + input.demoDescription : ''}
 
 Return this exact JSON (no markdown):

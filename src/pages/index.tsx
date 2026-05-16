@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Workspace from '@/components/Workspace'
 
-type Step = 'company' | 'story' | 'room' | 'scene' | 'building' | 'canvas'
+type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'building' | 'canvas'
 
 interface FormData {
   company: string
@@ -9,104 +9,78 @@ interface FormData {
   industry: string
   stage: string
   realStory: string
-  problem: string
-  solution: string
-  howItWorks: string
-  traction: string
-  market: string
-  businessModel: string
-  competition: string
-  team: string
-  ask: string
+  promptsUsed: string[]
   audience: string
   goal: string
-  founderName: string
-  founderRole: string
-  location: string
-  domain: string
-  demoUrl: string
-  demoDescription: string
+  websiteUrl: string
   accentColor: string
   bgColor: string
-  fontHeading: string
-  fontBody: string
   isDark: boolean
-  vercelToken: string
+  founderName: string
+  founderRole: string
+  domain: string
 }
 
-const FONTS = [
-  'Inter', 'DM Sans', 'Space Grotesk', 'Outfit', 'Syne',
-  'Barlow Condensed', 'Raleway', 'Montserrat', 'Bebas Neue', 'Plus Jakarta Sans',
-]
-
-const INDUSTRIES = [
-  'Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise',
-  'Developer Tools', 'Consumer', 'Education', 'Other',
-]
-
+const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']
 const STAGES = ['Pre-seed', 'Seed', 'Series A', 'Series B+', 'Bootstrapped']
-
 const AUDIENCES = ['Seed VC', 'Series A', 'Angel', 'Strategic', 'Internal']
-
 const GOALS = [
-  { id: 'Raise', title: 'Raise', desc: 'Close a round.' },
-  { id: 'Partner', title: 'Partner', desc: 'Strategic deal.' },
-  { id: 'Hire', title: 'Hire', desc: 'Recruit a key exec.' },
-  { id: 'Sell', title: 'Sell', desc: 'Customer close.' },
+  { id: 'Raise', title: 'Raise capital', desc: 'Pitch to an investor.' },
+  { id: 'Partner', title: 'Partner', desc: 'Land a strategic partner.' },
+  { id: 'Hire', title: 'Hire', desc: 'Recruit a key role.' },
+  { id: 'Sell', title: 'Sell', desc: 'Customer or board pitch.' },
 ]
+const PROMPTS = ['What broke?', 'Who is hurting?', 'Why are you the one?', 'What did you try first?', 'What changed?']
 
 const empty: FormData = {
   company: '', oneLiner: '', industry: '', stage: 'Pre-seed',
-  realStory: '', problem: '', solution: '', howItWorks: '',
-  traction: '', market: '', businessModel: '', competition: '', team: '', ask: '',
+  realStory: '', promptsUsed: [],
   audience: 'Seed VC', goal: 'Raise',
-  founderName: '', founderRole: '', location: '', domain: '',
-  demoUrl: '', demoDescription: '',
-  accentColor: '#0F1115', bgColor: '#06080d',
-  fontHeading: 'Inter', fontBody: 'Inter',
-  isDark: true, vercelToken: '',
-}
-
-const STEP_NUM: Record<string, string> = {
-  company: '1 / 4', story: '2 / 4', room: '3 / 4', scene: '4 / 4',
-}
-
-const STEP_PROGRESS: Record<string, number> = {
-  company: 25, story: 50, room: 75, scene: 100,
+  websiteUrl: '',
+  accentColor: '#0F1115', bgColor: '#ffffff', isDark: false,
+  founderName: '', founderRole: '', domain: '',
 }
 
 export default function Home() {
-  const [step, setStep] = useState<Step>('company')
+  const [step, setStep] = useState<Step>('basics')
   const [form, setForm] = useState<FormData>(empty)
   const [generatedHtml, setGeneratedHtml] = useState('')
   const [generatedContent, setGeneratedContent] = useState<any>(null)
-  const [deployUrl, setDeployUrl] = useState('')
-  const [deployMode, setDeployMode] = useState<'vercel' | null>(null)
-  const [isRefined, setIsRefined] = useState(false)
   const [error, setError] = useState('')
   const [detecting, setDetecting] = useState(false)
   const [detectedColors, setDetectedColors] = useState<string[]>([])
+  const debounceRef = useRef<any>(null)
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
-
-  async function detectBrand() {
-    if (!form.domain) return
-    setDetecting(true)
-    setDetectedColors([])
-    try {
-      const res = await fetch(`/api/brand?domain=${encodeURIComponent(form.domain)}`)
-      const data = await res.json()
-      if (data.colors?.length) {
-        setDetectedColors(data.colors)
-        set('accentColor', data.colors[0])
-      }
-    } catch {}
-    setDetecting(false)
-  }
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', form.accentColor)
   }, [form.accentColor])
+
+  const togglePrompt = (p: string) => {
+    const used = form.promptsUsed.includes(p)
+      ? form.promptsUsed.filter(x => x !== p)
+      : [...form.promptsUsed, p]
+    set('promptsUsed', used)
+  }
+
+  const tryDetect = (url: string) => {
+    if (!url || !url.startsWith('http')) return
+    setDetecting(true)
+    setDetectedColors([])
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/brand?domain=${encodeURIComponent(url)}`)
+        const data = await res.json()
+        if (data.colors?.length) {
+          setDetectedColors(data.colors)
+          set('accentColor', data.colors[0])
+        }
+      } catch {}
+      setDetecting(false)
+    }, 900)
+  }
 
   async function generate() {
     setStep('building')
@@ -115,39 +89,45 @@ export default function Home() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          // realStory maps to the generate API's structured fields
+          problem: form.realStory,
+          solution: '', howItWorks: '', traction: '', market: '',
+          businessModel: '', competition: '', team: '', ask: '',
+          demoUrl: '', demoDescription: '',
+          fontHeading: 'Inter', fontBody: 'Inter',
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setGeneratedHtml(data.html)
       setGeneratedContent(data.content)
-      setIsRefined(false)
       setStep('canvas')
     } catch (e: any) {
       setError(e.message)
-      setStep('scene')
+      setStep('brand')
     }
   }
 
-
-  // ── Building screen ──────────────────────────────────────────────
+  // ── Building ──────────────────────────────────────────────────────────
   if (step === 'building') {
     return (
-      <div className="sd-shell" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', maxWidth: 320 }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', color: 'var(--ink)' }}>
+        <div className="text-center" style={{ maxWidth: 320 }}>
           <div className="sd-spinner" style={{ fontSize: 36, display: 'block', marginBottom: 24 }}>◐</div>
           <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8 }}>
             Building {form.company}
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-            Claude is reading your story and composing 12 slides
+            Claude is reading your story and composing slides
           </div>
         </div>
       </div>
     )
   }
 
-  // ── Workspace (done) ─────────────────────────────────────────────
+  // ── Workspace ─────────────────────────────────────────────────────────
   if (step === 'canvas') {
     return (
       <Workspace
@@ -156,297 +136,252 @@ export default function Home() {
         generatedHtml={generatedHtml}
         generatedContent={generatedContent}
         onRestart={() => {
-          setStep('company')
+          setStep('basics')
           setForm(empty)
           setGeneratedHtml('')
           setGeneratedContent(null)
-          setDeployUrl('')
-          setDeployMode(null)
-          setIsRefined(false)
+          setDetectedColors([])
           document.documentElement.style.setProperty('--accent', empty.accentColor)
         }}
       />
     )
   }
 
-  const progress = STEP_PROGRESS[step as string] || 0
+  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4 } as any)[step] || 1
+  const total = 4
+
+  const NavRow = ({ onBack, onNext, nextLabel = 'Continue', canNext = true, isFirst = false }: any) => (
+    <div className="mt-8 flex items-center justify-between">
+      {isFirst ? <span /> : (
+        <button onClick={onBack}
+          className="h-10 px-4 text-sm rounded-xl font-medium focus-ring inline-flex items-center gap-2"
+          style={{ color: 'var(--ink-muted)' }}>
+          Back
+        </button>
+      )}
+      <button onClick={onNext} disabled={!canNext}
+        className="h-10 px-4 text-sm rounded-xl font-medium text-white shadow-card hover:opacity-95 disabled:opacity-40 focus-ring inline-flex items-center gap-2"
+        style={{ background: 'var(--accent)' }}>
+        {nextLabel}
+      </button>
+    </div>
+  )
 
   return (
-    <div className="sd-shell">
-      <header className="sd-header">
-        <div className="sd-logo">
-          <div className="sd-logo-mark" />
-          <span className="sd-logo-name">SignalDeck</span>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)', color: 'var(--ink)' }}>
+
+      {/* ── Header ── */}
+      <header className="px-8 py-6 flex items-center justify-between" style={{ borderBottom: '1px solid var(--line)' }}>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg" style={{ background: 'var(--accent)', transition: 'background 0.2s' }} />
+          <span className="font-semibold tracking-tight">SignalDeck</span>
         </div>
-        <span className="sd-step-label">{STEP_NUM[step as string]}</span>
+        <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>Step {stepNum} of {total}</span>
       </header>
 
-      <div className="sd-progress-bar">
-        <div className="sd-progress-fill" style={{ width: `${progress}%` }} />
-      </div>
-
-      <div className="sd-main">
-        <div className="sd-card">
-          {error && <div className="sd-error">{error}</div>}
-
-          {/* ── 1: The company ── */}
-          {step === 'company' && <>
-            <h1 className="sd-card-title">Who are you?</h1>
-            <p className="sd-card-subtitle">Name it. Own it. We build from here.</p>
-
-            <div className="sd-grid-2">
-              <label className="sd-field">
-                <span className="sd-label">Company</span>
-                <input className="sd-input" value={form.company}
-                  onChange={e => set('company', e.target.value)} placeholder="Lattice" autoFocus />
-              </label>
-              <label className="sd-field">
-                <span className="sd-label">Industry</span>
-                <select className="sd-select" value={form.industry} onChange={e => set('industry', e.target.value)}>
-                  <option value="">Pick one</option>
-                  {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
-                </select>
-              </label>
-              <label className="sd-field" style={{ gridColumn: '1 / -1' }}>
-                <span className="sd-label">One line</span>
-                <input className="sd-input" value={form.oneLiner}
-                  onChange={e => set('oneLiner', e.target.value)}
-                  placeholder="Make management feel human again." />
-              </label>
-              <label className="sd-field">
-                <span className="sd-label">Stage</span>
-                <select className="sd-select" value={form.stage} onChange={e => set('stage', e.target.value)}>
-                  {STAGES.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </label>
-              <label className="sd-field">
-                <span className="sd-label">Founder</span>
-                <input className="sd-input" value={form.founderName}
-                  onChange={e => set('founderName', e.target.value)} placeholder="Jane Smith" />
-              </label>
-              <label className="sd-field">
-                <span className="sd-label">Title</span>
-                <input className="sd-input" value={form.founderRole}
-                  onChange={e => set('founderRole', e.target.value)} placeholder="CEO" />
-              </label>
-              <label className="sd-field">
-                <span className="sd-label">Domain</span>
-                <input className="sd-input" value={form.domain}
-                  onChange={e => set('domain', e.target.value)} placeholder="yourco.com" />
-              </label>
-            </div>
-
-            <div className="sd-nav">
-              <span />
-              <button className="sd-btn-primary"
-                onClick={() => setStep('story')}
-                disabled={!form.company || !form.founderName}>
-                Next →
-              </button>
-            </div>
-          </>}
-
-          {/* ── 2: The story ── */}
-          {step === 'story' && <>
-            <h1 className="sd-card-title">What's broken?</h1>
-            <p className="sd-card-subtitle">No deck copy. Just the raw truth — Claude turns it cinematic.</p>
-
-            <label className="sd-field">
-              <span className="sd-label">The problem</span>
-              <textarea className="sd-textarea" rows={3} value={form.problem}
-                onChange={e => set('problem', e.target.value)}
-                placeholder="Managers fly blind on team performance until it's too late." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">The fix</span>
-              <textarea className="sd-textarea" rows={3} value={form.solution}
-                onChange={e => set('solution', e.target.value)}
-                placeholder="Real-time engagement data wired into every 1:1." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">How it works</span>
-              <textarea className="sd-textarea" rows={2} value={form.howItWorks}
-                onChange={e => set('howItWorks', e.target.value)}
-                placeholder="Connect → surface signals → act — automated." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">Proof</span>
-              <textarea className="sd-textarea" rows={2} value={form.traction}
-                onChange={e => set('traction', e.target.value)}
-                placeholder="$120k ARR, 3 enterprise pilots, 40% MoM growth." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">The market</span>
-              <textarea className="sd-textarea" rows={2} value={form.market}
-                onChange={e => set('market', e.target.value)}
-                placeholder="$12B HR tech, 500M knowledge workers globally." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">Money</span>
-              <textarea className="sd-textarea" rows={2} value={form.businessModel}
-                onChange={e => set('businessModel', e.target.value)}
-                placeholder="$15 per seat / month. Land teams, expand orgs." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">Competition</span>
-              <textarea className="sd-textarea" rows={2} value={form.competition}
-                onChange={e => set('competition', e.target.value)}
-                placeholder="Lattice, Culture Amp — generic surveys, no signals." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">The team</span>
-              <textarea className="sd-textarea" rows={2} value={form.team}
-                onChange={e => set('team', e.target.value)}
-                placeholder="Jane: ex-Stripe eng. Tom: ex-McKinsey people ops." />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">The ask</span>
-              <textarea className="sd-textarea" rows={2} value={form.ask}
-                onChange={e => set('ask', e.target.value)}
-                placeholder="$2M seed. 18mo runway. 5 engineers, 10 enterprise pilots." />
-            </label>
-
-            <div className="sd-nav">
-              <button className="sd-btn-ghost" onClick={() => setStep('company')}>Back</button>
-              <button className="sd-btn-primary" onClick={() => setStep('room')} disabled={!form.problem}>
-                Next →
-              </button>
-            </div>
-          </>}
-
-          {/* ── 3: The room ── */}
-          {step === 'room' && <>
-            <h1 className="sd-card-title">Who's in the room?</h1>
-            <p className="sd-card-subtitle">We write differently for a seed VC than a board.</p>
-
-            <div style={{ marginBottom: 20 }}>
-              <div className="sd-label" style={{ marginBottom: 8 }}>Audience</div>
-              <div className="sd-pill-group">
-                {AUDIENCES.map(a => (
-                  <button key={a} className={`sd-pill${form.audience === a ? ' active' : ''}`}
-                    onClick={() => set('audience', a)}>{a}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <div className="sd-label" style={{ marginBottom: 8 }}>What needs to happen</div>
-              <div className="sd-goal-grid">
-                {GOALS.map(g => (
-                  <button key={g.id} className={`sd-goal-card${form.goal === g.id ? ' active' : ''}`}
-                    onClick={() => set('goal', g.id)}>
-                    <div>{g.title}</div>
-                    <div className="sd-goal-card-desc">{g.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="sd-field">
-              <span className="sd-label">Live demo URL <span style={{ opacity: 0.5, fontWeight: 400 }}>— optional</span></span>
-              <input className="sd-input" value={form.demoUrl}
-                onChange={e => set('demoUrl', e.target.value)}
-                placeholder="https://demo.yourco.com" />
-            </label>
-            <label className="sd-field">
-              <span className="sd-label">What it shows</span>
-              <textarea className="sd-textarea" rows={2} value={form.demoDescription}
-                onChange={e => set('demoDescription', e.target.value)}
-                placeholder="What should the investor click on first?" />
-            </label>
-
-            <div className="sd-nav">
-              <button className="sd-btn-ghost" onClick={() => setStep('story')}>Back</button>
-              <button className="sd-btn-primary" onClick={() => setStep('scene')}>Next →</button>
-            </div>
-          </>}
-
-          {/* ── 4: The scene ── */}
-          {step === 'scene' && <>
-            <h1 className="sd-card-title">Set the scene.</h1>
-            <p className="sd-card-subtitle">Pick your colour. Everything shifts to match. Then we build.</p>
-
-            <label className="sd-field">
-              <span className="sd-label">Brand colour</span>
-              <div className="sd-color-row">
-                <input type="color" className="sd-color-swatch"
-                  value={form.accentColor} onChange={e => set('accentColor', e.target.value)} />
-                <input className="sd-input" value={form.accentColor}
-                  onChange={e => set('accentColor', e.target.value)}
-                  placeholder="#0F1115" style={{ flex: 1 }} />
-              </div>
-              {form.domain && (
-                <div style={{ marginTop: 10 }}>
-                  <button
-                    type="button"
-                    className="sd-btn-secondary"
-                    style={{ width: '100%', fontSize: 13 }}
-                    onClick={detectBrand}
-                    disabled={detecting}
-                  >
-                    {detecting ? '↻ Detecting…' : `↗ Detect from ${form.domain}`}
-                  </button>
-                  {detectedColors.length > 0 && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                      {detectedColors.map(color => (
-                        <button
-                          key={color}
-                          type="button"
-                          title={color}
-                          onClick={() => set('accentColor', color)}
-                          style={{
-                            width: 36, height: 36, background: color, borderRadius: 8,
-                            border: form.accentColor === color ? '3px solid var(--ink)' : '1px solid var(--line)',
-                            cursor: 'pointer', transition: 'border 0.1s',
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </label>
-
-            <div style={{ marginBottom: 18 }}>
-              <div className="sd-label" style={{ marginBottom: 8 }}>Deck mood</div>
-              <div className="sd-theme-toggle">
-                {[
-                  { label: 'Dark', value: true, bg: '#06080d', fg: '#eef2f7' },
-                  { label: 'Light', value: false, bg: '#f8f9fa', fg: '#0f1d2e' },
-                ].map(t => (
-                  <button key={String(t.value)}
-                    className={`sd-theme-btn${form.isDark === t.value ? ' active' : ''}`}
-                    style={{ background: t.bg, color: t.fg }}
-                    onClick={() => { set('isDark', t.value); set('bgColor', t.bg) }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="sd-grid-2" style={{ marginBottom: 0 }}>
-              <label className="sd-field">
-                <span className="sd-label">Heading font</span>
-                <select className="sd-select" value={form.fontHeading} onChange={e => set('fontHeading', e.target.value)}>
-                  {FONTS.map(f => <option key={f}>{f}</option>)}
-                </select>
-              </label>
-              <label className="sd-field">
-                <span className="sd-label">Body font</span>
-                <select className="sd-select" value={form.fontBody} onChange={e => set('fontBody', e.target.value)}>
-                  {FONTS.map(f => <option key={f}>{f}</option>)}
-                </select>
-              </label>
-            </div>
-
-            <div className="sd-nav">
-              <button className="sd-btn-ghost" onClick={() => setStep('room')}>Back</button>
-              <button className="sd-btn-primary" onClick={generate}>Build the deck →</button>
-            </div>
-          </>}
-
+      {/* ── Progress ── */}
+      <div className="px-8">
+        <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'var(--surface)' }}>
+          <div className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${(stepNum / total) * 100}%`, background: 'var(--accent)' }} />
         </div>
       </div>
+
+      <main className="flex-1 flex items-start justify-center px-6 py-10">
+        <div className="w-full max-w-[680px]">
+
+          {error && (
+            <div className="mb-4 px-4 py-3 rounded-xl text-sm"
+              style={{ background: '#fbe8e5', border: '1px solid #f3c3be', color: '#b0322b' }}>
+              {error}
+            </div>
+          )}
+
+          <div className="paper hairline rounded-[18px] shadow-card p-10">
+
+            {/* ── Step 1: Basics ─────────────────────────────────────── */}
+            {step === 'basics' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">Tell us about your startup</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                Just the basics. We'll build the story from here.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                <label className="block">
+                  <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Startup name</div>
+                  <input autoFocus value={form.company} onChange={e => set('company', e.target.value)}
+                    placeholder="Acme"
+                    className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
+                </label>
+                <label className="block">
+                  <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Industry</div>
+                  <select value={form.industry} onChange={e => set('industry', e.target.value)}
+                    className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm appearance-none">
+                    <option value="">Select</option>
+                    {INDUSTRIES.map(i => <option key={i}>{i}</option>)}
+                  </select>
+                </label>
+                <label className="block sm:col-span-2">
+                  <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>One-liner</div>
+                  <input value={form.oneLiner} onChange={e => set('oneLiner', e.target.value)}
+                    placeholder="What do you do, in one sentence."
+                    className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
+                </label>
+                <label className="block">
+                  <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Stage</div>
+                  <select value={form.stage} onChange={e => set('stage', e.target.value)}
+                    className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm appearance-none">
+                    {STAGES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Founder</div>
+                  <input value={form.founderName} onChange={e => set('founderName', e.target.value)}
+                    placeholder="Jane Smith"
+                    className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
+                </label>
+              </div>
+              <NavRow isFirst onNext={() => setStep('story')} canNext={!!form.company} />
+            </>}
+
+            {/* ── Step 2: Story ──────────────────────────────────────── */}
+            {step === 'story' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">The real story</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                Skip the polish. Tell us what made you start this.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-5">
+                {PROMPTS.map(p => {
+                  const active = form.promptsUsed.includes(p)
+                  return (
+                    <button key={p} onClick={() => togglePrompt(p)}
+                      className="text-[13px] px-3 h-8 rounded-full hairline focus-ring transition-all"
+                      style={active
+                        ? { background: 'var(--accent)', color: '#fff', border: 'none' }
+                        : { background: 'var(--paper)', color: 'var(--ink)' }}>
+                      {p}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-5">
+                <textarea rows={9} value={form.realStory} onChange={e => set('realStory', e.target.value)}
+                  placeholder="Tell us the raw truth — what's broken, why you're fixing it, what traction you have, your team, and how much you're raising..."
+                  className="w-full paper hairline rounded-xl p-3 focus-ring text-sm"
+                  style={{ resize: 'vertical', lineHeight: 1.6 }} />
+              </div>
+              <NavRow onBack={() => setStep('basics')} onNext={() => setStep('purpose')} />
+            </>}
+
+            {/* ── Step 3: Purpose ────────────────────────────────────── */}
+            {step === 'purpose' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">Deck purpose</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                Who is this pitch going to, and what should happen after they read it?
+              </p>
+              <div className="mt-6">
+                <div className="text-[13px] mb-2" style={{ color: 'var(--ink-muted)' }}>Audience</div>
+                <div className="flex flex-wrap gap-2">
+                  {AUDIENCES.map(a => (
+                    <button key={a} onClick={() => set('audience', a)}
+                      className="text-[13px] px-3 h-9 rounded-xl hairline focus-ring transition-all"
+                      style={form.audience === a
+                        ? { background: 'var(--accent)', color: '#fff', border: 'none' }
+                        : { background: 'var(--paper)', color: 'var(--ink)' }}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-6">
+                <div className="text-[13px] mb-2" style={{ color: 'var(--ink-muted)' }}>Goal</div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {GOALS.map(g => (
+                    <button key={g.id} onClick={() => set('goal', g.id)}
+                      className="text-left p-3 rounded-xl hairline focus-ring paper transition-all"
+                      style={form.goal === g.id ? { borderColor: 'var(--accent)', borderWidth: 2 } : {}}>
+                      <div className="font-medium text-sm">{g.title}</div>
+                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>{g.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <NavRow onBack={() => setStep('story')} onNext={() => setStep('brand')} />
+            </>}
+
+            {/* ── Step 4: Brand ──────────────────────────────────────── */}
+            {step === 'brand' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">Brand and theme</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                We'll read your brand and apply it across the whole deck. Start with your website.
+              </p>
+
+              {/* Website URL — auto-detects on change */}
+              <div className="mt-6">
+                <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Website URL</div>
+                <div className="relative">
+                  <input value={form.websiteUrl}
+                    onChange={e => { set('websiteUrl', e.target.value); tryDetect(e.target.value) }}
+                    placeholder="https://yourbrand.com"
+                    className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
+                  {detecting && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full animate-spin"
+                      style={{ border: '2px solid var(--accent)', borderTopColor: 'transparent' }} />
+                  )}
+                </div>
+                {detectedColors.length > 0 && (
+                  <div className="flex gap-2 mt-3 flex-wrap items-center">
+                    <span className="text-[12px]" style={{ color: 'var(--ink-muted)' }}>Detected:</span>
+                    {detectedColors.map(color => (
+                      <button key={color} title={color} onClick={() => set('accentColor', color)}
+                        className="w-8 h-8 rounded-lg transition-all"
+                        style={{
+                          background: color,
+                          border: form.accentColor === color ? '3px solid var(--ink)' : '1px solid var(--line)',
+                        }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Manual colour picker */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Brand colour</div>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)}
+                    style={{ width: 40, height: 40, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 0 }} />
+                  <input value={form.accentColor} onChange={e => set('accentColor', e.target.value)}
+                    placeholder="#0F1115"
+                    className="flex-1 h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
+                </div>
+              </div>
+
+              {/* Dark / Light */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-2" style={{ color: 'var(--ink-muted)' }}>Deck mood</div>
+                <div className="flex gap-2">
+                  {[
+                    { label: 'Light', value: false, bg: '#f8f9fa', fg: '#0f1d2e' },
+                    { label: 'Dark', value: true, bg: '#06080d', fg: '#eef2f7' },
+                  ].map(t => (
+                    <button key={String(t.value)}
+                      onClick={() => { set('isDark', t.value); set('bgColor', t.bg) }}
+                      className="flex-1 h-12 rounded-xl font-semibold text-[13px] transition-all"
+                      style={{
+                        background: t.bg, color: t.fg,
+                        border: form.isDark === t.value ? '2px solid var(--accent)' : '1px solid var(--line)',
+                      }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <NavRow onBack={() => setStep('purpose')} onNext={generate} nextLabel="Build the deck →" />
+            </>}
+
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
