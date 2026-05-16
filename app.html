@@ -147,6 +147,39 @@ function luminance(hex){
 }
 
 /* ================================================================
+   IMAGE COLOR EXTRACTION (canvas)
+================================================================ */
+function extractColorsFromImageFile(file){
+  return new Promise(resolve=>{
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = ()=>{
+      try{
+        const size = 120;
+        const canvas = document.createElement("canvas");
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, size, size);
+        const { data } = ctx.getImageData(0, 0, size, size);
+        const freq = new Map();
+        for(let i=0; i<data.length; i+=4){
+          const a=data[i+3]; if(a<180) continue;
+          // quantize: bucket to nearest 20
+          const r=Math.round(data[i]/20)*20, g=Math.round(data[i+1]/20)*20, b=Math.round(data[i+2]/20)*20;
+          const hex=rgbToHex(r,g,b);
+          if(!isNeutral(hex)) freq.set(hex,(freq.get(hex)||0)+1);
+        }
+        const sorted=[...freq.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(([h])=>h);
+        resolve(sorted);
+      }catch{ resolve([]); }
+      finally{ URL.revokeObjectURL(objUrl); }
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(objUrl); resolve([]); };
+    img.src=objUrl;
+  });
+}
+
+/* ================================================================
    BRAND COLOR EXTRACTION
 ================================================================ */
 // Try multiple CORS proxies in sequence — some sites block specific ones
