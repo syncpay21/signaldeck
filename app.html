@@ -1187,27 +1187,52 @@ function BrandDetection({appData, onDone}){
       await delay(600);
       setPhaseIdx(1);
 
-      // Phase 1: actually fetch brand colours
-      const url = appData.brandSources?.websiteUrl;
+      // Phase 1: fetch brand colours — try website, then social profiles, then images/notes
+      const bs = appData.brandSources || {};
+      const url = bs.websiteUrl;
       let brandResult = null;
-      if(url){
-        brandResult = await fetchBrandColors(url);
+
+      // 1a. Try main website
+      if(url) brandResult = await fetchBrandColors(url);
+
+      // 1b. Try social media profiles in order
+      if(!brandResult){
+        const socials = bs.socialUrls || {};
+        for(const key of ["twitter","linkedin","instagram","producthunt"]){
+          const sUrl = socials[key];
+          if(!sUrl || !sUrl.startsWith("http")) continue;
+          brandResult = await fetchBrandColors(sUrl);
+          if(brandResult && brandResult.primary) break;
+        }
       }
 
-      // If fetch failed, try to extract a hex from designNotes as fallback
+      // 1c. Use colours already extracted from uploaded screenshots
+      if(!brandResult && bs.screenshotColors && bs.screenshotColors.length > 0){
+        const cols = bs.screenshotColors.filter(h=>!isNeutral(h));
+        if(cols.length){
+          brandResult = {
+            primary: cols[0],
+            secondary: cols[1] || adjustHsl(cols[0], 0, -5, -18),
+            all: cols,
+            url: url || "",
+            fonts:{ heading:null, body:null, names:[], googleUrls:[] },
+            logo: null, favicon: null, styleSignals: null,
+          };
+        }
+      }
+
+      // 1d. Scan design notes for any hex code
       if(!brandResult){
-        const notes = appData.brandSources?.designNotes || "";
-        const hexInNotes = (notes.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g) || []).map(h=>h.toLowerCase());
-        const primary = hexInNotes.find(h=>!isNeutral(h)) || "#4F6AF5";
+        const notes = bs.designNotes || "";
+        const hexInNotes = (notes.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g)||[]).map(h=>h.toLowerCase()).filter(h=>!isNeutral(h));
+        const primary = hexInNotes[0] || "#4F6AF5";
         brandResult = {
           primary,
-          secondary: adjustHsl(primary, 0, -5, -18),
+          secondary: hexInNotes[1] || adjustHsl(primary, 0, -5, -18),
           all: hexInNotes.length ? hexInNotes.slice(0,4) : [primary],
           url: url || "",
-          fonts: { heading: null, body: null, names: [], googleUrls: [] },
-          logo: null,
-          favicon: null,
-          styleSignals: null,
+          fonts:{ heading:null, body:null, names:[], googleUrls:[] },
+          logo: null, favicon: null, styleSignals: null,
         };
       }
 
