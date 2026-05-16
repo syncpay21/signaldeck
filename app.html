@@ -149,16 +149,33 @@ function luminance(hex){
 /* ================================================================
    BRAND COLOR EXTRACTION
 ================================================================ */
+// Try multiple CORS proxies in sequence — some sites block specific ones
+const CORS_PROXIES = [
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+];
+
 async function proxyFetch(url, timeoutMs=9000){
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const ctrl = new AbortController();
-  const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
-  try{
-    const res = await fetch(proxy, {signal: ctrl.signal});
-    const json = await res.json();
-    return json.contents || "";
-  }catch{ return ""; }
-  finally{ clearTimeout(tid); }
+  for(const makeProxy of CORS_PROXIES){
+    const proxyUrl = makeProxy(url);
+    const ctrl = new AbortController();
+    const tid = setTimeout(()=>ctrl.abort(), timeoutMs);
+    try{
+      const res = await fetch(proxyUrl, {signal: ctrl.signal});
+      if(!res.ok) continue;
+      const text = await res.text();
+      // allorigins wraps in JSON; codetabs/corsproxy return raw HTML
+      try{
+        const json = JSON.parse(text);
+        if(json.contents && json.contents.length > 200) return json.contents;
+      }catch{
+        if(text.length > 200) return text;
+      }
+    }catch{ /* try next proxy */ }
+    finally{ clearTimeout(tid); }
+  }
+  return "";
 }
 
 async function fetchBrandColors(url){
