@@ -565,8 +565,8 @@ export default function Workspace({
               <div className="flex flex-wrap gap-2 mb-2">
                 {tints.map((t, i) => (
                   <button key={i} onClick={() => { setLiveAccent(t); setManualHex(t) }}
-                    className="w-8 h-8 rounded-lg hairline transition-all hover:ring-2 ring-offset-1"
-                    style={{ background: t, ringColor: t }} />
+                    className="w-8 h-8 rounded-lg hairline transition-all hover:ring-2"
+                    style={{ background: t }} />
                 ))}
               </div>
               <div className="text-[11px] ink-muted">Click any colour to apply it as the primary</div>
@@ -1282,9 +1282,9 @@ export default function Workspace({
     const cur  = slideList[presentSlide]
     const next = slideList[presentSlide + 1]
     const qaPrep = [
-      'What's your CAC and how does it scale?',
+      "What's your CAC and how does it scale?",
       'Who else are you talking to right now?',
-      'Why won't a larger player copy this?',
+      "Why won't a larger player copy this?",
       'What does the next 18 months look like?',
     ]
     return (
