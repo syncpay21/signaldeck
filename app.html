@@ -906,7 +906,10 @@ function IntakeBrand({data, set, next, back}){
         </div>
       )}
       {detectErr && (
-        <div className="mt-2 text-[12px] ink-muted">Could not fetch colours automatically — you can still continue and set them manually.</div>
+        <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+          <div className="text-[12px] font-medium text-amber-800">Could not read this site automatically</div>
+          <div className="text-[11px] text-amber-700 mt-0.5">This site likely blocks automated requests (Cloudflare, bot protection). You can still continue — paste a hex colour or upload a logo below and we'll build the theme from that.</div>
+        </div>
       )}
     </div>
 
