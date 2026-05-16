@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Workspace from '@/components/Workspace'
 
 type Step = 'company' | 'story' | 'room' | 'scene' | 'building' | 'canvas'
 
@@ -80,10 +81,9 @@ export default function Home() {
   const [generatedHtml, setGeneratedHtml] = useState('')
   const [generatedContent, setGeneratedContent] = useState<any>(null)
   const [deployUrl, setDeployUrl] = useState('')
-  const [error, setError] = useState('')
   const [deployMode, setDeployMode] = useState<'vercel' | null>(null)
-  const [isRefining, setIsRefining] = useState(false)
   const [isRefined, setIsRefined] = useState(false)
+  const [error, setError] = useState('')
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
 
@@ -112,61 +112,6 @@ export default function Home() {
     }
   }
 
-  async function deployToVercel() {
-    setError('')
-    try {
-      const res = await fetch('/api/deploy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          html: generatedHtml,
-          projectName: `${form.company.toLowerCase().replace(/\s+/g, '-')}-deck`,
-          vercelToken: form.vercelToken,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setDeployUrl(data.url)
-    } catch (e: any) {
-      setError(e.message)
-    }
-  }
-
-  async function download() {
-    const res = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ html: generatedHtml, filename: `${form.company}-deck` }),
-    })
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${form.company.toLowerCase()}-deck.html`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  async function refineWithGpt() {
-    setIsRefining(true)
-    setError('')
-    try {
-      const res = await fetch('/api/refine', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: generatedContent, input: form }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setGeneratedHtml(data.html)
-      setGeneratedContent(data.content)
-      setIsRefined(true)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setIsRefining(false)
-    }
-  }
 
   // ── Building screen ──────────────────────────────────────────────
   if (step === 'building') {
@@ -185,104 +130,25 @@ export default function Home() {
     )
   }
 
-  // ── Canvas (done) screen ─────────────────────────────────────────
+  // ── Workspace (done) ─────────────────────────────────────────────
   if (step === 'canvas') {
     return (
-      <div className="sd-shell">
-        <header className="sd-header">
-          <div className="sd-logo">
-            <div className="sd-logo-mark" />
-            <span className="sd-logo-name">SignalDeck</span>
-          </div>
-          <span className="sd-step-label" style={{ color: 'var(--accent)', fontWeight: 600 }}>
-            {form.company} — ready
-          </span>
-        </header>
-
-        <div className="sd-main">
-          <div className="sd-card" style={{ maxWidth: 540 }}>
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 11, fontFamily: 'monospace', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-muted)', marginBottom: 8 }}>
-                Deck deployed
-              </div>
-              <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                12 slides.<br />Your story.
-              </h1>
-            </div>
-
-            {error && <div className="sd-error">{error}</div>}
-
-            {deployUrl && (
-              <div className="sd-success-row" style={{ marginBottom: 16 }}>
-                <div className="sd-success-label">Live at</div>
-                <a href={deployUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize: 14, color: 'var(--accent)', wordBreak: 'break-all' }}>{deployUrl}</a>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <button className="sd-btn-primary" style={{ justifyContent: 'center' }} onClick={download}>
-                Download HTML
-              </button>
-
-              {!isRefined && !isRefining && (
-                <button className="sd-refine-btn" onClick={refineWithGpt}>
-                  ✦ Run GPT-4o pitch coach
-                </button>
-              )}
-
-              {isRefining && (
-                <div className="sd-refined-badge">
-                  <span className="sd-spinner">◐</span>
-                  GPT-4o is tearing it apart and rebuilding it…
-                </div>
-              )}
-
-              {isRefined && (
-                <div className="sd-refined-badge">
-                  ✓ Pitch coach applied — copy is sharper
-                </div>
-              )}
-
-              {!deployMode && !deployUrl && (
-                <button className="sd-btn-secondary" style={{ justifyContent: 'center' }}
-                  onClick={() => setDeployMode('vercel')}>
-                  Push to Vercel
-                </button>
-              )}
-
-              {deployMode === 'vercel' && !deployUrl && (
-                <div style={{ background: 'var(--surface)', borderRadius: 12, padding: 20, border: '1px solid var(--line)' }}>
-                  <label className="sd-field">
-                    <span className="sd-label">Vercel token</span>
-                    <input className="sd-input" type="password" value={form.vercelToken}
-                      onChange={e => set('vercelToken', e.target.value)}
-                      placeholder="vercel.com/account/tokens" />
-                  </label>
-                  <button className="sd-btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
-                    onClick={deployToVercel}>
-                    Deploy →
-                  </button>
-                </div>
-              )}
-
-              <button className="sd-btn-ghost"
-                style={{ justifyContent: 'center', opacity: 0.5, fontSize: 13 }}
-                onClick={() => {
-                  setStep('scene')
-                  setGeneratedHtml('')
-                  setGeneratedContent(null)
-                  setDeployUrl('')
-                  setDeployMode(null)
-                  setIsRefined(false)
-                }}>
-                Start over
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Workspace
+        company={form.company}
+        accentColor={form.accentColor}
+        generatedHtml={generatedHtml}
+        generatedContent={generatedContent}
+        onRestart={() => {
+          setStep('company')
+          setForm(empty)
+          setGeneratedHtml('')
+          setGeneratedContent(null)
+          setDeployUrl('')
+          setDeployMode(null)
+          setIsRefined(false)
+          document.documentElement.style.setProperty('--accent', empty.accentColor)
+        }}
+      />
     )
   }
 
