@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import OpenAI from 'openai'
 import { renderDeck } from '@/lib/renderer'
-import type { DeckInput, DeckContent } from './generate'
+import type { DeckInput, DeckContent } from '@/lib/types'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
