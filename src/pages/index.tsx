@@ -66,9 +66,16 @@ export default function Home() {
     [form.industry, form.stage, form.audience],
   )
 
+  // ── Intake stays neutral ────────────────────────────────────────────
+  // The intake form keeps its default neutral chrome regardless of which
+  // accent the user picks. Workspace.tsx owns the --accent CSS var once
+  // the user reaches step === 'canvas' (it has its own useEffect for that).
+  // Reset --accent back to the intake default whenever we leave canvas.
   useEffect(() => {
-    document.documentElement.style.setProperty('--accent', form.accentColor)
-  }, [form.accentColor])
+    if (step !== 'canvas') {
+      document.documentElement.style.setProperty('--accent', '#0F1115')
+    }
+  }, [step])
 
   // ?demo=1 — jump straight to workspace with stub content
   useEffect(() => {
@@ -450,7 +457,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <NavRow onBack={() => setStep('purpose')} onNext={generate} nextLabel="Build the deck →" />
+              <NavRow onBack={() => setStep('purpose')} onNext={() => generate()} nextLabel="Build the deck →" />
             </>}
 
           </div>
