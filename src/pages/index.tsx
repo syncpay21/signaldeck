@@ -130,8 +130,16 @@ export default function Home() {
         if (preset.logoUrl)     setLogoUrl(preset.logoUrl)
         document.documentElement.style.setProperty('--accent', accent)
         if (preset.brandWorld)  setBrandWorld(preset.brandWorld)
-        setGeneratedHtml(`<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:'Source Sans 3',sans-serif;color:${accent};font-size:18px;font-weight:600;text-align:center;padding:32px;">Demo workspace for ${preset.form?.company || demo}.<br/><span style="font-weight:400;color:#666;font-size:14px;margin-top:8px;display:block;">Run the full intake to generate real slides — the chrome here shows how the BrandWorld adapts every surface.</span></div>`)
-        setGeneratedContent({})
+        // If the demo baked in an Andreas-generated deck, use it directly so the
+        // founder sees real slides. Otherwise show a placeholder explaining the
+        // chrome is the demo (no deck).
+        if (preset.generatedHtml && preset.generatedContent) {
+          setGeneratedHtml(preset.generatedHtml)
+          setGeneratedContent(preset.generatedContent)
+        } else {
+          setGeneratedHtml(`<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:'Source Sans 3',sans-serif;color:${accent};font-size:18px;font-weight:600;text-align:center;padding:32px;">Demo workspace for ${preset.form?.company || demo}.<br/><span style="font-weight:400;color:#666;font-size:14px;margin-top:8px;display:block;">Run the full intake to generate real slides — the chrome here shows how the BrandWorld adapts every surface.</span></div>`)
+          setGeneratedContent({})
+        }
         setStep('canvas')
       } catch (err) {
         console.error('demo preset load failed', err)
