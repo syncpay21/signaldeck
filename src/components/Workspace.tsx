@@ -557,12 +557,12 @@ export default function Workspace({
           </Card>
 
           <Card className="p-6">
-            <div className="font-semibold tracking-tight mb-1">Generation pipeline</div>
-            <div className="text-[12px] ink-muted mb-5">Stages that built this deck</div>
+            <div className="font-semibold tracking-tight mb-1">How Andreas built this deck</div>
+            <div className="text-[12px] ink-muted mb-5">Andreas is your pitchdeck specialist — purpose-built for investor narrative</div>
             <div className="space-y-3">
-              <TipCard tip={{ icon:'S', severity:'info', title:'Strategy engine',       body:'Story parsing, VC lens, structure, critique, and objection simulation.' }} />
-              <TipCard tip={{ icon:'W', severity:'good', title:'Writing layer',         body:'Slide copy, speaker notes, follow-up messages, tone variations.' }} />
-              <TipCard tip={{ icon:'JS', severity:'warn', title:'Deterministic renderer', body:'Generation returns structured JSON; the app renders safe templates into real HTML.' }} />
+              <TipCard tip={{ icon:'A', severity:'info', title:'Story analysis',     body:'Andreas parses your context, runs a VC lens over the structure, simulates objections, and decides the narrative spine.' }} />
+              <TipCard tip={{ icon:'A', severity:'good', title:'Copy polish',        body:'Andreas writes slide copy, speaker notes, follow-up messages, and tone variations matched to your audience.' }} />
+              <TipCard tip={{ icon:'JS', severity:'warn', title:'Safe rendering',     body:'Andreas returns structured data; the app renders safe templates into real HTML — no hallucinated layouts.' }} />
             </div>
           </Card>
         </div>
@@ -595,10 +595,10 @@ export default function Workspace({
       websiteUrl && { type:'Brand',   title: websiteUrl.replace(/^https?:\/\//,''), value:'Brand colours and fonts extracted',     status:'Ready',           confidence:'High',   tag:'good', body:'Website fetched, theme colours and fonts pulled in to drive the deck theme.' },
       realStory  && { type:'Story',   title:'Founder story',              value: realStory.slice(0,80)+(realStory.length>80?'…':''),status:'Used in deck',    confidence:'High',   tag:'good', body:realStory },
                     { type:'Voice',   title:'Voice profile',              value:'Extracted tone from your story input',              status:'Used in audit',  confidence:'Medium', tag:'info', body:'Voice match used for follow-up email generation and speaker notes tone.' },
-                    { type:'Deck',    title:'Generated deck',              value:`Generated ${realSlides.length}-slide deck`,        status:'Used in deck',    confidence:'High',   tag:'good', body:'Structured slide JSON returned by the strategy engine, rendered through the deterministic template.' },
-      isRefined && { type:'Deck',    title:'Pitch coach pass',            value:'Refined all copy — headlines, bullets, lede',       status:'Applied',         confidence:'High',   tag:'good', body:'Pitch coach pass rewrote headlines to 2–5 words and sharpened proof claims.' },
+                    { type:'Deck',    title:'Andreas deck draft',          value:`Generated ${realSlides.length}-slide deck`,        status:'Used in deck',    confidence:'High',   tag:'good', body:'Structured slide data returned by Andreas, rendered through the deterministic template.' },
+      isRefined && { type:'Deck',    title:'Andreas pitch coach pass',    value:'Refined all copy — headlines, bullets, lede',       status:'Applied',         confidence:'High',   tag:'good', body:'Andreas rewrote headlines to 2–5 words and sharpened proof claims.' },
       // Inspo links from this session
-      ...inspoLinks.map(l => ({ type:'Inspo', title: l.title || l.url, value: l.url, status:'Reference', confidence:'Medium', tag:'info', body:`Inspiration link — tone + structure pulled from this.` })),
+      ...inspoLinks.map(l => ({ type:'Inspo', title: l.title || l.url, value: l.url, status:'Reference', confidence:'Medium', tag:'info', body:`Inspiration link — Andreas pulls tone + structure from this.` })),
       // Inspo images uploaded this session
       ...inspoImages.map((_, i) => ({ type:'Inspo', title:`Inspiration image ${i+1}`, value:'(uploaded)', status:'Reference', confidence:'Medium', tag:'info', body:'Uploaded image. Used as a visual reference for layout and feel.' })),
     ].filter(Boolean)
@@ -990,7 +990,7 @@ export default function Workspace({
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="font-semibold tracking-tight">Inspector — slide {activeSlide+1}</div>
-            <div className="text-[11px] ink-muted">Edits save instantly. Use chat below for AI rewrites.</div>
+            <div className="text-[11px] ink-muted">Edits save instantly. Use chat below for Andreas rewrites.</div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -1033,11 +1033,11 @@ export default function Workspace({
         {/* Per-slide AI chat */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold tracking-tight">Edit this slide with AI</div>
+            <div className="font-semibold tracking-tight">Ask Andreas to rework this slide</div>
             <Pill tone="soft">{cur?.kind || cur?.key}</Pill>
           </div>
           <div className="text-[12px] ink-muted mb-3 leading-relaxed">
-            Tell us what to change in plain English. The headline, the bullets, the tone — anything. Edits apply to slide {activeSlide+1} only.
+            Tell Andreas what to change in plain English. The headline, the bullets, the tone — anything. Edits apply to slide {activeSlide+1} only.
           </div>
 
           {/* Chat log for this slide */}
@@ -1047,7 +1047,7 @@ export default function Workspace({
                 <div key={i} className="text-[12px] grid grid-cols-[60px_1fr] gap-2 p-2 rounded-lg" style={{ background:'var(--surface)' }}>
                   <span className="ink-muted">You</span>
                   <span>"{entry.instruction}"</span>
-                  <span className="ink-muted" style={{ color: liveAccent }}>AI</span>
+                  <span className="ink-muted" style={{ color: liveAccent }}>Andreas</span>
                   <span className="ink-muted">{entry.changeNote}</span>
                 </div>
               ))}
@@ -1729,7 +1729,7 @@ export default function Workspace({
 
           <Card className="p-5">
             <div className="font-semibold tracking-tight mb-1">Activity feed</div>
-            <div className="text-[12px] ink-muted mb-4">Viewer behaviour and AI follow-up</div>
+            <div className="text-[12px] ink-muted mb-4">Viewer behaviour and Andreas follow-up</div>
             <div className="space-y-3">
               {(() => {
                 const [v1, v2] = viewers
@@ -1737,7 +1737,7 @@ export default function Workspace({
                 const feed = [
                   v1 && { a: v1.id.charAt(0).toUpperCase(), t: `${cap(v1.id.split('-')[0])} link opened`,   d:'Viewed 11 slides, longest on product demo, clicked book a call.', time:'9:42 AM' },
                   v2 && { a: v2.id.charAt(0).toUpperCase(), t: `${cap(v2.id.split('-')[0])} link returned`, d:'Second visit detected. Rewatched the workflow slides.',           time:'11:18 AM' },
-                  { a:'AI', t:'Follow-up suggestion', d: px(tpl.followupAngle.headline) + '. ' + px(tpl.followupAngle.reason), time:'Now' },
+                  { a:'A', t:'Andreas follow-up suggestion', d: px(tpl.followupAngle.headline) + '. ' + px(tpl.followupAngle.reason), time:'Now' },
                 ].filter(Boolean) as { a: string; t: string; d: string; time: string }[]
                 return feed.map((r, i) => (
                 <div key={i} className="grid grid-cols-[42px_1fr_auto] gap-3 items-center p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>

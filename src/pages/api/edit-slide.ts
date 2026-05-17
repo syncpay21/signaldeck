@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try { parsed = JSON.parse(jsonStr) }
     catch {
       const m = jsonStr.match(/\{[\s\S]*\}/)
-      if (!m) return res.status(500).json({ error: 'Editor returned unparseable response' })
+      if (!m) return res.status(500).json({ error: 'Andreas returned an unparseable response — try rephrasing your edit' })
       parsed = JSON.parse(m[0])
     }
 
