@@ -8,6 +8,8 @@ import { FRAMEWORKS } from '../../lib/frameworks/library'
 import { DARK_FRAMEWORKS } from '../../lib/frameworks/dark'
 import { resolveIndustry, getIndustryGuide } from '../../lib/industry-guide'
 import { validateNarrative, shouldApplySuggestion } from '../../lib/pipeline/haiku-validator'
+import { pickStrategicNarrative, shouldApplyStrategistPick } from '../../lib/pipeline/strategist'
+import { NARRATIVE_CONFIGS } from '../../lib/narrative-engine'
 import { polishDeck } from '../../lib/pipeline/gpt4o-polish'
 import { extractBrand } from '../../lib/pipeline/brand-extractor'
 import { synthesiseTheme } from '../../lib/pipeline/theme-synthesizer'
@@ -51,7 +53,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const region            = input.region             as Region | undefined
     const teamSize          = input.teamSize           as TeamSize | undefined
 
-    const narrative = selectNarrative(audience, goal)
+    let narrative = selectNarrative(audience, goal)
+
+    /* ─── STAGE A1.5 — Andreas the strategist (best-effort) ──────────
+       Haiku reads the founder's actual story and either confirms or
+       overrides the deterministic pick. On failure, fall through with
+       the deterministic pick — never block generation. */
+    let strategistResult: any = null
+    let strategistApplied = false
+    if (process.env.ENABLE_STRATEGIST !== 'false') {
+      strategistResult = await pickStrategicNarrative(anthropic, {
+        company:   input.company,
+        industry,
+        oneLiner:  input.oneLiner,
+        realStory: input.realStory,
+        customers: input.customers,
+        proof:     input.proof,
+        audience,
+        stage,
+        deterministicPick: narrative.id,
+      })
+      if (shouldApplyStrategistPick(strategistResult)) {
+        narrative = NARRATIVE_CONFIGS[strategistResult.pickedNarrative]
+        strategistApplied = true
+      }
+    }
+
     const originalSlideIds = getSlideSet(narrative, stage, industry, businessModelType, gtmMotion, tractionStatus, region, teamSize)
 
     const frameworkId   = typeof input.frameworkId === 'string' ? input.frameworkId : undefined
@@ -207,9 +234,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       qualityReport,
       metadata: {
         /* Track A — content */
-        stage_a1: { narrative: narrative.id, slideOrder: originalSlideIds },
-        stage_a2: { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
-        stage_a3: { model: 'claude-haiku-4-5', haiku: haikuResult, applied: haikuApplied, error: haikuError },
+        stage_a1:   { narrative: narrative.id, slideOrder: originalSlideIds },
+        stage_a1_5: { strategist: strategistResult, applied: strategistApplied },
+        stage_a2:   { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
+        stage_a3:   { model: 'claude-haiku-4-5', haiku: haikuResult, applied: haikuApplied, error: haikuError },
         stage_a4: { model: 'gpt-4o', statVerification, copyFeedback, applied: polishApplied, error: polishError },
         /* Track B — brand × theme × vision */
         stage_b0: visionResult ? {

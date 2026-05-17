@@ -4,7 +4,7 @@ import type { SlideId, Narrative, NarrativeConfig, AudienceType, UseCase, Stage,
 // Each config defines: which slides appear, in what order, with what
 // narrative spine. Presentation/visual layer is NOT touched here.
 
-const NARRATIVE_CONFIGS: Record<Narrative, NarrativeConfig> = {
+export const NARRATIVE_CONFIGS: Record<Narrative, NarrativeConfig> = {
   'bet-on-founder': {
     id: 'bet-on-founder',
     version: '1.0',
