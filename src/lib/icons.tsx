@@ -155,14 +155,14 @@ function buildLine(key: IconKey, def: Def): IconComponent {
   const sw = STROKE_WIDTHS[key] ?? 1.6
   const extraSvg: Record<string, any> = key === 'menu' ? { strokeLinecap: 'round' } : {}
   if (FILLED_LINE_ICONS.has(key)) {
-    return ({ className }) => (
-      <svg viewBox={def.viewBox} fill="currentColor" className={className}>
+    return ({ className, style }) => (
+      <svg viewBox={def.viewBox} fill="currentColor" className={className} style={style}>
         {makePrimitives(def.primitives, {}, 'l')}
       </svg>
     )
   }
-  return ({ className }) => (
-    <svg viewBox={def.viewBox} fill="none" stroke="currentColor" strokeWidth={sw} {...extraSvg} className={className}>
+  return ({ className, style }) => (
+    <svg viewBox={def.viewBox} fill="none" stroke="currentColor" strokeWidth={sw} {...extraSvg} className={className} style={style}>
       {makePrimitives(def.primitives, {}, 'l')}
     </svg>
   )
@@ -172,14 +172,14 @@ function buildDuotone(key: IconKey, def: Def): IconComponent {
   const sw = STROKE_WIDTHS[key] ?? 1.6
   const extraSvg: Record<string, any> = key === 'menu' ? { strokeLinecap: 'round' } : {}
   if (FILLED_LINE_ICONS.has(key)) {
-    return ({ className }) => (
-      <svg viewBox={def.viewBox} fill="var(--primary)" className={className}>
+    return ({ className, style }) => (
+      <svg viewBox={def.viewBox} fill="var(--primary)" className={className} style={style}>
         {makePrimitives(def.primitives, {}, 'd')}
       </svg>
     )
   }
-  return ({ className }) => (
-    <svg viewBox={def.viewBox} className={className}>
+  return ({ className, style }) => (
+    <svg viewBox={def.viewBox} className={className} style={style}>
       {!def.openShape && makePrimitives(def.primitives, { fill: 'var(--primary)', opacity: 0.2, stroke: 'none' }, 'df')}
       {makePrimitives(def.primitives, { fill: 'none', stroke: 'var(--primary)', strokeWidth: sw, ...extraSvg }, 'ds')}
     </svg>
@@ -189,14 +189,14 @@ function buildDuotone(key: IconKey, def: Def): IconComponent {
 function buildGlyph(key: IconKey, def: Def): IconComponent {
   if (def.openShape) {
     const extraSvg: Record<string, any> = key === 'menu' ? { strokeLinecap: 'round' } : {}
-    return ({ className }) => (
-      <svg viewBox={def.viewBox} fill="none" stroke="currentColor" strokeWidth={2.4} {...extraSvg} className={className}>
+    return ({ className, style }) => (
+      <svg viewBox={def.viewBox} fill="none" stroke="currentColor" strokeWidth={2.4} {...extraSvg} className={className} style={style}>
         {makePrimitives(def.primitives, {}, 'g')}
       </svg>
     )
   }
-  return ({ className }) => (
-    <svg viewBox={def.viewBox} fill="currentColor" stroke="none" className={className}>
+  return ({ className, style }) => (
+    <svg viewBox={def.viewBox} fill="currentColor" stroke="none" className={className} style={style}>
       {makePrimitives(def.primitives, {}, 'g')}
     </svg>
   )
@@ -204,11 +204,12 @@ function buildGlyph(key: IconKey, def: Def): IconComponent {
 
 function buildBadge(key: IconKey, def: Def): IconComponent {
   const Line = buildLine(key, def)
-  return ({ className }) => (
+  return ({ className, style }) => (
     <span className={className} style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       borderRadius: '20%', background: 'var(--primary-soft)', color: 'var(--primary)',
       flexShrink: 0,
+      ...style,
     }}>
       <Line className="w-[70%] h-[70%]"/>
     </span>
