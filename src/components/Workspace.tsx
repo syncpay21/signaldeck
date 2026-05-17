@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { getTemplate, VC_PROFILES, type Template } from '@/lib/templates'
+import { getTemplate, VC_PROFILES, personalize, extractWedge, type Template, type PersonalCtx } from '@/lib/templates'
+import { FRAMEWORKS } from '@/lib/frameworks/library'
+import { DARK_FRAMEWORKS } from '@/lib/frameworks/dark'
+import { rankFrameworks, recommendCompanions } from '@/lib/frameworks/scoring'
+import type { Framework } from '@/lib/frameworks/types'
 
 /* ── Icons ─────────────────────────────────────────────────────── */
 const ic = {
@@ -75,15 +79,6 @@ const TITLES: Record<string, [string, string]> = {
   settings:   ['Settings',       'Profile, brand, exports'],
 }
 
-const FRAMEWORKS = [
-  { id:'spin',    name:'SPIN Selling',         summary:'Diagnose pain before pitching the cure.',           steps:['Situation','Problem','Implication','Need-payoff'],       when:'Enterprise / long sales cycle decks.' },
-  { id:'belief',  name:'Belief Chain',          summary:'Stack the beliefs the investor must accept, in order.', steps:['World is changing','Old way breaks','New way wins','We are the new way'], when:'Category-creation pitches.' },
-  { id:'risk',    name:'Risk Reversal',         summary:'Surface the obvious risk and dismantle it.',        steps:['Name the risk','Quantify it','Show our hedge','Show proof'], when:'Skeptical / late-stage investors.' },
-  { id:'cat',     name:'Category Creation',     summary:'Define a new game where you are already winning.', steps:['Old category','New category','Stakes','Frontier metric'], when:'Market-defining pitches.' },
-  { id:'jtbd',    name:'Jobs To Be Done',       summary:'Frame the customer hire, not the customer profile.',steps:['Job','Hire','Fire','Outcome'],                           when:'Consumer / horizontal products.' },
-  { id:'bab',     name:'Before-After-Bridge',   summary:'Paint pain, paint relief, name the bridge.',       steps:['Before','After','Bridge','Proof'],                       when:'Short / demo-led decks.' },
-]
-
 const AUDIENCES = ['Seed VC', 'Series A', 'Angel', 'Strategic', 'Internal']
 const STAGES    = ['Pre-seed', 'Seed', 'Series A', 'Series B+', 'Bootstrapped']
 
@@ -133,13 +128,24 @@ export default function Workspace({
   const [investor,    setInvestor]    = useState(audience)
   const tpl: Template = getTemplate(productType)
 
+  /* per-company personalization context — drives {company}/{wedge}/etc substitution */
+  const personalCtx: PersonalCtx = {
+    company:  company  || 'Your startup',
+    wedge:    extractWedge(realStory),
+    audience: investor,
+    stage:    stageType,
+    product:  productType,
+    founder:  founderName,
+  }
+  const px = (text: string | undefined) => personalize(text, personalCtx)
+
   /* deploy */
   const [vercelToken, setVercelToken] = useState('')
   const [deployUrl, setDeployUrl] = useState('')
   const [deployLoading, setDeployLoading] = useState(false)
   const [selectedDeploy, setSelectedDeploy] = useState('Vercel')
   const [deployHistory, setDeployHistory] = useState<{ target: string; url: string; time: string; status: string }[]>([])
-  const [investorLinks, setInvestorLinks] = useState<string[]>(['blackbird','folklore','airtree'])
+  const [investorLinks, setInvestorLinks] = useState<string[]>([])
   const [publishOpts, setPublishOpts] = useState({ named:true, slideTrack:true, password:false, expiry:false, pdf:true, blockDl:false })
 
   /* refine */
@@ -181,6 +187,7 @@ export default function Workspace({
 
   /* Frameworks */
   const [activeFramework, setActiveFramework] = useState<string|null>(null)
+  const [showDarkTactics, setShowDarkTactics] = useState(false)
 
   /* Demo Layer */
   const [demoMode, setDemoMode] = useState<'embed'|'video'|'speaker'>('embed')
@@ -214,12 +221,12 @@ export default function Workspace({
 
   /* derived: real slides if AI generated, else template slides */
   const realSlides = generatedContent ? Object.entries(generatedContent).map(([key, val]: [string, any], i) => ({
-    key, kind: tpl.slides[i]?.kind || key, title: val.headline || tpl.slides[i]?.title || key,
-    body: val.lede || val.sub || tpl.slides[i]?.body || '',
+    key, kind: tpl.slides[i]?.kind || key, title: val.headline || px(tpl.slides[i]?.title) || key,
+    body: val.lede || val.sub || px(tpl.slides[i]?.body) || '',
     motion: tpl.slides[i]?.motion || 'smooth reveal',
-    notes: val.notes || tpl.slides[i]?.notes || '',
+    notes: val.notes || px(tpl.slides[i]?.notes) || '',
     val,
-  })) : tpl.slides.map((s, i) => ({ key: `s${i}_${s.kind.toLowerCase()}`, ...s, val: {} as any }))
+  })) : tpl.slides.map((s, i) => ({ key: `s${i}_${s.kind.toLowerCase()}`, ...s, title: px(s.title), body: px(s.body), notes: px(s.notes), val: {} as any }))
 
   useEffect(() => { document.documentElement.style.setProperty('--accent', liveAccent) }, [liveAccent])
 
@@ -369,8 +376,8 @@ export default function Workspace({
       <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[13px] font-bold flex-shrink-0"
         style={SEVERITY_STYLE[tip.severity] || SEVERITY_STYLE.info}>{tip.icon}</span>
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-[14px]">{tip.title}</div>
-        <div className="text-[13px] ink-muted mt-0.5 leading-relaxed">{tip.body}</div>
+        <div className="font-medium text-[14px]">{px(tip.title)}</div>
+        <div className="text-[13px] ink-muted mt-0.5 leading-relaxed">{px(tip.body)}</div>
       </div>
     </div>
   )
@@ -950,39 +957,118 @@ export default function Workspace({
   }
 
   /* ── FRAMEWORKS ──────────────────────────────────────────────── */
-  const ScreenFrameworks = () => (
-    <div className="p-6 lg:p-8">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {FRAMEWORKS.map(f => (
-          <Card key={f.id} className="p-5 flex flex-col"
-            style={activeFramework===f.id ? { boxShadow:`0 0 0 2px ${liveAccent}` } : {}}>
-            <div className="font-semibold tracking-tight text-[15px]">{f.name}</div>
-            <div className="text-[13px] ink-muted mt-1 mb-3">{f.summary}</div>
-            <ol className="space-y-1.5 mb-3">
-              {f.steps.map((s, i) => (
-                <li key={i} className="flex items-center gap-2 text-[13px]">
-                  <span className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] flex-shrink-0 font-semibold"
-                    style={{ background: liveAccent }}>{i+1}</span>
-                  {s}
-                </li>
-              ))}
-            </ol>
-            <div className="text-[12px] ink-muted mb-4 mt-auto">
-              <span className="font-medium">When to use:</span> {f.when}
+  const TIER_STYLE: Record<string, { bg: string; color: string; label: string }> = {
+    clean: { bg:'#e8f4ee', color:'#137a4a', label:'Clean' },
+    edgy:  { bg:'#fbf1dd', color:'#a86a00', label:'Edgy'  },
+    dark:  { bg:'#fbe8e5', color:'#b0322b', label:'Dark'  },
+  }
+
+  const FrameworkCard = ({ f, compact = false }: { f: Framework; compact?: boolean }) => {
+    const t = TIER_STYLE[f.tier]
+    const isActive = activeFramework === f.id
+    return (
+      <Card className={`${compact ? 'p-4' : 'p-5'} flex flex-col`}
+        style={isActive ? { boxShadow:`0 0 0 2px ${liveAccent}` } : {}}>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="font-semibold tracking-tight text-[15px]">{f.name}</div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+              style={{ background: t.bg, color: t.color }}>{t.label}</span>
+            {f.risk === 'high' && (
+              <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                style={{ background:'#fbe8e5', color:'#b0322b' }} title="High reputational risk">⚠</span>
+            )}
+          </div>
+        </div>
+        <div className="text-[13px] ink-muted mb-3">{f.summary}</div>
+        <ol className={`space-y-1.5 ${compact ? 'mb-2' : 'mb-3'}`}>
+          {f.steps.map((s, i) => (
+            <li key={i} className="flex items-center gap-2 text-[13px]">
+              <span className="w-5 h-5 rounded-full text-white flex items-center justify-center text-[10px] flex-shrink-0 font-semibold"
+                style={{ background: liveAccent }}>{i+1}</span>
+              {s}
+            </li>
+          ))}
+        </ol>
+        {!compact && (
+          <div className="text-[12px] ink-muted mb-4 mt-auto">
+            <span className="font-medium">When to use:</span> {f.when}
+          </div>
+        )}
+        <div className="flex gap-2 mt-auto">
+          <button onClick={() => setActiveFramework(isActive ? null : f.id)}
+            className="flex-1 h-8 rounded-xl text-[12px] font-medium text-white transition-all"
+            style={{ background: isActive ? '#137a4a' : liveAccent }}>
+            {isActive ? '✓ Applied' : 'Apply to deck'}
+          </button>
+          {!compact && <button className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted">Preview</button>}
+        </div>
+      </Card>
+    )
+  }
+
+  const ScreenFrameworks = () => {
+    const ctx = { industry: productType, stage: stageType, audience: investor, lensType }
+    const visible: Framework[] = showDarkTactics ? [...FRAMEWORKS, ...DARK_FRAMEWORKS] : FRAMEWORKS
+    const ranked = rankFrameworks(visible, ctx, activeFramework)
+    const all: Framework[] = [...FRAMEWORKS, ...DARK_FRAMEWORKS]
+    const companions = activeFramework ? recommendCompanions(activeFramework, ctx, all) : { combos: [], swaps: [] }
+
+    return (
+      <div className="p-6 lg:p-8 space-y-6">
+        {/* Header with dark-tactics toggle */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="text-[13px] ink-muted">
+            <span className="font-medium" style={{ color: 'var(--ink)' }}>{ranked.length}</span> tactics ranked for{' '}
+            <span className="font-medium" style={{ color: liveAccent }}>{productType}</span> ·{' '}
+            <span className="font-medium" style={{ color: liveAccent }}>{stageType}</span> ·{' '}
+            <span className="font-medium" style={{ color: liveAccent }}>{investor}</span>
+          </div>
+          <label className="flex items-center gap-2 text-[12px] cursor-pointer select-none">
+            <input type="checkbox" checked={showDarkTactics} onChange={e => setShowDarkTactics(e.target.checked)} />
+            <span className="ink-muted">Show edgy / dark tactics</span>
+            {showDarkTactics && (
+              <span className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                style={{ background:'#fbe8e5', color:'#b0322b' }}>Use carefully</span>
+            )}
+          </label>
+        </div>
+
+        {/* Main grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {ranked.map(f => <FrameworkCard key={f.id} f={f} />)}
+        </div>
+
+        {/* Companion tactics — only when something is applied */}
+        {activeFramework && (companions.combos.length > 0 || companions.swaps.length > 0) && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="text-[13px] font-semibold tracking-tight">Companion tactics</div>
+              <div className="text-[12px] ink-muted">tweak your applied framework</div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => setActiveFramework(activeFramework===f.id ? null : f.id)}
-                className="flex-1 h-8 rounded-xl text-[12px] font-medium text-white transition-all"
-                style={{ background: activeFramework===f.id ? '#137a4a' : liveAccent }}>
-                {activeFramework===f.id ? '✓ Applied' : 'Apply to deck'}
-              </button>
-              <button className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted">Preview</button>
+            <div className="grid lg:grid-cols-2 gap-5">
+              {companions.combos.length > 0 && (
+                <div>
+                  <MiniLabel>Combine with</MiniLabel>
+                  <div className="grid gap-3 mt-2">
+                    {companions.combos.map(f => <FrameworkCard key={f.id} f={f} compact />)}
+                  </div>
+                </div>
+              )}
+              {companions.swaps.length > 0 && (
+                <div>
+                  <MiniLabel>Or try instead</MiniLabel>
+                  <div className="grid gap-3 mt-2">
+                    {companions.swaps.map(f => <FrameworkCard key={f.id} f={f} compact />)}
+                  </div>
+                </div>
+              )}
             </div>
-          </Card>
-        ))}
+          </div>
+        )}
       </div>
-    </div>
-  )
+    )
+  }
 
   /* ── VC LENS ─────────────────────────────────────────────────── */
   const ScreenVCLens = () => {
@@ -1086,7 +1172,7 @@ export default function Workspace({
           <div className="font-semibold tracking-tight mb-1">What this lens tests</div>
           <div className="text-[12px] ink-muted mb-4">Deck quality gates based on audience</div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {tpl.checklist.map((item, i) => (
+            {tpl.checklist.map(c => px(c)).map((item, i) => (
               <Card key={i} className="p-4" style={{ background:'var(--surface)' }}>
                 <MiniLabel>Quality gate</MiniLabel>
                 <div className="font-medium text-[13px] mt-1.5">{item}</div>
@@ -1184,12 +1270,12 @@ export default function Workspace({
           <div className="grid sm:grid-cols-2 gap-4">
             <Card className="p-4" style={{ background:'var(--surface)' }}>
               <MiniLabel>Before</MiniLabel>
-              <p className="text-[13px] ink-muted mt-2 leading-relaxed">{realStory?.slice(0,170) || tpl.rewriteBefore}{realStory && realStory.length > 170 ? '…' : ''}</p>
+              <p className="text-[13px] ink-muted mt-2 leading-relaxed">{realStory?.slice(0,170) || px(tpl.rewriteBefore)}{realStory && realStory.length > 170 ? '…' : ''}</p>
             </Card>
             <Card className="p-4" style={{ background:`${liveAccent}08`, borderColor:`${liveAccent}33` }}>
               <MiniLabel>After</MiniLabel>
-              <h4 className="font-semibold text-[15px] mt-2 leading-snug">{tpl.rewriteAfter.headline}</h4>
-              <p className="text-[13px] ink-muted mt-2 leading-relaxed">{tpl.rewriteAfter.body.replace(/We /g, `${company || 'We'} `)}</p>
+              <h4 className="font-semibold text-[15px] mt-2 leading-snug">{px(tpl.rewriteAfter.headline)}</h4>
+              <p className="text-[13px] ink-muted mt-2 leading-relaxed">{px(tpl.rewriteAfter.body)}</p>
             </Card>
           </div>
         </Card>
@@ -1210,8 +1296,8 @@ export default function Workspace({
               <div key={i} className="p-4 rounded-xl hairline flex items-start gap-3" style={{ background:'var(--paper)' }}>
                 <span className="w-8 h-8 rounded-lg flex items-center justify-center font-bold flex-shrink-0" style={SEVERITY_STYLE[o.severity]}>?</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-[14px]">{o.question}</div>
-                  <div className="text-[13px] ink-muted mt-1 leading-relaxed">{o.angle}</div>
+                  <div className="font-medium text-[14px]">{px(o.question)}</div>
+                  <div className="text-[13px] ink-muted mt-1 leading-relaxed">{px(o.angle)}</div>
                 </div>
               </div>
             ))}
@@ -1338,11 +1424,13 @@ export default function Workspace({
       const base = [92, 78, 96, 43, 61, 55, 88, 71][i] ?? 60
       return Math.max(20, Math.min(99, base + Math.sin(seed * (i+1)) * 8))
     })
-    const viewers = [
-      { id:'blackbird-•-9f', last:'2h ago',    returns:3, hot:true  },
-      { id:'folklore-•-4a',  last:'yesterday', returns:2, hot:false },
-      { id:'airtree-•-7c',   last:'3d ago',    returns:1, hot:false },
-    ]
+    const viewerFallback = ['first-viewer','second-viewer','third-viewer']
+    const viewers = (investorLinks.length ? investorLinks : viewerFallback).slice(0, 3).map((name, i) => ({
+      id: `${name}-•-${(seed * 7 + i * 13).toString(16).slice(-2)}`,
+      last: ['2h ago','yesterday','3d ago'][i],
+      returns: [3, 2, 1][i],
+      hot: i === 0,
+    }))
     return (
       <div className="p-6 lg:p-8 space-y-5">
         <Card className="p-5">
@@ -1392,11 +1480,15 @@ export default function Workspace({
             <div className="font-semibold tracking-tight mb-1">Activity feed</div>
             <div className="text-[12px] ink-muted mb-4">Viewer behaviour and AI follow-up</div>
             <div className="space-y-3">
-              {[
-                { a:'B',  t:'Blackbird link opened',     d:'Viewed 11 slides, longest on product demo, clicked book a call.', time:'9:42 AM' },
-                { a:'F',  t:'Folklore link returned',    d:'Second visit detected. Rewatched the workflow slides.',           time:'11:18 AM' },
-                { a:'AI', t:'Follow-up suggestion',      d: tpl.followupAngle.headline + '. ' + tpl.followupAngle.reason,     time:'Now' },
-              ].map((r, i) => (
+              {(() => {
+                const [v1, v2] = viewers
+                const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+                const feed = [
+                  v1 && { a: v1.id.charAt(0).toUpperCase(), t: `${cap(v1.id.split('-')[0])} link opened`,   d:'Viewed 11 slides, longest on product demo, clicked book a call.', time:'9:42 AM' },
+                  v2 && { a: v2.id.charAt(0).toUpperCase(), t: `${cap(v2.id.split('-')[0])} link returned`, d:'Second visit detected. Rewatched the workflow slides.',           time:'11:18 AM' },
+                  { a:'AI', t:'Follow-up suggestion', d: px(tpl.followupAngle.headline) + '. ' + px(tpl.followupAngle.reason), time:'Now' },
+                ].filter(Boolean) as { a: string; t: string; d: string; time: string }[]
+                return feed.map((r, i) => (
                 <div key={i} className="grid grid-cols-[42px_1fr_auto] gap-3 items-center p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[12px]" style={{ background:'var(--surface)', color: liveAccent }}>{r.a}</div>
                   <div className="min-w-0">
@@ -1405,7 +1497,8 @@ export default function Workspace({
                   </div>
                   <div className="text-[11px] font-mono ink-muted">{r.time}</div>
                 </div>
-              ))}
+              ))
+              })()}
             </div>
           </Card>
         </div>
@@ -1509,7 +1602,7 @@ export default function Workspace({
                 Turn the deck into a <span style={{ color: liveAccent }}>talk track</span>
               </h1>
               <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
-                Generate speaker notes, timing, demo day script, and investor Q&amp;A prep for each slide. Tone: <i>{tpl.speakerTone}</i>
+                Generate speaker notes, timing, demo day script, and investor Q&amp;A prep for each slide. Tone: <i>{px(tpl.speakerTone)}</i>
               </p>
             </div>
             <Card className="p-5 space-y-3" style={{ background:'var(--surface)' }}>
@@ -1755,8 +1848,8 @@ export default function Workspace({
           </div>
           <Card className="p-5" style={{ background:'var(--surface)' }}>
             <MiniLabel>Recommended angle</MiniLabel>
-            <h4 className="font-semibold text-[15px] mt-2">{tpl.followupAngle.headline}</h4>
-            <p className="text-[13px] ink-muted mt-2 leading-relaxed">{tpl.followupAngle.reason}</p>
+            <h4 className="font-semibold text-[15px] mt-2">{px(tpl.followupAngle.headline)}</h4>
+            <p className="text-[13px] ink-muted mt-2 leading-relaxed">{px(tpl.followupAngle.reason)}</p>
           </Card>
         </div>
       </Card>

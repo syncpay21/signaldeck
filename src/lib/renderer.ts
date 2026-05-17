@@ -1,13 +1,6 @@
 import { deckTemplate } from '../templates/deckTemplate'
+import type { SlideId } from './types'
 
-function hexToRgba(hex: string, a: number) {
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
-  return `rgba(${r},${g},${b},${a})`
-}
-function darken(hex: string, n: number) {
-  const r = Math.max(0,parseInt(hex.slice(1,3),16)-n), g = Math.max(0,parseInt(hex.slice(3,5),16)-n), b = Math.max(0,parseInt(hex.slice(5,7),16)-n)
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`
-}
 function stats(items: any[] = []) {
   if (!items.length) return ''
   return `<div class="stat-row reveal-stagger">${items.map((s,i)=>`<div class="stat-card" style="--i:${i}"><div class="stat-val">${s.value}</div><div class="stat-lbl">${s.label}</div></div>`).join('')}</div>`
@@ -16,8 +9,8 @@ function bullets(items: string[] = []) {
   if (!items.length) return ''
   return `<ul class="bullet-list reveal-stagger">${items.map((b,i)=>`<li style="--i:${i}">${b}</li>`).join('')}</ul>`
 }
-function slide(id: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any) {
-  return `<section class="slide" id="${id}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
+function slide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any) {
+  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
   <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
   <div class="slide-grid"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
   <div class="slide-inner">
@@ -30,24 +23,41 @@ function slide(id: string, idx: number, label: string, tx: string, bgx: string, 
 </section>`
 }
 
-export function renderDeck(input: any, content: any): string {
-  const labels = ['Intro','Situation','Problem','Implication','Fix','How It Works','Validation','Market','Customers','Competition','Risks','Team & Ask','Demo']
-  const introSlide = `<section class="slide" id="s1" data-idx="0" data-num="00" data-label="Intro" data-tx="zoom-passage">
-  <span class="slide-num-bg">00</span>
+// Visual properties per slide type
+const SLIDE_DEFS: Record<string, { htmlId: string; label: string; tx: string; bgx: string; bgy: string }> = {
+  s1_intro:        { htmlId: 's1',  label: 'Intro',        tx: 'zoom-passage', bgx: '20%', bgy: '30%' },
+  s2_situation:    { htmlId: 's2',  label: 'Situation',    tx: 'explode',      bgx: '60%', bgy: '40%' },
+  s3_problem:      { htmlId: 's3',  label: 'Problem',      tx: 'explode',      bgx: '70%', bgy: '30%' },
+  s4_implication:  { htmlId: 's4',  label: 'Implication',  tx: 'fold',         bgx: '40%', bgy: '60%' },
+  s5_fix:          { htmlId: 's5',  label: 'Fix',          tx: 'fold',         bgx: '50%', bgy: '50%' },
+  s6_how:          { htmlId: 's6',  label: 'How It Works', tx: 'warp',         bgx: '30%', bgy: '40%' },
+  s7_validation:   { htmlId: 's7',  label: 'Validation',   tx: 'glitch',       bgx: '55%', bgy: '35%' },
+  s8_market:       { htmlId: 's8',  label: 'Market',       tx: 'glitch',       bgx: '45%', bgy: '55%' },
+  s9_customers:    { htmlId: 's9',  label: 'Customers',    tx: 'explode',      bgx: '65%', bgy: '45%' },
+  s10_competition: { htmlId: 's10', label: 'Competition',  tx: 'dropzoom',     bgx: '35%', bgy: '65%' },
+  s11_risks:       { htmlId: 's11', label: 'Risks',        tx: 'fold',         bgx: '50%', bgy: '40%' },
+  s12_team_ask:    { htmlId: 's12', label: 'Team & Ask',   tx: 'prism',        bgx: '45%', bgy: '50%' },
+}
+
+function buildIntroSlide(idx: number, input: any, c: any): string {
+  return `<section class="slide" id="s1" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="Intro" data-tx="zoom-passage">
+  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
   <div class="slide-grid"></div><div class="slide-bg" style="--bgx:20%;--bgy:30%;"></div>
   <div class="slide-inner">
-    <div class="hero-tag reveal-up">${content.s1_intro?.tag||''}</div>
+    <div class="hero-tag reveal-up">${c.tag||''}</div>
     <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:900;font-size:clamp(80px,16vw,220px);line-height:0.88;letter-spacing:-4px;text-transform:uppercase;margin-bottom:12px;">${input.company}</div>
-    <h1 class="hero-title reveal-wipe d1">${content.s1_intro?.sub||input.oneLiner}</h1>
+    <h1 class="hero-title reveal-wipe d1">${c.sub||input.oneLiner}</h1>
     <div class="hero-divider"></div>
     <div class="hero-signature reveal-up d3"><span class="h-name">${input.founderName}</span><span class="h-dot"></span><span class="h-role">${input.founderRole}</span></div>
-    <div class="hero-company reveal-up d4">${input.location} · ${input.domain}</div>
+    <div class="hero-company reveal-up d4">${input.location||''} · ${input.domain}</div>
     <div class="scroll-cue">Use ↑ / ↓ arrow keys</div>
   </div>
 </section>`
+}
 
-  const demoSlide = `<section class="slide" id="s13" data-idx="12" data-num="12" data-label="Demo" data-tx="fold">
-  <span class="slide-num-bg">12</span>
+function buildDemoSlide(idx: number, input: any): string {
+  return `<section class="slide" id="s13" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="Demo" data-tx="fold">
+  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
   <div class="slide-grid"></div><div class="slide-bg" style="--bgx:50%;--bgy:50%;"></div>
   <div class="slide-inner">
     <div class="slide-tag">live demo</div>
@@ -58,34 +68,37 @@ export function renderDeck(input: any, content: any): string {
     }
   </div>
 </section>`
+}
 
-  const slides = [
-    introSlide,
-    slide('s2',1,'Situation','explode','60%','40%',content.s2_situation||{}),
-    slide('s3',2,'Problem','explode','70%','30%',content.s3_problem||{}),
-    slide('s4',3,'Implication','fold','40%','60%',content.s4_implication||{}),
-    slide('s5',4,'Fix','fold','50%','50%',content.s5_fix||{}),
-    slide('s6',5,'How It Works','warp','30%','40%',content.s6_how||{}),
-    slide('s7',6,'Validation','glitch','55%','35%',content.s7_validation||{}),
-    slide('s8',7,'Market','glitch','45%','55%',content.s8_market||{}),
-    slide('s9',8,'Customers','explode','65%','45%',content.s9_customers||{}),
-    slide('s10',9,'Competition','dropzoom','35%','65%',content.s10_competition||{}),
-    slide('s11',10,'Risks','fold','50%','40%',content.s11_risks||{}),
-    slide('s12',11,'Team & Ask','prism','45%','50%',content.s12_team_ask||{}),
-    demoSlide,
-  ]
+// slideIds controls which slides render and in what order.
+// When omitted, all 12 slides render in default order (backward compat).
+export function renderDeck(input: any, content: any, slideIds?: SlideId[]): string {
+  const ids: SlideId[] = slideIds ?? (Object.keys(SLIDE_DEFS) as SlideId[])
+
+  const slideHtmlList = ids.map((id, idx) => {
+    if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})
+    const def = SLIDE_DEFS[id]
+    if (!def) return ''
+    return slide(def.htmlId, idx, def.label, def.tx, def.bgx, def.bgy, content[id] || {})
+  })
+
+  const demoIdx = slideHtmlList.length
+  slideHtmlList.push(buildDemoSlide(demoIdx, input))
+
+  const labels = ids.map(id => SLIDE_DEFS[id]?.label || id)
+  labels.push('Demo')
 
   return deckTemplate({
-    company: input.company,
-    oneLiner: input.oneLiner,
-    domain: input.domain,
-    accentColor: input.accentColor||'#00e5c3',
-    bgColor: input.bgColor||'#06080d',
-    fontHeading: input.fontHeading||'Barlow Condensed',
-    fontBody: input.fontBody||'DM Sans',
-    isDark: input.isDark!==false,
-    totalSlides: slides.length,
-    slidesHtml: slides.join('\n'),
-    dotNav: labels.map((l,i)=>`<button data-idx="${i}" data-label="${l}" aria-label="${l}"></button>`).join('\n'),
+    company:     input.company,
+    oneLiner:    input.oneLiner,
+    domain:      input.domain,
+    accentColor: input.accentColor || '#00e5c3',
+    bgColor:     input.bgColor     || '#06080d',
+    fontHeading: input.fontHeading || 'Barlow Condensed',
+    fontBody:    input.fontBody    || 'DM Sans',
+    isDark:      input.isDark !== false,
+    totalSlides: slideHtmlList.length,
+    slidesHtml:  slideHtmlList.join('\n'),
+    dotNav:      labels.map((l,i) => `<button data-idx="${i}" data-label="${l}" aria-label="${l}"></button>`).join('\n'),
   })
 }
