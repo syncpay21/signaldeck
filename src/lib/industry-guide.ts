@@ -56,26 +56,28 @@ export function getIndustryGuide(key?: string): IndustryGuide {
   return INDUSTRIES[k] || INDUSTRIES.tech
 }
 
-/** Map a free-text industry label (from intake) to a canonical key. */
+/** Map a free-text industry label (from intake) to a canonical key.
+ *  Word boundaries (`\b`) prevent prefix collisions like 'hospitality' → 'health'. */
 export function resolveIndustry(label?: string): IndustryKey {
   if (!label) return 'tech'
   const s = label.toLowerCase()
-  if (/(fintech|payment|finance|bank|lending)/.test(s))             return 'fintech'
-  if (/(legal|law|firm|attorney)/.test(s))                          return 'legal'
-  if (/(property|real estate|realty|housing|prop[-\s]?tech)/.test(s)) return 'property'
-  if (/(health|medical|clinic|hospital|biotech|pharma)/.test(s))    return 'health'
-  if (/(saas|software|dev[-\s]?tool|api|infra|cloud|tech|ai|ml)/.test(s)) return 'tech'
-  if (/(retail|consumer|ecommerce|d2c|brand|cpg)/.test(s))          return 'retail'
-  if (/(media|publish|news|content|stream)/.test(s))                return 'media'
-  if (/(hospitality|hotel|luxury|travel|resort)/.test(s))           return 'hospitality'
-  if (/(construction|industrial|manufactur|build)/.test(s))         return 'construction'
-  if (/(edu|edtech|school|learn|university)/.test(s))               return 'edtech'
-  if (/(climate|sustainab|carbon|impact|esg|green)/.test(s))        return 'climate'
-  if (/(fashion|beauty|cosmetic|apparel)/.test(s))                  return 'fashion'
-  if (/(food|beverage|restaurant|grocery|dining)/.test(s))          return 'food'
-  if (/(gov|non[-\s]?profit|public|civic|policy)/.test(s))          return 'gov'
-  if (/(sport|fitness|athletic|wellness|gym)/.test(s))              return 'sports'
-  if (/(creative|agency|design|studio|art)/.test(s))                return 'creative'
+  // Specific industries first so prefixes don't steal matches (e.g. 'hospitality' before 'health').
+  if (/\b(hospitality|hotel|luxury|travel|resort)\b/.test(s))                        return 'hospitality'
+  if (/\b(fintech|payment|finance|bank|lending)\b/.test(s))                          return 'fintech'
+  if (/\b(legal|law|firm|attorney)\b/.test(s))                                       return 'legal'
+  if (/\b(property|real estate|realty|housing|prop[-\s]?tech)\b/.test(s))            return 'property'
+  if (/\b(health|medical|clinic|hospital|biotech|pharma)\b/.test(s))                 return 'health'
+  if (/\b(saas|software|dev[-\s]?tool|api|infra|cloud|tech|ai|ml)\b/.test(s))        return 'tech'
+  if (/\b(retail|consumer|ecommerce|d2c|brand|cpg)\b/.test(s))                       return 'retail'
+  if (/\b(media|publish|news|content|stream)\b/.test(s))                             return 'media'
+  if (/\b(construction|industrial|manufactur|build)\b/.test(s))                      return 'construction'
+  if (/\b(edu|edtech|school|learn|university)\b/.test(s))                            return 'edtech'
+  if (/\b(climate|sustainab|carbon|impact|esg|green)\b/.test(s))                     return 'climate'
+  if (/\b(fashion|beauty|cosmetic|apparel)\b/.test(s))                               return 'fashion'
+  if (/\b(food|beverage|restaurant|grocery|dining)\b/.test(s))                       return 'food'
+  if (/\b(gov|non[-\s]?profit|public|civic|policy)\b/.test(s))                       return 'gov'
+  if (/\b(sport|fitness|athletic|wellness|gym)\b/.test(s))                           return 'sports'
+  if (/\b(creative|agency|design|studio|art)\b/.test(s))                             return 'creative'
   return 'tech'
 }
 
