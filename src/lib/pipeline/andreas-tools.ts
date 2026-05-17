@@ -121,4 +121,38 @@ export const TOOL_CATALOG: ToolSpec[] = [
       })
     },
   },
+  {
+    name: 'regenerate_brand_world',
+    description: 'Rebuild the visual brand world (colours, typography, layout, effects) for the workspace. Use when the founder asks for a brand-level change: "make it warmer / colder / more premium / less corporate", "shift to darker palette", "tone down the gradients", "match Stripe\'s aesthetic". Heavy operation — only call when the founder wants the WHOLE chrome rebuilt, not a single colour tweak.',
+    argsSchema: '{ "instruction": "<plain-English brand delta, e.g. \\"make it feel warmer\\"" }',
+    execute: async (args: { instruction?: string }, ctx, origin) => {
+      return fetchTool(origin, '/api/brand-world', {
+        company:    ctx.company || '',
+        industry:   ctx.industry || '',
+        audience:   ctx.audience || '',
+        stage:      ctx.stage || '',
+        // Refinement is appended to the prompt — extractor + Sonnet get the
+        // same evidence as before, plus the founder\'s plain-English ask.
+        visualReference: args.instruction || '',
+      })
+    },
+  },
+  {
+    name: 'swap_framework',
+    description: 'Switch the deck\'s narrative framework (Jobs-to-be-Done, Value Prop Canvas, AARRR, Lean Canvas, etc.) and signal the workspace to regenerate. Use when the founder asks "rebuild this as Jobs framework", "try Value Prop", "what if Lean Canvas".',
+    argsSchema: '{ "frameworkId": "<id from frameworks catalog>" }',
+    execute: async (args: { frameworkId: string }, _ctx, _origin) => {
+      if (!args.frameworkId) throw new Error('frameworkId required')
+      return { frameworkId: args.frameworkId, directive: 'workspace_should_regenerate' }
+    },
+  },
+  {
+    name: 'update_demo',
+    description: 'Change the Demo Layer between embed (live iframe), video (mp4), or screenshot. Use when the founder asks "switch to video demo", "use the product screenshot", "embed our staging URL".',
+    argsSchema: '{ "mode": "embed | video | screenshot", "url"?: "<url>", "caption"?: "<short caption>" }',
+    execute: async (args: { mode: string; url?: string; caption?: string }, _ctx, _origin) => {
+      if (!['embed', 'video', 'screenshot'].includes(args.mode)) throw new Error('mode must be embed/video/screenshot')
+      return { mode: args.mode, url: args.url || '', caption: args.caption || '', directive: 'workspace_should_update_demo' }
+    },
+  },
 ]

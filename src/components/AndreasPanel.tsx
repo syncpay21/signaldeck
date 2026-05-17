@@ -33,6 +33,13 @@ export interface AndreasPanelProps {
   deckContent?:   Record<string, any> | null
   slideIds?:      string[]
   activeSlideId?: string
+  /** Already-computed signals from other workspace screens — so Andreas can
+   *  answer "what's the weakest slide" without re-dispatching the audit tool,
+   *  reference the actual claims when asked about objections, etc. */
+  auditData?:       any
+  claimsData?:      any
+  vcData?:          any
+  designCritique?:  any
 }
 
 interface ChatMessage {
@@ -83,6 +90,12 @@ export default function AndreasPanel(props: AndreasPanelProps) {
             deckContent:   props.deckContent,
             slideIds:      props.slideIds,
             activeSlideId: props.activeSlideId,
+            // Workspace-computed signals so Andreas can answer from context
+            // instead of re-dispatching tools.
+            auditData:      props.auditData,
+            claimsData:     props.claimsData,
+            vcData:         props.vcData,
+            designCritique: props.designCritique,
           },
         }),
       })

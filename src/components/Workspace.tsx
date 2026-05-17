@@ -324,12 +324,12 @@ export default function Workspace({
     finally { setVcLoading(false) }
   }
 
-  async function runAudit() {
+  async function runAudit(contentOverride?: any) {
     setAuditLoading(true); setError('')
     try {
       const res = await fetch('/api/audit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: generatedContent, company }),
+        body: JSON.stringify({ content: contentOverride || liveContent || generatedContent, company }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -337,6 +337,16 @@ export default function Workspace({
     } catch (e: any) { setError(e.message) }
     finally { setAuditLoading(false) }
   }
+
+  // Auto re-audit after edits — only if an audit was already run (otherwise we
+  // would burn API calls before the founder asked). Debounced 3s so rapid
+  // edits coalesce into one call.
+  useEffect(() => {
+    if (!auditData) return
+    const t = setTimeout(() => { runAudit(liveContent) }, 3000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveContent])
 
   async function runClaims() {
     setClaimsLoading(true); setError('')
@@ -789,8 +799,63 @@ export default function Workspace({
   /* ── THEME ───────────────────────────────────────────────────── */
   const ScreenTheme = () => {
     const tints = [liveAccent, liveAccent+'cc', liveAccent+'99', liveAccent+'55', liveAccent+'22']
+    const bw = brandWorld
     return (
       <div className="p-6 lg:p-8">
+        {/* Brand System Inspector — expose everything the brand-world generator
+            decided so the founder can see/audit it, not just the accent colour.
+            Hidden when no brand world has been generated. */}
+        {bw && (
+          <Card className="p-5 mb-5 space-y-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <MiniLabel>Brand system inspector</MiniLabel>
+                <div className="font-semibold text-[15px] mt-1">{bw.brandPersonality}</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed max-w-2xl">{bw.whyThisWorks}</div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="inline-flex items-center text-[10px] font-medium px-2 py-1 rounded-full hairline" style={{ letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                  {bw.visualRichness}
+                </span>
+                <span className="inline-flex items-center text-[10px] font-medium px-2 py-1 rounded-full hairline" style={{ letterSpacing:'0.04em', textTransform:'uppercase' }}>
+                  {bw.deckMode}
+                </span>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-[12px]">
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Typography</MiniLabel>
+                <div className="mt-1 leading-relaxed"><span className="ink-muted">Heading:</span> {bw.typography.heading} {bw.typography.headingWeight}</div>
+                <div className="leading-relaxed"><span className="ink-muted">Body:</span> {bw.typography.body} {bw.typography.bodyWeight}</div>
+                <div className="leading-relaxed"><span className="ink-muted">Mono:</span> {bw.typography.mono}</div>
+              </div>
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Style</MiniLabel>
+                <div className="mt-1 leading-relaxed"><span className="ink-muted">Layout:</span> {bw.layoutStyle}</div>
+                <div className="leading-relaxed"><span className="ink-muted">Cards:</span> {bw.cardStyle} · r{bw.radius}px</div>
+                <div className="leading-relaxed"><span className="ink-muted">Buttons:</span> {bw.buttonStyle}</div>
+                <div className="leading-relaxed"><span className="ink-muted">Icons:</span> {bw.iconStyle}</div>
+              </div>
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Effects</MiniLabel>
+                <div className="mt-1 leading-relaxed flex flex-wrap gap-1">
+                  {Object.entries(bw.effects || {}).filter(([,v]) => v).map(([k]) => (
+                    <span key={k} className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background:'rgba(0,0,0,0.05)' }}>{k}</span>
+                  ))}
+                  {!Object.values(bw.effects || {}).some(Boolean) && <span className="ink-muted">none</span>}
+                </div>
+              </div>
+              <div className="p-3 rounded-lg hairline sm:col-span-2 lg:col-span-3">
+                <MiniLabel>Motifs</MiniLabel>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {(bw.motifs || []).map((m, i) => (
+                    <span key={i} className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full hairline">{m}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
         {/* Plain-theme toggle — reset the workspace to the default SignalDeck
             monochrome shell. Useful when the generated brand world is too noisy
             or the founder just wants to focus on content. */}
@@ -1210,8 +1275,18 @@ export default function Workspace({
     const t = TIER_STYLE[f.tier]
     const isActive = activeFramework === f.id
     return (
-      <Card className={`${compact ? 'p-4' : 'p-5'} flex flex-col`}
-        style={isActive ? { boxShadow:`0 0 0 2px ${liveAccent}` } : {}}>
+      <Card className={`${compact ? 'p-4' : 'p-5'} flex flex-col relative`}
+        style={isActive ? {
+          boxShadow: `inset 0 0 0 2px ${liveAccent}, 0 0 28px ${liveAccent}55`,
+          borderColor: liveAccent,
+          background: `linear-gradient(180deg, ${liveAccent}10, transparent 60%)`,
+        } : {}}>
+        {isActive && (
+          <span className="absolute -top-2 -right-2 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold text-white shadow-card"
+            style={{ background: liveAccent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            ✓ Selected
+          </span>
+        )}
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="font-semibold tracking-tight text-[15px]">{f.name}</div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -2558,6 +2633,11 @@ export default function Workspace({
         deckContent={liveContent}
         slideIds={realSlides.map((s: any) => s.key)}
         activeSlideId={realSlides[activeSlide]?.key}
+        // Workspace-computed signals so Andreas can answer from cache instead
+        // of re-dispatching audit/claims/vclens for every related question.
+        auditData={auditData}
+        claimsData={claimsData}
+        vcData={vcData}
       />
     </div>
   )

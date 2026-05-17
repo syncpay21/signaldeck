@@ -83,6 +83,66 @@ ANTI-CLICHÉ GUARDRAIL — avoid the generic AI / SaaS pitch deck look unless th
 - DO NOT use glassmorphism / dark+purple+cyan as the visual lens unless the founder's actual site uses that aesthetic
 - DEFAULT preference: real product specifics, real customer language, restraint. The premium move is one strong brand colour, real screenshots, light grid, one accent — not the same dark gradient every AI deck uses.
 
+STORY ARC — slides are NOT independent units. They are act structure.
+This deck tells ONE argument, not 12 disconnected pitches. Treat the slide order
+as a screenplay:
+- Each slide ends with tension or a question the next slide answers.
+- Each slide opens by acknowledging where the previous one left off — implicitly
+  ("Which is exactly what makes the fix unusual…") or explicitly ("That's the
+  cost. Here's the answer.").
+- The Intro raises the founder's stake. Problem agitates. Implication closes the
+  trap. Fix opens the relief. How proves the mechanism. Validation confirms it
+  works. Market sizes the win. Competition explains why others fail. Team/Ask
+  closes the deal.
+- For every slide, the LAST bullet or lede sentence should plant the seed for
+  the next slide's headline. Don't just describe; foreshadow.
+
+Example sequencing for show-me-the-machine:
+  s3 (Problem) closes: "Every quarter this drags, X loses $Y."
+  s5 (Fix) opens:     "What if the drag disappeared?" — directly answers s3.
+  s6 (How) opens:     "Here's exactly how." — delivers on s5.
+  s7 (Validation) opens: "And here's the proof it works." — delivers on s6.
+
+REFERENCE DECK LIBRARY — channel the lessons, not the layouts. When writing a
+given slide, pattern-match against the canonical deck that taught the lesson
+your slide needs. Do NOT copy phrasing or claims; absorb the move.
+
+Story arc:           Airbnb seed (3-truth problem → inevitable solution); Front
+                     (status-quo failure → wedge); Buffer (radical numbers
+                     transparency); Sequoia template (purpose → problem → why
+                     now → solution → market → team → ask).
+Wedge clarity:       Brex ("Amex for YC" not "corporate cards"); Mixpanel
+                     ("deeper than GA"); Wise (P2P FX for expats + 20% MoM);
+                     Revolut (4.8k pre-product subscribers).
+Visual restraint:    Notion seed (deck IS the brand artefact); Dropbox seed
+                     (one mental model per slide); Intercom seed (plain copy
+                     that reads like founder email).
+Brand-led aesthetic: Liquid Death (brand IS the moat); Warby Parker (magazine-
+                     quality mission framing); Allbirds (ruthless reduction);
+                     Canva (humanise the market, not just the team).
+Data-density:        Snowflake (84 slides earned by receipts); Datadog (logos,
+                     DBNRR, cohort curves); Snapchat (14 slides, one chart per
+                     slide); Mattermark (before/after the data).
+Founder thesis:      Figma pre-seed (no product, unmovable thesis); Anthropic
+                     2022 Series B (calm contrarian positioning, 10 slides);
+                     Perplexity (one thesis sentence stable across rounds).
+Market sizing:       Uber seed (bottom-up SF cab TAM, not top-down); Foursquare
+                     B (recategorise to expand TAM); BuzzFeed (frame as tech).
+Competitive moat:    Dropbox ("it just works" UX moat); Peloton (anti-positioning
+                     wheel); Plaid (ecosystem diagram as moat); WeWork
+                     (cautionary: moat detached from unit economics).
+Ask + financials:    Coinbase (missionary tone, ask = manifesto); Robinhood
+                     (ask tied to one growth lever, not runway); Square B
+                     (5-year model on the ask page); Klarna (system diagram
+                     for multi-sided ops).
+Traction-as-narrative: Mixpanel B (cohort retention as centrepiece, not
+                     footnote); Shopify (one named customer's upgrade journey).
+
+Pick at MOST 2-3 references for the whole deck — channel their MOVE on the
+slides where the lesson fits. If your slide is the Problem, ask: "Am I doing
+the Airbnb 3-truths thing? Is this as concrete as Mixpanel's wedge?" If not,
+rewrite.
+
 Objections this deck must proactively address:
 ${narrative.objectionsToPreempt.map(o => `- ${o}`).join('\n')}
 

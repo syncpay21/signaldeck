@@ -38,6 +38,13 @@ export interface ConductorContext {
   slideIds?:      string[]
   /** Which slide the founder has open in Deck Build, if any */
   activeSlideId?: string
+  /** Pre-computed signals from other workspace screens — lets the planner
+   *  answer from context instead of re-dispatching tools. Each is whatever
+   *  the matching /api/<tool> endpoint last returned (or null). */
+  auditData?:      any
+  claimsData?:     any
+  vcData?:         any
+  designCritique?: any
 }
 
 export interface ToolStep {
@@ -82,6 +89,8 @@ OUTPUT FORMAT:
 
 RULES:
 - Empty steps array is valid. If the founder asked something you can answer from context alone (definitions, opinions, narrative explanations), return zero steps and let synthesis handle it.
+- ⚠ NEVER re-run a tool the workspace has already computed. If "Audit already run" appears in context, do NOT call the audit tool again — answer from those results. Same for claims, vclens. The founder can see the chip; running it twice is a UX failure.
+- Only re-run a tool if the founder explicitly asked you to refresh it ("re-audit", "score again") OR if the deck has clearly changed since the cached result (the founder will say so).
 - Never invent tool names. Only the catalog tools exist.
 - If the instruction mentions a specific slide, look at activeSlideId in context first; otherwise infer from slideIds.
 - Don't call audit + claims + vclens together unless the founder explicitly asked for a full review. Pick the single tool that answers what was actually asked.
@@ -103,6 +112,31 @@ function buildContextSummary(ctx: ConductorContext): string {
   }
   const hasContent = ctx.deckContent && Object.keys(ctx.deckContent).length > 0
   lines.push(`Deck content present: ${hasContent ? 'yes' : 'no'}`)
+
+  // Pre-computed workspace signals — answer FROM these where possible instead
+  // of re-dispatching the matching tool.
+  if (ctx.auditData) {
+    const a = ctx.auditData
+    const overall = a.overall ?? a.score ?? null
+    const tips = Array.isArray(a.tips) ? a.tips.slice(0, 3).map((t: any) => `${t.slide || '?'}: ${t.note || t.text || ''}`).join(' | ') : ''
+    lines.push(`Audit already run — overall ${overall}/100${tips ? `. Top tips: ${tips}` : ''}`)
+  }
+  if (ctx.claimsData) {
+    const c = ctx.claimsData
+    const claims = Array.isArray(c.claims) ? c.claims : []
+    const needSrc = claims.filter((x: any) => x.classification === 'needs-source' || x.classification === 'risky').length
+    lines.push(`Claims already classified — ${claims.length} total, ${needSrc} need source/risky`)
+  }
+  if (ctx.vcData) {
+    const v = ctx.vcData
+    const verdict = v.verdict || v.takeaway || ''
+    const concerns = Array.isArray(v.concerns) ? v.concerns.slice(0, 2).join(' | ') : ''
+    lines.push(`VC lens already applied — verdict: ${String(verdict).slice(0, 140)}${concerns ? `. Concerns: ${concerns}` : ''}`)
+  }
+  if (ctx.designCritique && Array.isArray(ctx.designCritique.failures) && ctx.designCritique.failures.length) {
+    lines.push(`Design critic flagged ${ctx.designCritique.failures.length} contrast issues in brand palette`)
+  }
+
   return lines.join('\n')
 }
 

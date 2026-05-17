@@ -468,6 +468,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     }
 
+    // Tertiary / decorative colour — if the extractor caught 3+ saturated
+    // brand colours (Up's pink ink alongside coral + yellow), expose the
+    // third as colour.tertiary so the renderer + workspace can use it as
+    // `--decorative` without it being mistaken for primary/accent.
+    if (extracted?.colors && extracted.colors.length >= 3) {
+      const used = new Set([brandWorld.colour.primary, brandWorld.colour.secondary, brandWorld.colour.accent].map(c => String(c || '').toLowerCase()))
+      const tertiary = extracted.colors.find(c => !used.has(c.hex.toLowerCase()))
+      if (tertiary) (brandWorld.colour as any).tertiary = tertiary.hex
+    }
+
     // DESIGN CRITIC — deterministic WCAG contrast check on the palette, then
     // a Haiku repair pass if anything failed. Catches the "yellow text on
     // cream cards" class of bug that Sonnet sometimes ships when it's busy

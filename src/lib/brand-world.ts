@@ -152,7 +152,7 @@ export interface BrandWorld {
    Components reference `var(--bg)`, `var(--primary)`, etc.
 */
 export function brandWorldToCssVars(w: BrandWorld): Record<string, string> {
-  return {
+  const out: Record<string, string> = {
     '--bg':          w.colour.background,
     '--surface':     w.colour.surface,
     '--surface-soft': w.colour.surfaceSoft,
@@ -180,6 +180,12 @@ export function brandWorldToCssVars(w: BrandWorld): Record<string, string> {
     '--body-weight':    w.typography.bodyWeight,
     '--heading-tracking': w.typography.tracking,
   }
+  // Optional tertiary / decorative colour — emitted when extractor caught a
+  // third saturated brand colour (Up's pink ink, Klarna's lime accent, etc.).
+  // Components can reference var(--decorative) for non-primary flourishes.
+  const tertiary = (w as any).colour?.tertiary as string | undefined
+  if (tertiary) out['--decorative'] = tertiary
+  return out
 }
 
 /* ─── Neutral starting world ───────────────────────────────────────

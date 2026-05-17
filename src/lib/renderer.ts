@@ -88,6 +88,113 @@ function buildIntroSlide(idx: number, input: any, c: any): string {
 </section>`
 }
 
+/* ─── Bespoke per-slide layouts ────────────────────────────────────────
+   Reference deck has hand-crafted layouts for problem/fix/how/competition;
+   our generic slide() shell can't match that. These builders generate the
+   matching markup when content fields signal the layout (e.g. content.cards
+   present → problem grid; content.checks present → fix checks; etc.).
+   Any slide without the required fields falls through to slide().
+═════════════════════════════════════════════════════════════════════════ */
+
+function escapeHtml(s: any): string {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c] as string))
+}
+
+function buildProblemSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const cards = Array.isArray(c.cards) ? c.cards : (Array.isArray(c.bullets) ? c.bullets.map((b: string, i: number) => ({ num: `0${i+1}`, head: b, body: '' })) : [])
+  if (!cards.length) return ''
+  const cardsHtml = cards.slice(0, 6).map((card: any, i: number) => `<div class="prob-card" style="--i:${i}">
+    <div class="prob-num">${escapeHtml(card.num || `0${i+1}`)}</div>
+    <div class="prob-head">${escapeHtml(card.head || card.title || '')}</div>
+    ${card.body ? `<div class="prob-body">${escapeHtml(card.body)}</div>` : ''}
+    ${card.foot ? `<div class="prob-foot">${escapeHtml(card.foot)}</div>` : ''}
+  </div>`).join('')
+  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
+  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'the problem')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}
+    <div class="prob-grid reveal-stagger tx-group">${cardsHtml}</div>
+  </div>
+</section>`
+}
+
+function buildFixSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const checks = Array.isArray(c.checks) ? c.checks : (Array.isArray(c.bullets) ? c.bullets : [])
+  if (!checks.length) return ''
+  const checksHtml = checks.slice(0, 5).map((chk: any, i: number) => `<div class="fix-check" style="--i:${i}">${escapeHtml(typeof chk === 'string' ? chk : chk.text || chk.label || '')}</div>`).join('')
+  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
+  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'the fix')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}
+    <div class="fix-checks reveal-stagger tx-group">${checksHtml}</div>
+  </div>
+</section>`
+}
+
+function buildHowSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const steps = Array.isArray(c.steps) ? c.steps : (Array.isArray(c.bullets) ? c.bullets.map((b: string, i: number) => ({ head: b, body: '' })) : [])
+  if (!steps.length) return ''
+  const stepsHtml = steps.slice(0, 4).map((s: any, i: number) => `<div class="how-step" style="--i:${i}">
+    <div class="how-num">${String(i + 1).padStart(2,'0')}</div>
+    <div class="how-head">${escapeHtml(s.head || s.title || (typeof s === 'string' ? s : ''))}</div>
+    ${s.body ? `<div class="how-body">${escapeHtml(s.body)}</div>` : ''}
+  </div>`).join('')
+  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
+  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'how it works')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}
+    <div class="how-flow reveal-stagger tx-group">${stepsHtml}</div>
+  </div>
+</section>`
+}
+
+function buildCompetitionSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const matrix = c.matrix
+  if (!matrix || !Array.isArray(matrix.rows) || !matrix.rows.length) return ''
+  const cols = Array.isArray(matrix.columns) ? matrix.columns.slice(0, 3) : ['You', 'Them A', 'Them B']
+  const head = `<div class="comp-head">Capability</div>${cols.map((col: string) => `<div class="comp-head">${escapeHtml(col)}</div>`).join('')}`
+  const rows = matrix.rows.slice(0, 6).map((row: any) => {
+    const cells = (row.cells || []).slice(0, 3).map((cell: any) => {
+      if (cell === true || cell === 'y' || cell === '✓') return '<div class="comp-y">✓</div>'
+      if (cell === false || cell === 'n' || cell === '✗') return '<div class="comp-n">×</div>'
+      return `<div>${escapeHtml(cell)}</div>`
+    }).join('')
+    return `<div class="comp-row-label">${escapeHtml(row.label || '')}</div>${cells}`
+  }).join('')
+  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
+  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'competition')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    <div class="comp-matrix reveal-stagger tx-group">${head}${rows}</div>
+  </div>
+</section>`
+}
+
+/** Marquee band — full-viewport section break with animated text rows.
+ *  Used between major arc sections (after Problem, after Fix, before Ask). */
+function buildMarqueeBand(idx: number, texts: string[]): string {
+  const row = (variant: string) => `<div class="marquee-row ${variant}"><span>${texts.map(t => escapeHtml(t)).join('</span><span>')}</span><span>${texts.map(t => escapeHtml(t)).join('</span><span>')}</span></div>`
+  return `<section class="marquee-section" data-idx="${idx}" data-label="—">
+    ${row('')}
+    ${row('reverse muted')}
+  </section>`
+}
+
 function buildDemoSlide(idx: number, input: any): string {
   // Priority: live demoUrl iframe > uploaded product screenshot > placeholder
   let body: string
@@ -151,18 +258,46 @@ export function renderDeck(
   // Make the motif visible via a data attribute so the deckTemplate CSS can
   // optionally style it (workspace consumers also see this in dev tools).
 
-  const slideHtmlList = ids.map((id, idx) => {
-    if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})
+  // Slides plus interleaved marquee bands between major arc sections so the
+  // story has visible breathing room (matches the reference deck's section
+  // breaks). Bands are inserted AFTER s3_problem and s5_fix when present.
+  const slideHtmlList: string[] = []
+  const labels: string[] = []
+  ids.forEach((id) => {
+    const idx = slideHtmlList.length
+    if (id === 's1_intro') {
+      slideHtmlList.push(buildIntroSlide(idx, input, content.s1_intro || {}))
+      labels.push(SLIDE_DEFS[id]?.label || id)
+      return
+    }
     const def = SLIDE_DEFS[id]
-    if (!def) return ''
+    if (!def) return
     const v   = visuals?.[id]
     const tx  = v?.transition || adaptTransition(id, def.tx, guide)
     const bgx = v?.bgx        || def.bgx
     const bgy = v?.bgy        || def.bgy
-    return slide(def.htmlId, idx, def.label, tx, bgx, bgy, content[id] || {}, motifBg)
-  })
+    const c   = content[id] || {}
+    // Bespoke layout dispatch — falls through to the generic slide() shell
+    // when the slide's content doesn't carry the layout-specific fields.
+    let html = ''
+    if (id === 's3_problem')      html = buildProblemSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's5_fix')     html = buildFixSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's6_how')     html = buildHowSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's10_competition') html = buildCompetitionSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    if (!html) html = slide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    slideHtmlList.push(html)
+    labels.push(def.label)
 
-  const labels = ids.map(id => SLIDE_DEFS[id]?.label || id)
+    // Interleave a marquee band after Problem and after Fix — section breaks.
+    if (id === 's3_problem' || id === 's5_fix') {
+      const company = input.company || ''
+      const texts = id === 's3_problem'
+        ? [company || 'A real problem', 'Costs adding up', 'No one solves this well', 'Here\'s why']
+        : [company || 'The fix', 'Built different', 'Proof inside', 'Keep reading']
+      slideHtmlList.push(buildMarqueeBand(slideHtmlList.length, texts))
+      labels.push('—')
+    }
+  })
 
   if (hasDemo) {
     const demoIdx = slideHtmlList.length
