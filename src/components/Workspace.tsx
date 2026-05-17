@@ -2398,11 +2398,8 @@ export default function Workspace({
         ? `linear-gradient(135deg, ${brandWorld.colour.primary}, ${brandWorld.colour.secondary})`
         : brandWorld.colour.primary)
     : ''
-  const accentTextFill = brandWorld
-    ? (isRichBrand
-        ? `linear-gradient(90deg, ${brandWorld.colour.primary} 0%, ${brandWorld.colour.accent} 50%, ${brandWorld.colour.secondary} 100%)`
-        : brandWorld.colour.primary)
-    : ''
+  // Solid primary — matches the brand's main font colour. No rainbow.
+  const accentTextFill = brandWorld ? brandWorld.colour.primary : ''
 
   // Use backgroundColor (not background shorthand) to avoid resetting backgroundImage.
   const worldStyle: any = brandWorld
