@@ -113,9 +113,11 @@ export default function Home() {
         const r = await fetch(`/demo-${demo}.json`)
         if (!r.ok) return
         const preset = await r.json()
-        if (preset.form)        setForm(f => ({ ...f, ...preset.form }))
+        const accent = preset.brandWorld?.colour?.primary || preset.accentColor || '#0F1115'
+        if (preset.form)        setForm(f => ({ ...f, ...preset.form, accentColor: accent }))
+        else                    setForm(f => ({ ...f, accentColor: accent }))
         if (preset.logoUrl)     setLogoUrl(preset.logoUrl)
-        if (preset.accentColor) document.documentElement.style.setProperty('--accent', preset.accentColor)
+        document.documentElement.style.setProperty('--accent', accent)
         if (preset.brandWorld)  setBrandWorld(preset.brandWorld)
         const accent = preset.brandWorld?.colour?.primary || preset.accentColor || '#0F1115'
         setGeneratedHtml(`<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:'Source Sans 3',sans-serif;color:${accent};font-size:18px;font-weight:600;text-align:center;padding:32px;">Demo workspace for ${preset.form?.company || demo}.<br/><span style="font-weight:400;color:#666;font-size:14px;margin-top:8px;display:block;">Run the full intake to generate real slides — the chrome here shows how the BrandWorld adapts every surface.</span></div>`)
