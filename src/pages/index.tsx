@@ -4,8 +4,9 @@ import { FRAMEWORKS } from '@/lib/frameworks/library'
 import { rankFrameworks } from '@/lib/frameworks/scoring'
 import { compressToDataUrl, type UploadedImage } from '@/lib/image-upload'
 import { type BrandWorld, brandWorldToCssVars } from '@/lib/brand-world'
+import { ANDREAS_INTAKE_PROMPT, parseIntakeJson } from '@/lib/andreas-intake-prompt'
 
-type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'assets' | 'world' | 'building' | 'canvas'
+type Step = 'mode' | 'ai-assist' | 'basics' | 'story' | 'purpose' | 'brand' | 'assets' | 'world' | 'building' | 'canvas'
 
 interface FormData {
   company: string
@@ -20,6 +21,8 @@ interface FormData {
   goal: string
   websiteUrl: string
   competitors: string     // free-text — comparable companies the founder lists (URLs or names, one per line). Andreas gap-fills.
+  ownWordsOverview: string // free-text — "in your own words" biz overview (AI-assist mode supplements pasted JSON)
+  darkTacticsEnabled: boolean
   accentColor: string
   bgColor: string
   isDark: boolean
@@ -51,12 +54,18 @@ const empty: FormData = {
   audience: 'Seed VC', goal: 'Raise',
   websiteUrl: '',
   competitors: '',
+  ownWordsOverview: '',
+  darkTacticsEnabled: false,
   accentColor: '#0F1115', bgColor: '#ffffff', isDark: false,
   founderName: '', founderRole: '', domain: '',
 }
 
 export default function Home() {
-  const [step, setStep] = useState<Step>('basics')
+  const [step, setStep] = useState<Step>('mode')
+  const [pastedIntake, setPastedIntake] = useState('')
+  const [pasteWarnings, setPasteWarnings] = useState<string[]>([])
+  const [pasteError, setPasteError] = useState('')
+  const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [form, setForm] = useState<FormData>(empty)
   const [generatedHtml, setGeneratedHtml] = useState('')
   const [generatedContent, setGeneratedContent] = useState<any>(null)
@@ -277,7 +286,7 @@ export default function Home() {
         brandWorld={brandWorld}
         onRegenerate={regenerateWithFramework}
         onRestart={() => {
-          setStep('basics')
+          setStep('mode')
           setForm(empty)
           setGeneratedHtml('')
           setGeneratedContent(null)
@@ -289,8 +298,9 @@ export default function Home() {
     )
   }
 
-  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4, assets: 5, world: 6 } as any)[step] || 1
-  const total = step === 'world' ? 6 : 5
+  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4, assets: 5, world: 6, 'ai-assist': 1 } as any)[step] || 1
+  const total = step === 'world' ? 6 : (step === 'ai-assist' ? 2 : 5)
+  const hideStepCounter = step === 'mode'
 
   const NavRow = ({ onBack, onNext, nextLabel = 'Continue', canNext = true, isFirst = false }: any) => (
     <div className="mt-8 flex items-center justify-between">
@@ -318,16 +328,18 @@ export default function Home() {
           <div className="w-7 h-7 rounded-lg" style={{ background: 'var(--accent)', transition: 'background 0.2s' }} />
           <span className="font-semibold tracking-tight">SignalDeck</span>
         </div>
-        <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>Step {stepNum} of {total}</span>
+        {!hideStepCounter && <span className="text-sm" style={{ color: 'var(--ink-muted)' }}>Step {stepNum} of {total}</span>}
       </header>
 
       {/* ── Progress ── */}
-      <div className="px-8">
-        <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'var(--surface)' }}>
-          <div className="h-full rounded-full transition-all duration-300"
-            style={{ width: `${(stepNum / total) * 100}%`, background: 'var(--accent)' }} />
+      {!hideStepCounter && (
+        <div className="px-8">
+          <div className="w-full rounded-full overflow-hidden" style={{ height: 6, background: 'var(--surface)' }}>
+            <div className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${(stepNum / total) * 100}%`, background: 'var(--accent)' }} />
+          </div>
         </div>
-      </div>
+      )}
 
       <main className="flex-1 flex items-start justify-center px-6 py-10">
         <div className="w-full max-w-[680px]">
@@ -340,6 +352,143 @@ export default function Home() {
           )}
 
           <div className="paper hairline rounded-[18px] shadow-card p-10">
+
+            {/* ── Step 0: Mode chooser ───────────────────────────────── */}
+            {step === 'mode' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">How do you want to fill this out?</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                Both paths land in the same workspace. Pick whichever feels less painful.
+              </p>
+
+              <div className="mt-8 grid sm:grid-cols-2 gap-4">
+                <button onClick={() => setStep('basics')}
+                  className="text-left p-6 rounded-2xl hairline focus-ring transition-all hover:-translate-y-0.5"
+                  style={{ background: 'var(--surface)' }}>
+                  <div className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>Guided</div>
+                  <div className="text-[18px] font-semibold tracking-tight mb-1.5">Walk me through it</div>
+                  <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+                    Five short steps. Story, audience, brand, assets. Andreas takes it from there.
+                  </p>
+                  <div className="mt-4 text-[12px] font-medium" style={{ color: 'var(--accent)' }}>~ 5 minutes →</div>
+                </button>
+
+                <button onClick={() => setStep('ai-assist')}
+                  className="text-left p-6 rounded-2xl hairline focus-ring transition-all hover:-translate-y-0.5"
+                  style={{ background: 'var(--surface)' }}>
+                  <div className="text-[11px] font-mono uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>AI-assist</div>
+                  <div className="text-[18px] font-semibold tracking-tight mb-1.5">I'll paste from my AI</div>
+                  <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+                    Copy a prompt, run it through Claude or ChatGPT, paste the JSON back. Then just hand us the assets.
+                  </p>
+                  <div className="mt-4 text-[12px] font-medium" style={{ color: 'var(--accent)' }}>~ 2 minutes →</div>
+                </button>
+              </div>
+            </>}
+
+            {/* ── AI-assist: one page = prompt + paste + assets + biz overview + dark toggle ── */}
+            {step === 'ai-assist' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">Run Andreas through your AI</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                Copy the prompt below, paste it into Claude / ChatGPT / Gemini, answer the questions, then paste the JSON it returns here.
+              </p>
+
+              {/* Copy-prompt block */}
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[13px] font-medium">1. Copy this prompt</div>
+                  <button onClick={async () => { await navigator.clipboard.writeText(ANDREAS_INTAKE_PROMPT); setCopiedPrompt(true); setTimeout(() => setCopiedPrompt(false), 2000) }}
+                    className="text-[12px] font-medium h-7 px-3 rounded-lg hairline"
+                    style={{ background: copiedPrompt ? 'var(--accent)' : 'transparent', color: copiedPrompt ? '#fff' : 'var(--ink)' }}>
+                    {copiedPrompt ? '✓ Copied' : 'Copy prompt'}
+                  </button>
+                </div>
+                <pre className="text-[11px] leading-relaxed font-mono rounded-xl p-3 hairline overflow-auto max-h-48"
+                  style={{ background: 'var(--surface)', color: 'var(--ink-muted)', whiteSpace: 'pre-wrap' }}>{ANDREAS_INTAKE_PROMPT.split('\n').slice(0, 12).join('\n') + '\n…'}</pre>
+              </div>
+
+              {/* Paste-response block */}
+              <div className="mt-6">
+                <div className="text-[13px] font-medium mb-2">2. Paste the JSON your AI returned</div>
+                <textarea value={pastedIntake}
+                  onChange={e => { setPastedIntake(e.target.value); setPasteWarnings([]); setPasteError('') }}
+                  placeholder={'{\n  "company": "...",\n  "oneLiner": "...",\n  ...\n}'}
+                  rows={8}
+                  className="w-full paper hairline rounded-xl px-3 py-2 focus-ring font-mono text-[12px] resize-y" />
+                {pasteError && (
+                  <div className="mt-2 text-[12px]" style={{ color: '#b0322b' }}>{pasteError}</div>
+                )}
+                {pasteWarnings.length > 0 && (
+                  <ul className="mt-2 text-[11px] space-y-1" style={{ color: '#a86a00' }}>
+                    {pasteWarnings.map((w, i) => <li key={i}>• {w}</li>)}
+                  </ul>
+                )}
+              </div>
+
+              {/* Biz overview in own words */}
+              <div className="mt-6">
+                <div className="text-[13px] mb-1.5">3. In your own words — anything Andreas should know <span className="text-[11px] opacity-60">(optional)</span></div>
+                <textarea value={form.ownWordsOverview}
+                  onChange={e => set('ownWordsOverview', e.target.value)}
+                  placeholder="The voice you'd use over coffee. Why this matters to you. What the AI couldn't capture."
+                  rows={3}
+                  className="w-full paper hairline rounded-xl px-3 py-2 focus-ring text-sm resize-y" />
+              </div>
+
+              {/* Website */}
+              <div className="mt-6">
+                <div className="text-[13px] mb-1.5">4. Website URL</div>
+                <input value={form.websiteUrl}
+                  onChange={e => { set('websiteUrl', e.target.value); tryDetect(e.target.value) }}
+                  placeholder="https://yourbrand.com"
+                  className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
+              </div>
+
+              {/* Competitors */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5">5. Competitors <span className="text-[11px] opacity-60">(optional)</span></div>
+                <textarea value={form.competitors}
+                  onChange={e => set('competitors', e.target.value)}
+                  placeholder={'stripe.com\nbrex.com\nMercury'}
+                  rows={2}
+                  className="w-full paper hairline rounded-xl px-3 py-2 focus-ring text-sm resize-y" />
+              </div>
+
+              {/* Edge tactics toggle */}
+              <div className="mt-6 p-4 rounded-xl hairline" style={{ background: 'var(--surface)' }}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.darkTacticsEnabled}
+                    onChange={e => set('darkTacticsEnabled', e.target.checked)}
+                    className="mt-1" />
+                  <div>
+                    <div className="text-[13px] font-medium">Edgy persuasion tactics</div>
+                    <div className="text-[11px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+                      Lets Andreas use harder-edge moves — FOMO framing, competitive shade, urgency anchors, scarcity hooks. Off by default. Investors will notice; pick this only if it fits your voice.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <NavRow
+                onBack={() => setStep('mode')}
+                onNext={() => {
+                  const result = parseIntakeJson(pastedIntake)
+                  if (!result.ok || !result.data) {
+                    setPasteError(result.error || "Couldn't read the JSON. Re-paste what your AI returned.")
+                    setPasteWarnings(result.warnings)
+                    return
+                  }
+                  // Merge parsed fields into form. Asset/URL/biz-overview/dark fields stay user-supplied.
+                  setForm(f => ({ ...f, ...result.data }))
+                  setPasteWarnings(result.warnings)
+                  setPasteError('')
+                  // Skip the rest of the guided steps — go straight to assets if no logo yet, else build BrandWorld
+                  if (!form.logoData && !form.heroData) setStep('assets')
+                  else buildBrandWorld()
+                }}
+                canNext={pastedIntake.trim().length > 10}
+                nextLabel="Read my pasted intake →"
+              />
+            </>}
 
             {/* ── Step 1: Basics ─────────────────────────────────────── */}
             {step === 'basics' && <>
@@ -382,7 +531,7 @@ export default function Home() {
                     className="w-full h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
                 </label>
               </div>
-              <NavRow isFirst onNext={() => setStep('story')} canNext={!!form.company} />
+              <NavRow onBack={() => setStep('mode')} onNext={() => setStep('story')} canNext={!!form.company} />
             </>}
 
             {/* ── Step 2: Story ──────────────────────────────────────── */}
@@ -495,6 +644,22 @@ export default function Home() {
                   </div>
                 )}
               </div>
+
+              {/* Edge tactics toggle — opt-in, lives next to framework picker */}
+              <div className="mt-6 p-4 rounded-xl hairline" style={{ background: 'var(--surface)' }}>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.darkTacticsEnabled}
+                    onChange={e => set('darkTacticsEnabled', e.target.checked)}
+                    className="mt-1" />
+                  <div>
+                    <div className="text-[13px] font-medium">Edgy persuasion tactics</div>
+                    <div className="text-[11px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+                      Lets Andreas use harder-edge moves — FOMO framing, competitive shade, urgency anchors, scarcity hooks. Off by default. Investors will notice; pick this only if it fits your voice.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
               <NavRow onBack={() => setStep('story')} onNext={() => setStep('brand')} />
             </>}
 

@@ -16,6 +16,9 @@ export function buildSystemPrompt(
     tractionStatus?:   TractionStatus
     region?:           Region
     teamSize?:         TeamSize
+    /** When true, founder opted-in to harder persuasion moves (FOMO, scarcity,
+     *  competitive shade, urgency anchors). Off by default. */
+    darkTacticsEnabled?: boolean
   },
 ): string {
   const industryContext = INDUSTRY_CONTEXT[industry] ?? ''
@@ -39,6 +42,18 @@ Tone: ${opts.industryVoice.tone}
 Avoid in copy: ${opts.industryVoice.avoid.join(', ')}\n`
     : ''
 
+  const darkTacticsBlock = opts?.darkTacticsEnabled
+    ? `\nEDGE TACTICS UNLOCKED (founder opted in):
+The founder has explicitly enabled harder persuasion moves. You may use:
+- Scarcity framing ("we're closing this round in 30 days, two slots left")
+- Urgency anchors ("the competitor that ignored this in 2022 is now public")
+- Competitive shade (name a competitor's weakness IF it's true and verifiable)
+- FOMO ("the funds that passed on Notion in 2018 still talk about it")
+- Loss-frame > gain-frame on the problem slide ("what you're losing every quarter")
+- Specific contrast ("they took 18 months to ship this. We did it in 6.")
+Rules: never invent stats to support these moves. Use only proof the founder already gave you. If you can't substantiate it, don't reach for the tactic.\n`
+    : ''
+
   const contextBlocks = [businessModelContext, gtmMotionContext, tractionContext, regionContext, teamSizeContext]
     .filter(Boolean)
     .join('\n')
@@ -53,7 +68,7 @@ The audience's core question: "${narrative.coreQuestion}"
 Story spine: ${narrative.narrativeSpine}
 
 ${stageContext}
-${industryContext}${businessModelContext}${gtmMotionContext}${tractionContext}${regionContext}${teamSizeContext}${frameworkBlock}${voiceBlock}
+${industryContext}${businessModelContext}${gtmMotionContext}${tractionContext}${regionContext}${teamSizeContext}${frameworkBlock}${voiceBlock}${darkTacticsBlock}
 WRITING RULES:
 - Headlines: 2–6 words, SHORT, punchy, UPPERCASE-friendly. No buzzwords.
 - Tags: 2–4 words, category label for the slide.

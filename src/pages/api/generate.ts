@@ -89,6 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const guideKey      = resolveIndustry(industry)
     const industryGuide = getIndustryGuide(guideKey)
 
+    const darkTacticsEnabled = input.darkTacticsEnabled === true
     const systemPrompt = buildSystemPrompt(narrative, stage, industry, {
       framework:      fw ? { name: fw.name, summary: fw.summary, steps: fw.steps } : undefined,
       industryVoice:  { tone: industryGuide.tone, avoid: industryGuide.avoid },
@@ -97,6 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       tractionStatus,
       region,
       teamSize,
+      darkTacticsEnabled,
     })
     /* ─── STAGE A0.5 — Andreas the researcher (best-effort) ──────────
        Sonnet identifies 2-3 likely competitors (gap-filling whatever
