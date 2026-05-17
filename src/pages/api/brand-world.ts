@@ -220,10 +220,16 @@ function buildUserPrompt(input: any, extracted?: ExtractedBrand | null): string 
   if (Array.isArray(input.inspoLinks) && input.inspoLinks.length) sources.push(`Inspo references: ${input.inspoLinks.join(', ')}`)
 
   if (extracted) {
-    const palette = extracted.colors.slice(0, 5).map(c => c.hex).filter(Boolean)
-    if (palette.length) sources.push(`Detected site palette (use as a starting point): ${palette.join(', ')}`)
+    // Show the palette WITH source + count so Sonnet can weight it. body-bg
+    // and theme-color sources are basically the brand colour; respect them.
+    const paletteDetailed = extracted.colors.slice(0, 6)
+      .map(c => `${c.hex} (source: ${c.source}${c.count && c.count > 1 ? `, seen ${c.count}×` : ''})`)
+      .filter(Boolean)
+    if (paletteDetailed.length) {
+      sources.push(`Detected site palette — USE THESE COLOURS unless the user explicitly overrode them. Colours from "body-bg" or "theme-color" sources ARE the brand's actual primary/background and must appear in your output palette:\n  ${paletteDetailed.join('\n  ')}`)
+    }
     if (extracted.detectedFonts.length) sources.push(`Detected site fonts: ${extracted.detectedFonts.join(', ')}`)
-    if (extracted.ogImage) sources.push(`og:image was attached above — treat as the strongest visual signal for palette and mood.`)
+    if (extracted.ogImage) sources.push(`og:image was attached above — treat as the strongest visual signal for palette and mood. Verify the palette above against what you see in the image.`)
   }
 
   return `Generate the BrandWorld for this company. Use everything below as evidence; do not invent context that isn't given.

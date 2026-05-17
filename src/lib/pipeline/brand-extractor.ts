@@ -21,7 +21,9 @@
 export interface ExtractedColor {
   hex:    string
   weight: number          // 0–1 trust score
-  source: 'theme-color' | 'css-var' | 'style-hex'
+  source: 'theme-color' | 'css-var' | 'body-bg' | 'inline-style' | 'style-hex'
+  /** How many times this hex was seen across the page. Higher = stronger brand signal. */
+  count?: number
 }
 
 export interface ExtractedBrand {
@@ -76,7 +78,12 @@ function extractColors(html: string): ExtractedColor[] {
     const hex = normalizeHex(raw)
     if (!hex || isGrayish(hex)) return
     const existing = seen.get(hex)
-    if (!existing || weight > existing.weight) seen.set(hex, { hex, weight, source })
+    if (existing) {
+      existing.count = (existing.count || 1) + 1
+      if (weight > existing.weight) { existing.weight = weight; existing.source = source }
+    } else {
+      seen.set(hex, { hex, weight, source, count: 1 })
+    }
   }
 
   // 1. <meta name="theme-color"> (highest trust)
@@ -88,17 +95,44 @@ function extractColors(html: string): ExtractedColor[] {
   // 2. CSS custom properties that look like brand tokens (high trust)
   const cssVarRe = /--(primary|brand|accent|main|highlight|color(?:-\w+)?)[^:]*:\s*(#[0-9a-fA-F]{3,8})\b/gi
   let m: RegExpExecArray | null
-  while ((m = cssVarRe.exec(html)) !== null) add(m[2], 'css-var', 0.8)
+  while ((m = cssVarRe.exec(html)) !== null) add(m[2], 'css-var', 0.85)
 
-  // 3. All hex colors inside <style> blocks (lower trust — might be any color)
+  // 3. <body> / <html> background-color — this IS the brand bg for marketing sites
+  // (Up Bank's yellow, Stripe's purple, etc.). Highest single-source signal.
+  const bodyBgRe = /<(?:body|html)\b[^>]*style=["'][^"']*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,8})/gi
+  while ((m = bodyBgRe.exec(html)) !== null) add(m[1], 'body-bg', 0.95)
+  // Also catch `body { background: #xxx }` inside <style>
+  const bodyBgCssRe = /\b(?:body|html)\s*\{[^}]*background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,8})/gi
+  while ((m = bodyBgCssRe.exec(html)) !== null) add(m[1], 'body-bg', 0.95)
+
+  // 4. Inline style="..." attributes (background / color / fill / stroke)
+  // Up Bank's coral text, hero accents — most JS-rendered marketing sites
+  // shove brand colours into inline styles rather than stylesheets.
+  const inlineStyleRe = /style=["']([^"']+)["']/gi
+  const propHexRe = /(background(?:-color)?|color|fill|stroke|border(?:-color)?)\s*:\s*(#[0-9a-fA-F]{3,8})\b/gi
+  let s: RegExpExecArray | null
+  while ((s = inlineStyleRe.exec(html)) !== null) {
+    const inline = s[1]
+    let p: RegExpExecArray | null
+    while ((p = propHexRe.exec(inline)) !== null) add(p[2], 'inline-style', 0.6)
+  }
+
+  // 5. All hex colors inside <style> blocks (lower trust — but bump if seen often)
   const styleBlocks = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(x => x[1])
   const hexRe = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g
   for (const block of styleBlocks) {
     while ((m = hexRe.exec(block)) !== null) add(m[0], 'style-hex', 0.4)
   }
 
-  return Array.from(seen.values())
-    .sort((a, b) => b.weight - a.weight)
+  // Final ranking: weight + frequency bonus (capped). A colour seen 5+ times
+  // anywhere is almost certainly part of the brand — boost it.
+  const ranked = Array.from(seen.values()).map(c => ({
+    ...c,
+    weight: Math.min(1, c.weight + Math.min(0.3, ((c.count || 1) - 1) * 0.05)),
+  }))
+
+  return ranked
+    .sort((a, b) => b.weight - a.weight || (b.count || 0) - (a.count || 0))
     .slice(0, 8)
 }
 
