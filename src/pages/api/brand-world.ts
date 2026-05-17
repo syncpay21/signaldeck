@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
 import type { BrandWorld } from '../../lib/brand-world'
+import { extractBrand, type ExtractedBrand } from '../../lib/pipeline/brand-extractor'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -150,7 +151,7 @@ Before returning, ASK YOURSELF:
 
 If the answer is uncertain, lean towards specificity — pick the motif from the actual workflow, not the abstract category.`
 
-function buildUserPrompt(input: any): string {
+function buildUserPrompt(input: any, extracted?: ExtractedBrand | null): string {
   const sources: string[] = []
   if (input.company)    sources.push(`Company: ${input.company}`)
   if (input.industry)   sources.push(`Industry: ${input.industry}`)
@@ -162,6 +163,13 @@ function buildUserPrompt(input: any): string {
   if (input.customers)  sources.push(`Customers: ${input.customers}`)
   if (input.proof)      sources.push(`Proof: ${input.proof}`)
   if (Array.isArray(input.inspoLinks) && input.inspoLinks.length) sources.push(`Inspo references: ${input.inspoLinks.join(', ')}`)
+
+  if (extracted) {
+    const palette = extracted.colors.slice(0, 5).map(c => c.hex).filter(Boolean)
+    if (palette.length) sources.push(`Detected site palette (use as a starting point): ${palette.join(', ')}`)
+    if (extracted.detectedFonts.length) sources.push(`Detected site fonts: ${extracted.detectedFonts.join(', ')}`)
+    if (extracted.ogImage) sources.push(`og:image was attached above — treat as the strongest visual signal for palette and mood.`)
+  }
 
   return `Generate the BrandWorld for this company. Use everything below as evidence; do not invent context that isn't given.
 
@@ -177,6 +185,20 @@ function parseDataUrl(dataUrl: string): { mediaType: string; data: string } | nu
   return { mediaType: m[1], data: m[2] }
 }
 
+/** Fetch a remote image (e.g. og:image) and inline it as a base64 data URL. */
+async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SignalDeck/1.0; +https://signaldeck.app)' },
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) return null
+  const contentType = res.headers.get('content-type') || 'image/jpeg'
+  if (!contentType.startsWith('image/')) return null
+  const buf = Buffer.from(await res.arrayBuffer())
+  if (buf.length > 4_500_000) return null  // Anthropic vision cap is ~5MB; bail before sending
+  return `data:${contentType};base64,${buf.toString('base64')}`
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -184,16 +206,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const input = req.body
     if (!input.company) return res.status(400).json({ error: 'company is required' })
 
-    // Build the user message. If user uploaded a hero/logo image, include it
-    // so Sonnet can actually SEE the brand instead of inferring blind.
-    const userTextPrompt = buildUserPrompt(input)
     const heroImage = typeof input.heroData    === 'string' && input.heroData.startsWith('data:image')    ? input.heroData    : null
     const logoImage = typeof input.logoData    === 'string' && input.logoData.startsWith('data:image')    ? input.logoData    : null
     const productImage = typeof input.productData === 'string' && input.productData.startsWith('data:image') ? input.productData : null
 
+    // If the user gave a websiteUrl but didn't upload screenshots, fetch the
+    // site's og:image + brand colours so Sonnet doesn't infer blind.
+    let extracted: ExtractedBrand | null = null
+    let ogImageDataUrl: string | null = null
+    if (input.websiteUrl && !heroImage) {
+      extracted = await extractBrand(input.websiteUrl).catch(() => null)
+      if (extracted?.ogImage) {
+        ogImageDataUrl = await fetchImageAsDataUrl(extracted.ogImage).catch(() => null)
+      }
+    }
+
+    const userTextPrompt = buildUserPrompt(input, extracted)
     const userContent: any[] = []
     // Attach images first so the model sees them before reading text.
-    for (const img of [heroImage, logoImage, productImage].filter(Boolean) as string[]) {
+    for (const img of [heroImage, ogImageDataUrl, logoImage, productImage].filter(Boolean) as string[]) {
       const parsed = parseDataUrl(img)
       if (parsed) {
         userContent.push({ type: 'image', source: { type: 'base64', media_type: parsed.mediaType as any, data: parsed.data } })
