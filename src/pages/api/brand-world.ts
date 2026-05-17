@@ -228,7 +228,10 @@ function buildUserPrompt(input: any, extracted?: ExtractedBrand | null): string 
     if (paletteDetailed.length) {
       sources.push(`Detected site palette — USE THESE COLOURS unless the user explicitly overrode them. Colours from "body-bg" or "theme-color" sources ARE the brand's actual primary/background and must appear in your output palette:\n  ${paletteDetailed.join('\n  ')}`)
     }
-    if (extracted.detectedFonts.length) sources.push(`Detected site fonts: ${extracted.detectedFonts.join(', ')}`)
+    if (extracted.detectedFonts.length) {
+      sources.push(`Detected site fonts: ${extracted.detectedFonts.join(', ')}
+  ⚠ If any of these are CUSTOM fonts (not on Google Fonts — e.g. "UpFont", "ProximaCustom", proprietary names), DO NOT output that name in typography.heading/body. Instead, look at the og:image to see what the typeface LOOKS like (condensed display, geometric grotesk, editorial serif, rounded humanist, etc.) and pick the closest GOOGLE FONT match. Examples: bold condensed display → Antonio / Bebas Neue / Oswald / Barlow Condensed; geometric grotesk → DM Sans / Manrope / Space Grotesk; editorial serif → Fraunces / Cormorant Garamond. The font MUST be loadable from Google Fonts.`)
+    }
     if (extracted.ogImage) sources.push(`og:image was attached above — treat as the strongest visual signal for palette and mood. Verify the palette above against what you see in the image.`)
   }
 

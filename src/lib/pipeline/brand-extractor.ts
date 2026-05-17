@@ -139,25 +139,34 @@ function extractColors(html: string): ExtractedColor[] {
 function extractFonts(html: string): string[] {
   const seen = new Set<string>()
   const out: string[] = []
+  const push = (name: string) => {
+    const trimmed = name.replace(/['"]/g, '').trim()
+    if (!trimmed || trimmed.length > 40) return
+    if (/^(var|inherit|initial|sans|serif|monospace|system-ui|ui-\w+|-apple-system|blinkmacsystemfont)/i.test(trimmed)) return
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key); out.push(trimmed)
+  }
+  let m: RegExpExecArray | null
+
   // 1. Google Fonts <link href="...family=Inter:..."> (very common pattern)
   const linkRe = /fonts\.googleapis\.com\/css2?\?[^"']*family=([^"'&]+)/gi
-  let m: RegExpExecArray | null
   while ((m = linkRe.exec(html)) !== null) {
     for (const fam of decodeURIComponent(m[1]).split('|')) {
       const name = fam.split(':')[0]?.replace(/\+/g, ' ').trim()
-      if (name && !seen.has(name)) { seen.add(name); out.push(name) }
+      if (name) push(name)
     }
   }
-  // 2. font-family CSS declarations
-  const ffRe = /font-family\s*:\s*([^;}\n]+)/gi
-  while ((m = ffRe.exec(html)) !== null) {
-    const list = m[1].split(',')
-    const primary = list[0]?.replace(/['"]/g, '').trim()
-    if (primary && primary.length < 40 && !/^(var|inherit|initial|sans|serif|monospace)/i.test(primary)) {
-      if (!seen.has(primary)) { seen.add(primary); out.push(primary) }
-    }
-  }
-  return out.slice(0, 5)
+  // 2. @font-face font-family declarations (custom fonts — UpBank's "UpFont", etc.)
+  // These won't load on the deck, but they tell Sonnet what kind of typeface the
+  // brand actually uses so it can pick the closest Google equivalent.
+  const fontFaceRe = /@font-face\s*\{[^}]*font-family\s*:\s*([^;}\n]+)/gi
+  while ((m = fontFaceRe.exec(html)) !== null) push(m[1].split(',')[0] || '')
+  // 3. font-family CSS declarations (in <style> blocks AND inline style attrs)
+  const ffRe = /font-family\s*:\s*([^;}"\n]+)/gi
+  while ((m = ffRe.exec(html)) !== null) push(m[1].split(',')[0] || '')
+
+  return out.slice(0, 6)
 }
 
 function normalizeHex(hex: string): string | null {
