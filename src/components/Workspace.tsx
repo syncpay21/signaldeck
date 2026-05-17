@@ -478,14 +478,14 @@ export default function Workspace({
                 className={`display-heading text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight mt-2 ${fx.heroWatermark ? 'has-watermark' : ''}`}
                 data-watermark={fx.heroWatermark ? (company || 'OVERVIEW').toUpperCase() : undefined}
               >
-                From rough founder notes to a live <span style={{ color: liveAccent }}>investor deck</span>
+                From rough founder notes to a live <span className="accent-text">investor deck</span>
               </h1>
               <p className="ink-muted mt-3 text-[14px] leading-relaxed max-w-lg">
                 SignalDeck audits the story, applies a {productType} VC lens, checks claims, builds an interactive deck, deploys it, and shows what investors cared about after opening it.
               </p>
               <div className="flex gap-2 mt-5 flex-wrap">
                 <button onClick={() => setActive('audit')}
-                  className="h-10 px-4 rounded-xl font-medium text-[14px] text-white inline-flex items-center gap-2" style={{ background: liveAccent }}>
+                  className="brand-glow h-10 px-4 rounded-xl font-medium text-[14px] text-white inline-flex items-center gap-2" style={{ background: 'var(--primary-fill)' }}>
                   <ic.check className="w-4 h-4"/> Run audit
                 </button>
                 <button onClick={() => setActive('sources')}
@@ -1853,7 +1853,7 @@ export default function Workspace({
                 className={`display-heading text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2 ${fx.heroWatermark ? 'has-watermark' : ''}`}
                 data-watermark={fx.heroWatermark ? 'PRESENT' : undefined}
               >
-                Turn the deck into a <span style={{ color: liveAccent }}>talk track</span>
+                Turn the deck into a <span className="accent-text">talk track</span>
               </h1>
               <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
                 Generate speaker notes, timing, demo day script, and investor Q&amp;A prep for each slide. Tone: <i>{px(tpl.speakerTone)}</i>
@@ -2351,13 +2351,23 @@ export default function Workspace({
   const SHOWCASE_SCREENS = new Set(['overview', 'theme', 'style', 'present'])
   const isShowcase = !!brandWorld && SHOWCASE_SCREENS.has(active)
   const fx = brandWorld?.effects ?? { gridOverlay:false, radialAmbient:false, heroWatermark:false, monoLabels:false, glow:false, grainOverlay:false }
+  const isRichBrand = brandWorld?.visualRichness === 'rich' || brandWorld?.visualRichness === 'maximal'
   const motifLayer = isShowcase ? brandWorldMotifBackground(brandWorld!.motifs, brandWorld!.colour.primary).css : ''
   const wantsLayoutGradient = isShowcase && (brandWorld?.layoutStyle === 'editorial-spacious' || brandWorld?.layoutStyle === 'gallery-expressive')
   const layoutGradient = wantsLayoutGradient ? 'radial-gradient(at 20% 0%, var(--primary-soft), transparent 50%)' : ''
-  // Richness-driven ambient washes + 64px grid overlay. Always-on (not gated by
-  // showcase), because the chrome should feel branded regardless of screen.
+  // Richness-driven ambient washes. For rich/maximal brands we layer THREE
+  // saturated ellipses in primary + secondary + accent — the "reflective
+  // mirror" iridescent effect matching luma-preview.html. For balanced
+  // brands we use the simpler two-soft-washes pattern.
+  const hexAlpha = (hex: string, a: number) => {
+    if (!hex || !hex.startsWith('#') || hex.length !== 7) return hex
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
+    return `rgba(${r}, ${g}, ${b}, ${a})`
+  }
   const ambientLayer = brandWorld && fx.radialAmbient
-    ? `radial-gradient(circle at 12% 8%, ${brandWorld.colour.primarySoft}, transparent 28%), radial-gradient(circle at 88% 16%, ${brandWorld.colour.primarySoft}, transparent 26%)`
+    ? (isRichBrand
+        ? `radial-gradient(ellipse 90% 60% at 20% 0%, ${hexAlpha(brandWorld.colour.primary, 0.18)}, transparent 60%), radial-gradient(ellipse 80% 50% at 80% 10%, ${hexAlpha(brandWorld.colour.accent, 0.16)}, transparent 55%), radial-gradient(ellipse 70% 50% at 50% 100%, ${hexAlpha(brandWorld.colour.secondary, 0.20)}, transparent 60%)`
+        : `radial-gradient(circle at 12% 8%, ${brandWorld.colour.primarySoft}, transparent 28%), radial-gradient(circle at 88% 16%, ${brandWorld.colour.primarySoft}, transparent 26%)`)
     : ''
   const gridLayer = brandWorld && fx.gridOverlay
     ? `linear-gradient(${brandWorld.colour.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${brandWorld.colour.gridLine} 1px, transparent 1px)`
@@ -2367,11 +2377,28 @@ export default function Workspace({
   const repeats = [layoutGradient, ambientLayer].filter(Boolean).map(() => 'no-repeat').concat(motifLayer ? ['repeat'] : []).concat(gridLayer ? ['repeat'] : [])
   const layered = layers.join(', ')
 
+  // Brand-aware fill tokens. Rich/maximal brands get gradient fills built from
+  // primary + secondary + accent so primary buttons + accent-text spans pick up
+  // the brand's actual character (Luma's pink->peach, SyncPay's teal->blue)
+  // instead of a single flat colour. Restrained/balanced brands stay solid.
+  const primaryFill = brandWorld
+    ? (isRichBrand
+        ? `linear-gradient(135deg, ${brandWorld.colour.primary}, ${brandWorld.colour.secondary})`
+        : brandWorld.colour.primary)
+    : ''
+  const accentTextFill = brandWorld
+    ? (isRichBrand
+        ? `linear-gradient(90deg, ${brandWorld.colour.primary} 0%, ${brandWorld.colour.accent} 50%, ${brandWorld.colour.secondary} 100%)`
+        : brandWorld.colour.primary)
+    : ''
+
   const worldStyle: any = brandWorld
     ? {
         ...brandWorldToCssVars(brandWorld),
         background: 'var(--bg)',
         color: 'var(--text)',
+        '--primary-fill': primaryFill,
+        '--accent-text': accentTextFill,
         ...(layered ? { backgroundImage: layered, backgroundRepeat: repeats.join(', '), backgroundSize: sizes.join(', ') } : {}),
       }
     : { background: 'var(--bg)', color: 'var(--ink)' }
@@ -2392,6 +2419,13 @@ export default function Workspace({
             letter-spacing: var(--heading-tracking) !important;
             font-size: clamp(36px, 5vw, 64px) !important;
             line-height: 1.05 !important;
+          }
+          .accent-text {
+            background: var(--accent-text);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            -webkit-text-fill-color: transparent;
           }
           [data-mono-labels="true"] .mini-label {
             font-family: var(--font-mono), ui-monospace, monospace !important;
@@ -2456,11 +2490,11 @@ export default function Workspace({
           <div className="hidden md:flex items-center gap-3">
             {realSlides.length > 0 && <Pill tone="soft">{realSlides.length} slides ready</Pill>}
             <button onClick={() => setActive('theme')} className="h-8 px-3 rounded-full hairline flex items-center gap-2 text-[13px]">
-              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background:`linear-gradient(135deg,${liveAccent},${liveAccent}88)` }}/>
+              <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: 'var(--primary-fill)' }}/>
               Theme
             </button>
           </div>
-          <button onClick={() => setActive('present')} className="brand-glow h-8 px-3.5 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5" style={{ background: liveAccent }}>
+          <button onClick={() => setActive('present')} className="brand-glow h-8 px-3.5 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5" style={{ background: 'var(--primary-fill)' }}>
             <ic.play className="w-3.5 h-3.5"/> Present
           </button>
           <div className="w-9 h-9 rounded-full surface hairline flex items-center justify-center text-[12px] font-semibold flex-shrink-0" style={{ background:'var(--surface)' }}>
