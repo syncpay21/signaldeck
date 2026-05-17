@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LinkedIn — SignalDeck BrandWorld preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700;900&family=JetBrains+Mono&display=swap" rel="stylesheet"/>
+<style>
+  *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:           #F3F2EF;
+    --surface:      #FFFFFF;
+    --surface-soft: #F9F8F6;
+    --primary:      #0A66C2;
+    --primary-soft: rgba(10, 102, 194, 0.10);
+    --secondary:    #057642;
+    --accent:       #E7A33E;
+    --text:         #191919;
+    --text-muted:   #666666;
+    --border:       rgba(0, 0, 0, 0.10);
+    --hair:         rgba(0, 0, 0, 0.06);
+    --success:      #057642;
+    --warning:      #E7A33E;
+    --error:        #CC1016;
+    --radius:       8px;
+    --fh:           'Source Sans 3', system-ui, sans-serif;
+    --fb:           'Source Sans 3', system-ui, sans-serif;
+    --fm:           'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--fb);
+    font-weight: 400;
+    min-height: 100vh;
+    padding: 48px 32px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+
+  /* ── Lead ─────────────────────────────────────────────────── */
+  .lead { padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+  .crumbs { font-family: var(--fm); font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+  .crumbs em { font-style: normal; color: var(--primary); }
+  h1.hero {
+    font-family: var(--fh);
+    font-weight: 700;
+    font-size: clamp(40px, 5.5vw, 72px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  h1.hero em { font-style: normal; color: var(--primary); }
+  .sub { font-size: 18px; line-height: 1.5; color: var(--text-muted); max-width: 680px; }
+
+  /* ── Section ──────────────────────────────────────────────── */
+  .section { margin-top: 48px; }
+  .section h2 {
+    font-family: var(--fh); font-weight: 700; font-size: 22px; margin-bottom: 16px;
+    color: var(--text);
+  }
+  .section .h2-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; margin-top: -10px; }
+
+  /* ── Palette ──────────────────────────────────────────────── */
+  .palette { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .sw { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+  .sw-block { height: 72px; }
+  .sw-lbl { padding: 8px 10px; font-size: 11px; }
+  .sw-lbl b { display: block; font-weight: 600; color: var(--text); }
+  .sw-lbl span { font-family: var(--fm); color: var(--text-muted); font-size: 10px; }
+
+  /* ── Typography spec ──────────────────────────────────────── */
+  .typo-spec { padding: 20px 0; border-bottom: 1px solid var(--border); }
+  .typo-spec:last-child { border-bottom: none; }
+  .typo-spec .display { font-family: var(--fh); font-weight: 700; font-size: 48px; line-height: 1.05; letter-spacing: -0.02em; color: var(--text); margin-bottom: 8px; }
+  .typo-spec .body { font-family: var(--fb); font-size: 18px; line-height: 1.55; color: var(--text); margin-bottom: 8px; max-width: 720px; }
+  .typo-spec .name { font-size: 11px; color: var(--text-muted); font-family: var(--fm); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ── SignalDeck workspace mockup ──────────────────────────── */
+  .workspace-mock {
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    background: var(--bg);
+    display: grid; grid-template-columns: 240px 1fr;
+    min-height: 540px;
+  }
+  .ws-sidebar {
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .ws-brand {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ws-brand .logo {
+    width: 28px; height: 28px; border-radius: 6px; background: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 900; font-size: 14px;
+  }
+  .ws-brand .name { font-weight: 700; font-size: 14px; }
+  .ws-project { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .ws-project .label { font-family: var(--fm); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+  .ws-project .title { font-size: 13px; font-weight: 500; margin-top: 4px; }
+  .ws-project .pill {
+    display: inline-block; margin-top: 8px;
+    padding: 2px 8px; border-radius: 999px; background: var(--primary-soft); color: var(--primary);
+    font-size: 11px; font-weight: 600;
+  }
+  .ws-nav { flex: 1; padding: 12px 8px; }
+  .ws-nav-group { margin-bottom: 16px; }
+  .ws-nav-group > .glabel {
+    padding: 0 12px 4px; font-family: var(--fm); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted);
+  }
+  .ws-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500; color: var(--text);
+    cursor: pointer;
+  }
+  .ws-nav-item.active { background: var(--primary); color: white; }
+  .ws-nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .ws-main { display: flex; flex-direction: column; min-width: 0; }
+  .ws-header {
+    height: 56px; padding: 0 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .ws-header .ttl { font-size: 15px; font-weight: 600; }
+  .ws-header .sub { font-size: 13px; color: var(--text-muted); }
+  .ws-header .spacer { flex: 1; }
+  .ws-header .present-btn {
+    background: var(--primary); color: white; border: none;
+    height: 32px; padding: 0 14px; border-radius: var(--radius);
+    font-family: var(--fb); font-weight: 600; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .ws-content { flex: 1; padding: 32px; overflow: hidden; }
+  .ws-content .display {
+    font-family: var(--fh); font-weight: 700;
+    font-size: clamp(36px, 5vw, 56px); line-height: 1.05; letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .ws-content .display em { font-style: normal; color: var(--primary); }
+  .ws-content .desc { color: var(--text-muted); font-size: 14px; max-width: 540px; line-height: 1.6; }
+  .ws-stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 28px; }
+  .ws-stat {
+    padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .ws-stat .v { font-size: 28px; font-weight: 700; color: var(--primary); line-height: 1; }
+  .ws-stat .t { font-size: 12px; font-weight: 500; margin-top: 8px; }
+  .ws-stat .d { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+
+  /* ── LinkedIn product surface mockups ─────────────────────── */
+  .product-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }
+  .li-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .li-post-head { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .li-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #4A90E0);
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 18px;
+    flex-shrink: 0;
+  }
+  .li-name { font-weight: 700; font-size: 14px; }
+  .li-headline { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .li-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .li-post-body { font-size: 14px; line-height: 1.55; margin-bottom: 14px; }
+  .li-post-body b { color: var(--primary); font-weight: 600; }
+  .li-post-image {
+    height: 220px; border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    margin-bottom: 14px; display: flex; align-items: flex-end; padding: 16px; color: white;
+  }
+  .li-post-image .meta-tag { background: rgba(0,0,0,0.4); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
+  .li-post-actions {
+    display: flex; justify-content: space-around; padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .li-post-actions button {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--fb); font-weight: 600; font-size: 13px; color: var(--text-muted);
+    padding: 8px 12px; border-radius: 6px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .li-post-actions button:hover { background: var(--surface-soft); }
+
+  .li-profile-card .li-banner {
+    height: 88px; margin: -20px -20px 0;
+    background: linear-gradient(135deg, var(--primary), #4A90E0);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .li-profile-card .li-avatar-large {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #F4C75D);
+    border: 4px solid var(--surface);
+    margin-top: -36px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 28px;
+  }
+  .li-profile-card .li-name-large { font-size: 18px; font-weight: 700; margin-top: 8px; }
+  .li-profile-card .li-headline-large { font-size: 13px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+  .li-profile-card .li-meta { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .li-profile-card .connect-row { display: flex; gap: 8px; margin-top: 16px; }
+  .li-btn-primary {
+    background: var(--primary); color: white;
+    border: none; border-radius: 999px;
+    padding: 8px 18px;
+    font-family: var(--fb); font-weight: 700; font-size: 13px;
+    cursor: pointer;
+  }
+  .li-btn-ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--text); border-radius: 999px;
+    padding: 8px 18px;
+    font-family: var(--fb); font-weight: 700; font-size: 13px;
+    cursor: pointer;
+  }
+  .li-section-h { font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+  .li-connection-row {
+    display: grid; grid-template-columns: 40px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--hair);
+  }
+  .li-connection-row:last-child { border-bottom: none; }
+  .li-conn-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px; color: var(--text-muted);
+  }
+  .li-conn-name { font-size: 13px; font-weight: 600; }
+  .li-conn-meta { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+  .li-conn-btn {
+    background: transparent; color: var(--primary);
+    border: 1px solid var(--primary); border-radius: 999px;
+    padding: 4px 12px;
+    font-family: var(--fb); font-weight: 700; font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* ── Motifs + avoid ───────────────────────────────────────── */
+  .motif-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .motif-chip {
+    padding: 14px 16px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; color: var(--text);
+  }
+  .motif-chip::before { content: '→ '; color: var(--primary); font-weight: 700; }
+  .avoid-list { list-style: none; }
+  .avoid-list li {
+    padding: 10px 14px; margin-bottom: 6px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; color: var(--text);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .avoid-list li::before { content: '×'; color: var(--error); font-weight: 900; font-size: 16px; line-height: 1.2; flex-shrink: 0; }
+
+  /* ── Why ──────────────────────────────────────────────────── */
+  .why-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 24px;
+  }
+  .why-card p { font-size: 16px; line-height: 1.55; color: var(--text); max-width: none; }
+  .why-card .footer-meta {
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-family: var(--fm); font-size: 11px; color: var(--text-muted);
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .why-card .footer-meta b { color: var(--text); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="lead">
+    <div class="crumbs">SignalDeck BrandWorld preview · <em>POST /api/brand-world</em></div>
+    <h1 class="hero">If a <em>LinkedIn</em> founder pitched through SignalDeck, the workspace would look like <em>this</em>.</h1>
+    <p class="sub">A workspace-grade professional environment built around the LinkedIn blue system — clean white surfaces, the iconic #0A66C2 as the single load-bearing accent, structured card layouts that feel like a polished profile or feed. Typography is utilitarian and legible, density is moderate, and every element communicates credibility over cleverness.</p>
+  </div>
+
+  <div class="section">
+    <h2>Palette</h2>
+    <div class="h2-sub">Sourced from linkedin.com via og:image vision + theme-color extraction. <code style="font-family:var(--fm);color:var(--text)">origin.primaryFrom = "website"</code></div>
+    <div class="palette">
+      <div class="sw"><div class="sw-block" style="background:#F3F2EF"></div><div class="sw-lbl"><b>Background</b><span>#F3F2EF</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#FFFFFF;border-bottom:1px solid var(--border)"></div><div class="sw-lbl"><b>Surface</b><span>#FFFFFF</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#F9F8F6"></div><div class="sw-lbl"><b>Soft</b><span>#F9F8F6</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#0A66C2"></div><div class="sw-lbl"><b>Primary</b><span>#0A66C2</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#E7A33E"></div><div class="sw-lbl"><b>Accent</b><span>#E7A33E</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#057642"></div><div class="sw-lbl"><b>Secondary</b><span>#057642</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#191919"></div><div class="sw-lbl"><b>Text</b><span>#191919</span></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Typography</h2>
+    <div class="h2-sub">Source Sans 3 across heading + body (LinkedIn's actual font). Mono fallback for code/labels.</div>
+    <div class="typo-spec">
+      <div class="display">Hire the people. Build the company.</div>
+      <div class="name">Source Sans 3 · weight 700 · tracking -0.02em · clamp(36px, 5vw, 56px)</div>
+    </div>
+    <div class="typo-spec">
+      <div class="body">Source Sans 3 keeps every line of body copy at the same density as the LinkedIn feed itself. Investors reading the deck don't feel a brand discontinuity — they feel the company.</div>
+      <div class="name">Source Sans 3 · body · 18px / 1.55 line-height</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>SignalDeck workspace, themed for LinkedIn</h2>
+    <div class="h2-sub">The Workspace chrome consuming this BrandWorld via CSS vars: sidebar accent, header button, display heading on Overview.</div>
+    <div class="workspace-mock">
+
+      <aside class="ws-sidebar">
+        <div class="ws-brand">
+          <div class="logo">in</div>
+          <div class="name">LinkedIn</div>
+        </div>
+        <div class="ws-project">
+          <div class="label">Current project</div>
+          <div class="title">LinkedIn investor deck</div>
+          <div class="pill">Drafting</div>
+        </div>
+        <nav class="ws-nav">
+          <div class="ws-nav-group">
+            <div class="glabel">Build</div>
+            <div class="ws-nav-item active">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+              Overview
+            </div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l5 5v13H6z"/><path d="M14 3v6h6"/></svg>
+              Sources
+            </div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3a9 9 0 100 18c1.5 0 2-1 1.5-2-.6-1.4.4-2.5 1.7-2.5H17a4 4 0 004-4 9 9 0 00-9-9z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="14" cy="6" r="1"/></svg>
+              Theme
+            </div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>
+              Deck Build
+            </div>
+          </div>
+          <div class="ws-nav-group">
+            <div class="glabel">Insights</div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              VC Lens
+            </div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l5 5L20 6"/></svg>
+              Audit
+            </div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V14M9 20V10M14 20V6M19 20V2"/></svg>
+              Signals
+            </div>
+          </div>
+          <div class="ws-nav-group">
+            <div class="glabel">Ship</div>
+            <div class="ws-nav-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 14c0-5 4-11 9-11 5 0 5 6 0 11-3 3-6 4-9 0z"/><circle cx="14" cy="8" r="1.5"/></svg>
+              Deploy
+            </div>
+          </div>
+        </nav>
+      </aside>
+
+      <div class="ws-main">
+        <header class="ws-header">
+          <span class="ttl">Overview</span>
+          <span class="sub">— Your deck at a glance</span>
+          <div class="spacer"></div>
+          <button class="present-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px"><path d="M7 5l12 7-12 7V5z"/></svg>
+            Present
+          </button>
+        </header>
+
+        <div class="ws-content">
+          <div class="display">From rough founder notes to a live <em>investor deck</em></div>
+          <p class="desc">SignalDeck audits the story, applies a Professional Networking VC lens, checks claims, builds an interactive deck, deploys it, and shows what investors cared about after opening it.</p>
+
+          <div class="ws-stat-strip">
+            <div class="ws-stat"><div class="v">14</div><div class="t">Deck slides</div><div class="d">Professional Networking structure for Series-B investors.</div></div>
+            <div class="ws-stat"><div class="v">5</div><div class="t">Sources</div><div class="d">Profile, recruiter dashboard, hiring data, growth deck.</div></div>
+            <div class="ws-stat"><div class="v">8</div><div class="t">Investor links</div><div class="d">Named links ready for separate tracking.</div></div>
+            <div class="ws-stat"><div class="v">43%</div><div class="t">Drop-off risk</div><div class="d">Likely weak slide: Market sizing.</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The same tokens applied to real LinkedIn product surfaces</h2>
+    <div class="h2-sub">Same #0A66C2, same Source Sans 3, same 8px radius, same white-on-warm-off-white — so the deck reads as native LinkedIn, not as a generic SaaS skin.</div>
+
+    <div class="product-grid">
+
+      <div class="li-card li-post-card">
+        <div class="li-post-head">
+          <div class="li-avatar">RR</div>
+          <div>
+            <div class="li-name">Ryan Roslansky</div>
+            <div class="li-headline">CEO at LinkedIn</div>
+            <div class="li-time">3h · 🌐</div>
+          </div>
+        </div>
+        <p class="li-post-body">
+          Excited to share: we just crossed <b>1.2 billion members</b>. What's wild isn't the number — it's that 86% of them are now using the platform to learn, not just to be found. Thank you to every recruiter, hiring manager, and creator who made it possible.
+        </p>
+        <div class="li-post-image">
+          <span class="meta-tag">Growth · 2026</span>
+        </div>
+        <div class="li-post-actions">
+          <button>👍 Like</button>
+          <button>💬 Comment</button>
+          <button>↗ Repost</button>
+          <button>↪ Send</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="li-card li-profile-card" style="margin-bottom:16px">
+          <div class="li-banner"></div>
+          <div class="li-avatar-large">JM</div>
+          <div class="li-name-large">Jane Mitchell</div>
+          <div class="li-headline-large">VP Engineering at Stripe · ex-LinkedIn · Open to recruiting collaborations</div>
+          <div class="li-meta">San Francisco, CA · 500+ connections · Mutual: 23</div>
+          <div class="connect-row">
+            <button class="li-btn-primary">+ Connect</button>
+            <button class="li-btn-ghost">Message</button>
+          </div>
+        </div>
+
+        <div class="li-card">
+          <div class="li-section-h">People you may know</div>
+          <div class="li-connection-row">
+            <div class="li-conn-avatar">DK</div>
+            <div>
+              <div class="li-conn-name">Daniel Kim</div>
+              <div class="li-conn-meta">Senior PM at Notion · 14 mutual connections</div>
+            </div>
+            <button class="li-conn-btn">+ Connect</button>
+          </div>
+          <div class="li-connection-row">
+            <div class="li-conn-avatar">AS</div>
+            <div>
+              <div class="li-conn-name">Aisha Sayed</div>
+              <div class="li-conn-meta">Engineering Manager at Anthropic · 9 mutual</div>
+            </div>
+            <button class="li-conn-btn">+ Connect</button>
+          </div>
+          <div class="li-connection-row">
+            <div class="li-conn-avatar">MO</div>
+            <div>
+              <div class="li-conn-name">Marcus Okafor</div>
+              <div class="li-conn-meta">Recruiter, Series A talent · 5 mutual</div>
+            </div>
+            <button class="li-conn-btn">+ Connect</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Motifs the deck will use</h2>
+    <div class="h2-sub">From <code style="font-family:var(--fm)">BrandWorld.motifs</code> — the recurring visual vocabulary.</div>
+    <div class="motif-grid">
+      <div class="motif-chip">Profile card grid — photo, name, headline, connection degree</div>
+      <div class="motif-chip">Connection graph — node-and-edge people network rendered as a clean org chart, not a particle cloud</div>
+      <div class="motif-chip">Endorsement badge strips — skill tags and recommendation counts</div>
+      <div class="motif-chip">Career timeline — horizontal role progression rail</div>
+      <div class="motif-chip">Job posting tile — company logo, role title, location, applicant count</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Will not use — the anti-cliché list</h2>
+    <div class="h2-sub">From <code style="font-family:var(--fm)">BrandWorld.avoid</code>. SignalDeck won't render these even if Sonnet later suggests them.</div>
+    <ul class="avoid-list">
+      <li>Dark navy or black backgrounds with glowing neon accents</li>
+      <li>Purple-blue AI gradient aesthetics</li>
+      <li>Glassmorphism or frosted panel overlays</li>
+      <li>Generic "future of work" abstract visuals</li>
+      <li>Orb or particle neural-network motifs</li>
+      <li>Heavy editorial serif typography — LinkedIn is a grotesk-led utility product</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Why this works</h2>
+    <div class="why-card">
+      <p>LinkedIn's entire visual equity lives in one blue (#0A66C2) on a white field — that's the brand, full stop. The card-and-feed layout mirrors the actual product surface professionals spend hours in daily, making the deck feel instantly native and credible to the audience.</p>
+      <div class="footer-meta">
+        <span><b>industry:</b> other</span>
+        <span><b>layoutStyle:</b> workspace-clean</span>
+        <span><b>cardStyle:</b> minimal-line</span>
+        <span><b>buttonStyle:</b> pill</span>
+        <span><b>iconStyle:</b> line</span>
+        <span><b>motionStyle:</b> precise</span>
+        <span><b>density:</b> normal</span>
+        <span><b>radius:</b> 8px</span>
+        <span><b>fontsFrom:</b> industry-default</span>
+        <span><b>primaryFrom:</b> website</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
