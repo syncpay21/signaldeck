@@ -200,14 +200,18 @@ export async function critiqueAndFix(
     }
   }
 
-  // Fall back to deterministic fix: darken/lighten text colours until they pass.
+  // Fall back to deterministic fix. PRIORITY: text + primary live on the
+  // CARD surface (where body copy renders); failures against the page
+  // background are secondary because those positions usually use a different
+  // role (heading colour, accent text). So we fix surface-failures first and
+  // leave background-failures alone — having an off-bg text colour is far
+  // less harmful than having unreadable card text.
   const patched = { ...colour }
-  for (const f of failures) {
-    if (f.pair === 'text on surface') patched.text = forceReadableText(colour.text, colour.surface, f.threshold)
-    if (f.pair === 'text on background') patched.text = forceReadableText(patched.text, colour.background, f.threshold)
-    if (f.pair === 'primary on surface') patched.primary = forceReadableText(colour.primary, colour.surface, f.threshold)
-    if (f.pair === 'primary on background') patched.primary = forceReadableText(patched.primary, colour.background, f.threshold)
+  const surfaceFailures = failures.filter(f => f.pair.endsWith('on surface'))
+  for (const f of surfaceFailures) {
+    if (f.pair === 'text on surface')    patched.text     = forceReadableText(colour.text,    colour.surface, f.threshold)
+    if (f.pair === 'primary on surface') patched.primary  = forceReadableText(colour.primary, colour.surface, f.threshold)
     if (f.pair === 'textMuted on surface') patched.textMuted = forceReadableText(colour.textMuted, colour.surface, f.threshold)
   }
-  return { failures, fixedColour: patched, reasoning: 'Deterministic fallback — darkened/lightened text colours to meet WCAG.' }
+  return { failures, fixedColour: patched, reasoning: 'Deterministic fallback — fixed text/primary contrast against card surface (background-position failures left as-is; those typically use heading colour roles).' }
 }
