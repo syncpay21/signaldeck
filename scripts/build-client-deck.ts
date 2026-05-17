@@ -66,13 +66,18 @@ Required flags:
   --founder    "Founder name"          e.g. "Ezana"
 
 Optional flags:
-  --role       "Founder, CEO"          founder title (default: "Founder")
-  --audience   seed-vc|series-a|...    default: seed-vc
-  --stage      pre-seed|seed|...       default: seed
-  --goal       raise|customer|partner  default: raise
-  --oneLiner   "x for y"               default: derived from brief
-  --framework  spin|belief|risk|...    optional narrative framework id
-  --out        "/path/to/file.html"    default: ./design-{client}.html
+  --role             "Founder, CEO"          founder title (default: "Founder")
+  --audience         seed-vc|series-a|...    default: seed-vc
+  --stage            pre-seed|seed|...       default: seed
+  --goal             raise|customer|partner  default: raise
+  --oneLiner         "x for y"               default: derived from brief
+  --framework        spin|belief|risk|...    optional narrative framework id
+  --businessModel    b2b|b2c|marketplace|api-platform
+  --gtmMotion        sales|self-serve|partnerships
+  --tractionStatus   idea|pilots|revenue
+  --region           us|eu|apac|other
+  --teamSize         solo|co-founder|full-team
+  --out              "/path/to/file.html"    default: ./design-{client}.html
 
 Environment:
   SIGNALDECK_API_URL  override the API base (default: signaldeck-two.vercel.app)
@@ -110,7 +115,7 @@ Examples:
     process.exit(1)
   }
 
-  const body = {
+  const body: Record<string, any> = {
     company:      client,
     domain:       url,
     oneLiner,
@@ -123,6 +128,12 @@ Examples:
     founderRole:  role,
     frameworkId,
   }
+  // Optional narrative-prompt context — passthrough if provided.
+  if (args.businessModel)  body.businessModelType = args.businessModel
+  if (args.gtmMotion)      body.gtmMotion        = args.gtmMotion
+  if (args.tractionStatus) body.tractionStatus   = args.tractionStatus
+  if (args.region)         body.region           = args.region
+  if (args.teamSize)       body.teamSize         = args.teamSize
 
   console.log(`▸ ${client} (${guideKey})  audience=${audience}  stage=${stage}  framework=${fw?.id || 'auto'}`)
   console.log(`▸ Fonts:     ${industryGuide.display} / ${industryGuide.body}`)
