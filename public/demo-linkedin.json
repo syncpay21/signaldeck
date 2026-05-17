@@ -1,0 +1,78 @@
+{
+  "form": {
+    "company":     "LinkedIn",
+    "industry":    "Consumer",
+    "oneLiner":    "The world's largest professional network — connect, hire, learn",
+    "stage":       "Series B+",
+    "founderName": "Ryan Roslansky",
+    "audience":    "Series A",
+    "websiteUrl":  "https://linkedin.com",
+    "realStory":   "We started in 2003 as a professional contact tool. Today 1.2 billion members use LinkedIn to connect, hire, learn, and grow their careers. The shift isn't growth — it's how. 86% of our active members are now here to learn, not just to be found.",
+    "customers":   "Professionals across every industry; recruiters at companies of every size; B2B sales teams; learners building skills",
+    "proof":       "1.2B members across 200+ countries. 67M companies. 39K skills indexed. Microsoft acquisition validated the moat in 2016."
+  },
+  "logoUrl":     "https://static.licdn.com/aero-v1/sc/h/al2o9zrvru7aqj8e1x2rzsrca",
+  "accentColor": "#0A66C2",
+  "brandWorld": {
+    "industry":         "other",
+    "brandPersonality": "Authoritative professional network — trusted, career-serious, globally inclusive, never flashy",
+    "visualDirection":  "A workspace-grade professional environment built around the LinkedIn blue system — clean white surfaces, the iconic #0A66C2 as the single load-bearing accent, structured card layouts that feel like a polished profile or feed. Typography is utilitarian and legible, density is moderate, and every element communicates credibility over cleverness.",
+    "avoid": [
+      "Dark navy or black backgrounds with glowing neon accents",
+      "Purple-blue AI gradient aesthetics",
+      "Glassmorphism or frosted panel overlays",
+      "Generic 'future of work' abstract visuals",
+      "Orb or particle neural-network motifs",
+      "Heavy editorial serif typography — LinkedIn is a grotesk-led utility product"
+    ],
+    "whyThisWorks": "LinkedIn's entire visual equity lives in one blue (#0A66C2) on a white field — that's the brand, full stop. The card-and-feed layout mirrors the actual product surface professionals spend hours in daily, making the deck feel instantly native and credible to the audience.",
+    "colour": {
+      "background":   "#F3F2EF",
+      "surface":      "#FFFFFF",
+      "surfaceSoft":  "#F9F8F6",
+      "primary":      "#0A66C2",
+      "primarySoft":  "rgba(10, 102, 194, 0.10)",
+      "secondary":    "#057642",
+      "accent":       "#E7A33E",
+      "text":         "#191919",
+      "textMuted":    "#666666",
+      "border":       "rgba(0, 0, 0, 0.10)",
+      "success":      "#057642",
+      "warning":      "#E7A33E",
+      "error":        "#CC1016",
+      "gridLine":     "rgba(0, 0, 0, 0.06)",
+      "glow":         "transparent"
+    },
+    "typography": {
+      "heading":       "Source Sans 3",
+      "body":          "Source Sans 3",
+      "mono":          "IBM Plex Mono",
+      "style":         "geometric-sans",
+      "headingWeight": "700",
+      "bodyWeight":    "400",
+      "tracking":      "-0.02em"
+    },
+    "motifs": [
+      "profile card grid — photo, name, headline, connection degree",
+      "connection graph — node-and-edge people network rendered as a clean org chart, not a particle cloud",
+      "endorsement badge strips — skill tags and recommendation counts",
+      "career timeline — horizontal role progression rail",
+      "job posting tile — company logo, role title, location, applicant count"
+    ],
+    "layoutStyle":      "workspace-clean",
+    "cardStyle":        "minimal-line",
+    "buttonStyle":      "pill",
+    "iconStyle":        "line",
+    "motionStyle":      "precise",
+    "dataVizStyle":     "stat-cards",
+    "backgroundSystem": "Warm off-white #F3F2EF page fill, white surface cards with 1px rgba border and subtle 8px drop shadow, no gradient blobs or texture",
+    "radius":           8,
+    "density":          "normal",
+    "deckTheme":        "A polished LinkedIn feed and profile deck — white cards on warm off-white, #0A66C2 primary actions, Source Sans 3 throughout, career-data motifs, no decoration that doesn't earn its place",
+    "deckMode":         "light",
+    "origin": {
+      "primaryFrom": "website",
+      "fontsFrom":   "industry-default"
+    }
+  }
+}

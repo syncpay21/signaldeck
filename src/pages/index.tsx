@@ -89,16 +89,40 @@ export default function Home() {
   }, [step])
 
   // ?demo=1 — jump straight to workspace with stub content
+  // ?demo=<brand> — load /public/demo-<brand>.json (form + brandWorld + logo)
+  // and jump straight to workspace so a real LinkedIn / Stripe / etc theme is
+  // visible without driving the 5-step intake.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
-    if (params.get('demo') === '1') {
+    const demo = params.get('demo')
+    if (!demo) return
+
+    if (demo === '1') {
       setForm(f => ({ ...f, company: 'SignalDeck', accentColor: '#6366f1' }))
       document.documentElement.style.setProperty('--accent', '#6366f1')
       setGeneratedHtml('<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:sans-serif;color:#6366f1;font-size:18px;font-weight:600;">Demo deck — generate a real one to see slides here</div>')
       setGeneratedContent({})
       setStep('canvas')
+      return
     }
+
+    // Named-brand demo preset
+    ;(async () => {
+      try {
+        const r = await fetch(`/demo-${demo}.json`)
+        if (!r.ok) return
+        const preset = await r.json()
+        if (preset.form)        setForm(f => ({ ...f, ...preset.form }))
+        if (preset.logoUrl)     setLogoUrl(preset.logoUrl)
+        if (preset.accentColor) document.documentElement.style.setProperty('--accent', preset.accentColor)
+        if (preset.brandWorld)  setBrandWorld(preset.brandWorld)
+        const accent = preset.brandWorld?.colour?.primary || preset.accentColor || '#0F1115'
+        setGeneratedHtml(`<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:'Source Sans 3',sans-serif;color:${accent};font-size:18px;font-weight:600;text-align:center;padding:32px;">Demo workspace for ${preset.form?.company || demo}.<br/><span style="font-weight:400;color:#666;font-size:14px;margin-top:8px;display:block;">Run the full intake to generate real slides — the chrome here shows how the BrandWorld adapts every surface.</span></div>`)
+        setGeneratedContent({})
+        setStep('canvas')
+      } catch {}
+    })()
   }, [])
 
   const togglePrompt = (p: string) => {
