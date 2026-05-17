@@ -1,6 +1,8 @@
 import { deckTemplate } from '../templates/deckTemplate'
 import type { SlideId } from './types'
 import type { IndustryGuide } from './industry-guide'
+import type { SynthesisedTheme } from './pipeline/theme-synthesizer'
+import type { SlideVisual } from './pipeline/visual-mood'
 
 // Transition durations (matched to design-reference.html demoTx timings)
 const TX_DUR: Record<string, number> = {
@@ -89,25 +91,38 @@ function buildDemoSlide(idx: number, input: any): string {
 
 // slideIds controls which slides render and in what order.
 // When omitted, all 12 slides render in default order (backward compat).
-// opts.industryGuide supplies fallback fonts / accent / palette /
-// transition list per the agency design guide — user theme overrides win.
-// opts.includeDemo controls whether to append the demo slide (default: true if demoUrl or demoDescription exists).
+// opts.theme       — synthesized theme (Track B2). Wins over industryGuide.
+// opts.slideVisuals — per-slide transition / mood / bgx / bgy (Track B3).
+//                    Wins over SLIDE_DEFS hardcoded transition + bg position.
+// opts.industryGuide supplies the fallback fonts / accent / palette /
+//                    transition list when theme/visuals aren't provided.
+// opts.includeDemo controls whether to append the demo slide.
 export function renderDeck(
   input: any,
   content: any,
   slideIds?: SlideId[],
-  opts?: { industryGuide?: IndustryGuide; includeDemo?: boolean },
+  opts?: {
+    industryGuide?: IndustryGuide
+    theme?:         SynthesisedTheme
+    slideVisuals?:  Record<string, SlideVisual>
+    includeDemo?:   boolean
+  },
 ): string {
   const ids: SlideId[] = slideIds ?? (Object.keys(SLIDE_DEFS) as SlideId[])
-  const guide = opts?.industryGuide
+  const guide  = opts?.industryGuide
+  const theme  = opts?.theme
+  const visuals = opts?.slideVisuals
   const hasDemo = opts?.includeDemo !== false && (input.demoUrl || input.demoDescription)
 
   const slideHtmlList = ids.map((id, idx) => {
     if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})
     const def = SLIDE_DEFS[id]
     if (!def) return ''
-    const tx = adaptTransition(id, def.tx, guide)
-    return slide(def.htmlId, idx, def.label, tx, def.bgx, def.bgy, content[id] || {})
+    const v   = visuals?.[id]
+    const tx  = v?.transition || adaptTransition(id, def.tx, guide)
+    const bgx = v?.bgx        || def.bgx
+    const bgy = v?.bgy        || def.bgy
+    return slide(def.htmlId, idx, def.label, tx, bgx, bgy, content[id] || {})
   })
 
   const labels = ids.map(id => SLIDE_DEFS[id]?.label || id)
@@ -122,11 +137,11 @@ export function renderDeck(
     company:     input.company,
     oneLiner:    input.oneLiner,
     domain:      input.domain,
-    accentColor: input.accentColor || guide?.color         || '#00e5c3',
-    bgColor:     input.bgColor     || guide?.palette[1]    || '#06080d',
-    fontHeading: input.fontHeading || guide?.display       || 'Barlow Condensed',
-    fontBody:    input.fontBody    || guide?.body          || 'DM Sans',
-    isDark:      input.isDark !== false,
+    accentColor: input.accentColor || theme?.accent      || guide?.color         || '#00e5c3',
+    bgColor:     input.bgColor     || theme?.bg          || guide?.palette[1]    || '#06080d',
+    fontHeading: input.fontHeading || theme?.fontHeading || guide?.display       || 'Barlow Condensed',
+    fontBody:    input.fontBody    || theme?.fontBody    || guide?.body          || 'DM Sans',
+    isDark:      input.isDark !== false && (theme?.isDark ?? true),
     totalSlides: slideHtmlList.length,
     slidesHtml:  slideHtmlList.join('\n'),
     dotNav:      labels.map((l,i) => `<button data-idx="${i}" data-label="${l}" aria-label="${l}"></button>`).join('\n'),

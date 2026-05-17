@@ -9,6 +9,10 @@ import { DARK_FRAMEWORKS } from '../../lib/frameworks/dark'
 import { resolveIndustry, getIndustryGuide } from '../../lib/industry-guide'
 import { validateNarrative, shouldApplySuggestion } from '../../lib/pipeline/haiku-validator'
 import { polishDeck } from '../../lib/pipeline/gpt4o-polish'
+import { extractBrand } from '../../lib/pipeline/brand-extractor'
+import { synthesiseTheme } from '../../lib/pipeline/theme-synthesizer'
+import { assignVisuals } from '../../lib/pipeline/visual-mood'
+import { runQualityGate } from '../../lib/pipeline/quality-gate'
 import type { AudienceType, UseCase, Stage, Industry, BusinessModel, GtmMotion, TractionStatus, Region, TeamSize, SlideId } from '../../lib/types'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -66,17 +70,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
     const userPrompt = buildGenerationPrompt({ ...input, audience, goal, stage, industry }, narrative, originalSlideIds)
 
-    /* ─── STAGE 2 — Sonnet content generation ────────────────────────── */
-    const sonnetMessage = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    })
+    /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand) — run in parallel ──────── */
+    const [sonnetMessage, extractedBrand] = await Promise.all([
+      anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+      extractBrand(input.websiteUrl || input.domain).catch(() => null),
+    ])
     const sonnetRaw = (sonnetMessage.content[0] as any).text.trim()
     const sonnetJson = sonnetRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
     const sonnetContent: Record<string, any> = JSON.parse(sonnetJson)
     const stage2TokensUsed = (sonnetMessage.usage?.input_tokens || 0) + (sonnetMessage.usage?.output_tokens || 0)
+
+    /* ─── STAGE B2 — Theme synthesis (deterministic, no AI) ──────────── */
+    const theme = synthesiseTheme({
+      brand:       extractedBrand || undefined,
+      guide:       industryGuide,
+      accentColor: input.accentColor,
+      bgColor:     input.bgColor,
+      fontHeading: input.fontHeading,
+      fontBody:    input.fontBody,
+      isDark:      input.isDark,
+    })
 
     /* ─── STAGE 3 — Haiku narrative validation (best-effort) ─────────── */
     let activeSlideIds: SlideId[] = originalSlideIds
@@ -134,8 +152,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    /* ─── Render + respond ───────────────────────────────────────────── */
-    const html = renderDeck(input, polishedContent, activeSlideIds, { industryGuide })
+    /* ─── STAGE B3 — Per-slide visual mood + transition (deterministic) */
+    const slideVisuals = assignVisuals(activeSlideIds, industryGuide)
+
+    /* ─── STAGE C1 — Render ──────────────────────────────────────────── */
+    const html = renderDeck(input, polishedContent, activeSlideIds, {
+      industryGuide,
+      theme,
+      slideVisuals,
+    })
+
+    /* ─── STAGE C2 — Quality gate (deterministic, post-render) ───────── */
+    const qualityReport = runQualityGate(html, polishedContent, theme, industryGuide)
 
     res.status(200).json({
       html,
@@ -144,28 +172,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       slideOrder:       activeSlideIds,
       frameworkApplied: fw?.id ?? null,
       industryGuide:    guideKey,
+      theme,
+      slideVisuals,
+      brand:            extractedBrand,
+      qualityReport,
       metadata: {
-        stage1: {
-          narrative:  narrative.id,
-          slideOrder: originalSlideIds,
-        },
-        stage2: {
-          model:      'claude-sonnet-4-6',
-          tokensUsed: stage2TokensUsed,
-        },
-        stage3: {
-          model:   'claude-haiku-4-5',
-          haiku:   haikuResult,
-          applied: haikuApplied,
-          error:   haikuError,
-        },
-        stage4: {
-          model:            'gpt-4o',
-          statVerification,
-          copyFeedback,
-          applied:          polishApplied,
-          error:            polishError,
-        },
+        /* Track A — content */
+        stage_a1: { narrative: narrative.id, slideOrder: originalSlideIds },
+        stage_a2: { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
+        stage_a3: { model: 'claude-haiku-4-5', haiku: haikuResult, applied: haikuApplied, error: haikuError },
+        stage_a4: { model: 'gpt-4o', statVerification, copyFeedback, applied: polishApplied, error: polishError },
+        /* Track B — brand × theme */
+        stage_b1: { brandFound: !!extractedBrand?.colors.length, colorCount: extractedBrand?.colors.length || 0, logoFound: !!extractedBrand?.logoUrl },
+        stage_b2: { accent: theme.accent, bg: theme.bg, origin: theme.origin, contrast: theme.contrast, reasoning: theme.reasoning },
+        stage_b3: { slideCount: Object.keys(slideVisuals).length },
+        /* Track C — render + quality gate */
+        stage_c1: { rendered: true, htmlBytes: html.length },
+        stage_c2: { pass: qualityReport.pass, notes: qualityReport.notes },
       },
     })
   } catch (err: any) {

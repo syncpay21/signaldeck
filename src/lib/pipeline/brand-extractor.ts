@@ -1,0 +1,163 @@
+/* ════════════════════════════════════════════════════════════════════
+   STAGE B1 — Brand extraction
+
+   Pulls the company's actual brand from its website:
+     - theme-color meta tag
+     - CSS brand variables (--brand-*, --primary, --accent, etc.)
+     - hex colors inside <style> blocks
+     - Logo (og:image → apple-touch-icon → favicon → /favicon.ico)
+     - Detected font-family declarations
+
+   Each extracted color is weighted by source:
+     theme-color  = 1.0 (highest trust — author-declared)
+     css-var      = 0.8
+     style-hex    = 0.4 (might be any color, not necessarily brand)
+
+   Used both by the legacy /api/brand endpoint and by Track B of the
+   generation pipeline. Defensive: never throws — returns empty
+   defaults if fetch fails.
+═══════════════════════════════════════════════════════════════════ */
+
+export interface ExtractedColor {
+  hex:    string
+  weight: number          // 0–1 trust score
+  source: 'theme-color' | 'css-var' | 'style-hex'
+}
+
+export interface ExtractedBrand {
+  colors:         ExtractedColor[]
+  logoUrl:        string | null
+  detectedFonts:  string[]
+  domain:         string
+  fetchedAt:      number  // ms epoch
+}
+
+const EMPTY: ExtractedBrand = { colors: [], logoUrl: null, detectedFonts: [], domain: '', fetchedAt: 0 }
+
+export async function extractBrand(websiteUrl?: string): Promise<ExtractedBrand> {
+  if (!websiteUrl) return EMPTY
+  const base = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`
+
+  let html = ''
+  try {
+    html = await fetchHtml(base)
+  } catch {
+    try { html = await fetchHtml(base.replace('https://', 'http://')) }
+    catch { return { ...EMPTY, domain: base, fetchedAt: Date.now() } }
+  }
+
+  return {
+    colors:        extractColors(html),
+    logoUrl:       extractLogo(html, base),
+    detectedFonts: extractFonts(html),
+    domain:        base,
+    fetchedAt:     Date.now(),
+  }
+}
+
+async function fetchHtml(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; SignalDeck/1.0; +https://signaldeck.app)',
+      'Accept': 'text/html',
+    },
+    signal: AbortSignal.timeout(8000),
+  })
+  return res.text()
+}
+
+function extractColors(html: string): ExtractedColor[] {
+  const seen = new Map<string, ExtractedColor>()
+
+  const add = (raw: string, source: ExtractedColor['source'], weight: number) => {
+    const hex = normalizeHex(raw)
+    if (!hex || isGrayish(hex)) return
+    const existing = seen.get(hex)
+    if (!existing || weight > existing.weight) seen.set(hex, { hex, weight, source })
+  }
+
+  // 1. <meta name="theme-color"> (highest trust)
+  const themeA = html.match(/<meta[^>]+name=["']theme-color["'][^>]+content=["']([^"']+)["']/i)
+  const themeB = html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']theme-color["']/i)
+  const themeMeta = (themeA || themeB)?.[1]?.trim()
+  if (themeMeta?.startsWith('#')) add(themeMeta, 'theme-color', 1.0)
+
+  // 2. CSS custom properties that look like brand tokens (high trust)
+  const cssVarRe = /--(primary|brand|accent|main|highlight|color(?:-\w+)?)[^:]*:\s*(#[0-9a-fA-F]{3,8})\b/gi
+  let m: RegExpExecArray | null
+  while ((m = cssVarRe.exec(html)) !== null) add(m[2], 'css-var', 0.8)
+
+  // 3. All hex colors inside <style> blocks (lower trust — might be any color)
+  const styleBlocks = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map(x => x[1])
+  const hexRe = /#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g
+  for (const block of styleBlocks) {
+    while ((m = hexRe.exec(block)) !== null) add(m[0], 'style-hex', 0.4)
+  }
+
+  return Array.from(seen.values())
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 8)
+}
+
+function extractFonts(html: string): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  // 1. Google Fonts <link href="...family=Inter:..."> (very common pattern)
+  const linkRe = /fonts\.googleapis\.com\/css2?\?[^"']*family=([^"'&]+)/gi
+  let m: RegExpExecArray | null
+  while ((m = linkRe.exec(html)) !== null) {
+    for (const fam of decodeURIComponent(m[1]).split('|')) {
+      const name = fam.split(':')[0]?.replace(/\+/g, ' ').trim()
+      if (name && !seen.has(name)) { seen.add(name); out.push(name) }
+    }
+  }
+  // 2. font-family CSS declarations
+  const ffRe = /font-family\s*:\s*([^;}\n]+)/gi
+  while ((m = ffRe.exec(html)) !== null) {
+    const list = m[1].split(',')
+    const primary = list[0]?.replace(/['"]/g, '').trim()
+    if (primary && primary.length < 40 && !/^(var|inherit|initial|sans|serif|monospace)/i.test(primary)) {
+      if (!seen.has(primary)) { seen.add(primary); out.push(primary) }
+    }
+  }
+  return out.slice(0, 5)
+}
+
+function normalizeHex(hex: string): string | null {
+  hex = hex.trim().toLowerCase()
+  if (/^#[0-9a-f]{3}$/.test(hex)) {
+    hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]
+  }
+  if (!/^#[0-9a-f]{6}$/.test(hex)) return null
+  return hex
+}
+
+function extractLogo(html: string, base: string): string | null {
+  const resolve = (rel: string) => {
+    try { return new URL(rel, base).href } catch { return null }
+  }
+
+  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+          || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  if (og?.[1]) return resolve(og[1])
+
+  const apple = html.match(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i)
+             || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon["']/i)
+  if (apple?.[1]) return resolve(apple[1])
+
+  const fav = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i)
+  if (fav?.[1]) return resolve(fav[1])
+
+  try { return new URL('/favicon.ico', base).href } catch { return null }
+}
+
+function isGrayish(hex: string): boolean {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const sat = max === 0 ? 0 : (max - min) / max
+  const lum = (r * 299 + g * 587 + b * 114) / 1000
+  return sat < 0.18 || lum > 235 || lum < 12
+}
