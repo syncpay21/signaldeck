@@ -1,31 +1,31 @@
 <!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8"/>
-<title>retail — BrandWorld preview</title>
+<title>consumer — BrandWorld preview</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:wght@400;700;900&family=Manrope:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#FDFAF6;
+    --bg:#F2EFEA;
     --surface:#FFFFFF;
-    --surface-soft:#F5F0EA;
-    --primary:#6B3FA0;
-    --secondary:#E8A838;
-    --accent:#E05C7A;
-    --text:#1A1118;
-    --muted:#7A6B74;
-    --border:rgba(26, 17, 24, 0.10);
-    --radius:14px;
-    --fh:'DM Serif Display',serif;
-    --fb:'Manrope',system-ui,sans-serif;
+    --surface-soft:#FAF8F5;
+    --primary:#7C3AED;
+    --secondary:#EC4899;
+    --accent:#FF6B4A;
+    --text:#0A0A0A;
+    --muted:#6B6B6B;
+    --border:rgba(10, 10, 10, 0.08);
+    --radius:18px;
+    --fh:'DM Sans',serif;
+    --fb:'DM Sans',system-ui,sans-serif;
   }
-  body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh;padding:48px 40px 80px;}
+  body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh;padding:48px 40px 80px;background-image:radial-gradient(ellipse 90% 60% at 20% 0%, rgba(167,139,250,0.18), transparent 60%),radial-gradient(ellipse 80% 50% at 80% 10%, rgba(125,211,252,0.16), transparent 55%),radial-gradient(ellipse 70% 50% at 50% 100%, rgba(251,207,232,0.20), transparent 60%);background-attachment:fixed;}
   .wrap{max-width:1280px;margin:0 auto}
   .lead{padding-bottom:32px;border-bottom:1px solid var(--border)}
   .label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-  h1{font-family:var(--fh);font-weight:700;font-size:64px;line-height:1.05;letter-spacing:-0.02em;color:var(--text);margin-bottom:16px}
-  h1 em{font-style:italic;color:var(--primary)}
+  h1{font-family:var(--fh);font-weight:800;font-size:84px;line-height:1.02;letter-spacing:-0.04em;color:var(--text);margin-bottom:16px}
+  h1 em{font-style:normal;background:linear-gradient(90deg,#7C3AED 0%,#EC4899 40%,#F97316 75%,#FB7185 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
   .sub{font-size:18px;line-height:1.5;color:var(--muted);max-width:640px}
   .section{margin-top:48px}
   .section h2{font-family:var(--fh);font-weight:700;font-size:24px;margin-bottom:16px;color:var(--text)}
@@ -55,7 +55,7 @@
   .feed-title{font-family:var(--fh);font-weight:700;font-size:15px;line-height:1.3;margin-bottom:4px}
   .feed-meta{font-size:12px;color:var(--muted)}
   .typo-spec{margin-bottom:20px}
-  .typo-spec .display{font-family:var(--fh);font-weight:700;font-size:48px;line-height:1;letter-spacing:-0.02em;color:var(--primary);margin-bottom:8px}
+  .typo-spec .display{font-family:var(--fh);font-weight:800;font-size:48px;line-height:1;letter-spacing:-0.04em;color:var(--primary);margin-bottom:8px}
   .typo-spec .name{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:1px}
   .motif-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
   .motif-chip{padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;font-size:13px;color:var(--text)}
@@ -69,19 +69,19 @@
   <div class="lead">
     <div class="label">Brand World — Luma</div>
     <h1>Delightful events <em>start here.</em></h1>
-    <p class="sub">A consumer events world built around the texture of real gatherings: invitation cards, calendar moments, venue photography, and the anticipation of showing up somewhere great. Warm creamy whites and rich violet-plum as the signature, evoking twilight golden hour and the glow of a well-lit room full of people.</p>
+    <p class="sub">A pearlescent silver-peach-blue gradient backdrop with clean grotesk type. The signature move is a horizontal rainbow gradient (violet → pink → coral → orange) applied ON the type itself for emphasis words. Product UI is clean white with minimal cards. Airy, light, modern — closer to fashion or Apple than cottage editorial.</p>
   </div>
 
   <div class="section">
     <h2>Palette</h2>
     <div class="palette">
-      <div class="sw"><div class="sw-block" style="background:#FDFAF6"></div><div class="sw-lbl"><b>Background</b><span>#FDFAF6</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#F2EFEA"></div><div class="sw-lbl"><b>Background</b><span>#F2EFEA</span></div></div>
       <div class="sw"><div class="sw-block" style="background:#FFFFFF"></div><div class="sw-lbl"><b>Surface</b><span>#FFFFFF</span></div></div>
-      <div class="sw"><div class="sw-block" style="background:#F5F0EA"></div><div class="sw-lbl"><b>Surface Soft</b><span>#F5F0EA</span></div></div>
-      <div class="sw"><div class="sw-block" style="background:#6B3FA0"></div><div class="sw-lbl"><b>Primary</b><span>#6B3FA0</span></div></div>
-      <div class="sw"><div class="sw-block" style="background:#E05C7A"></div><div class="sw-lbl"><b>Accent</b><span>#E05C7A</span></div></div>
-      <div class="sw"><div class="sw-block" style="background:#1A1118"></div><div class="sw-lbl"><b>Text</b><span>#1A1118</span></div></div>
-      <div class="sw"><div class="sw-block" style="background:#7A6B74"></div><div class="sw-lbl"><b>Muted</b><span>#7A6B74</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#FAF8F5"></div><div class="sw-lbl"><b>Surface Soft</b><span>#FAF8F5</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#7C3AED"></div><div class="sw-lbl"><b>Primary</b><span>#7C3AED</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#FF6B4A"></div><div class="sw-lbl"><b>Accent</b><span>#FF6B4A</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#0A0A0A"></div><div class="sw-lbl"><b>Text</b><span>#0A0A0A</span></div></div>
+      <div class="sw"><div class="sw-block" style="background:#6B6B6B"></div><div class="sw-lbl"><b>Muted</b><span>#6B6B6B</span></div></div>
     </div>
   </div>
 
@@ -89,11 +89,11 @@
     <h2>Typography</h2>
     <div class="typo-spec">
       <div class="display">Summer party at Ocean Beach</div>
-      <div class="name">DM Serif Display · weight 700 · tracking -0.02em</div>
+      <div class="name">DM Sans · weight 800 · tracking -0.04em</div>
     </div>
     <div class="typo-spec">
       <div style="font-family:var(--fb);font-size:18px;line-height:1.55;color:var(--text);margin-bottom:8px">Hosted by Guillaume Mitch · 45 guests · Sunday July 23, 10am</div>
-      <div class="name">Manrope · body</div>
+      <div class="name">DM Sans · body</div>
     </div>
   </div>
 
@@ -127,17 +127,17 @@
 
   <div class="section">
     <h2>Motifs the system will use</h2>
-    <div class="motif-grid"><div class="motif-chip">— Invitation card surfaces with soft shadow and slight tilt</div><div class="motif-chip">— Calendar date stamps as hero elements</div><div class="motif-chip">— Venue photography crops as full-bleed card covers</div><div class="motif-chip">— RSVP confirmation ribbon or badge</div><div class="motif-chip">— Guest list avatar clusters</div></div>
+    <div class="motif-grid"><div class="motif-chip">— Pearlescent silver-peach-blue gradient backdrop</div><div class="motif-chip">— Rainbow gradient (violet → pink → coral → orange) applied ON the type for emphasis words</div><div class="motif-chip">— Event invitation cards with date badge + host + RSVP pill</div><div class="motif-chip">— Avatar clusters showing who's going</div><div class="motif-chip">— Calendar date stamp as hero element (big numeral + abbreviated month)</div><div class="motif-chip">— Discovery feed with venue thumbnails as full-bleed card covers</div></div>
   </div>
 
   <div class="section">
     <h2>Will not use — anti-cliché</h2>
-    <ul class="avoid-list"><li>Dark navy + purple gradient tech aesthetic</li><li>Glowing orbs or particle network backgrounds</li><li>Glassmorphism panels as primary UI</li><li>Generic calendar icon as hero motif</li><li>Corporate bento grid layouts</li><li>Cold blue enterprise SaaS palette</li></ul>
+    <ul class="avoid-list"><li>Dark navy + purple gradient tech aesthetic</li><li>Glowing orbs or particle network backgrounds</li><li>Glassmorphism panels as primary UI</li><li>Editorial serif fonts — Luma uses a clean modern grotesk</li><li>Warm cottage cream + serif feel</li><li>Generic AI startup chrome</li><li>Heavy colored card hero backgrounds — gradient is on the TYPE, not behind cards</li></ul>
   </div>
 
   <div class="section">
     <h2>Why this works</h2>
-    <p class="sub" style="max-width:none;color:var(--text);font-size:16px">Luma's job is to make people feel excited about showing up — the design mirrors that by borrowing from editorial event culture: warm paper tones, rich violet as a celebration accent, and invitation-card typography. Every surface should feel like something you want to hold and share, not a dashboard you have to manage.</p>
+    <p class="sub" style="max-width:none;color:var(--text);font-size:16px">Luma's signature is the pearlescent backdrop + grotesk type + rainbow-on-the-type gradient. Editorial-spacious layout. Geometric sans for clarity. Real event cards. No dark mode default — Luma is daylight, not night-mode SaaS.</p>
   </div>
 </div>
 </body></html>
