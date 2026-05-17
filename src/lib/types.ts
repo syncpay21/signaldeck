@@ -24,6 +24,11 @@ export interface DeckInput {
   goal: UseCase
   stage: Stage
   industry: Industry
+  businessModelType?: BusinessModel
+  gtmMotion?: GtmMotion
+  tractionStatus?: TractionStatus
+  region?: Region
+  teamSize?: TeamSize
 }
 
 export type DeckContent = Record<string, any>
@@ -76,6 +81,16 @@ export type Industry =
   | 'consumer'
   | 'climate'
   | 'other'
+
+export type BusinessModel = 'b2b' | 'b2c' | 'marketplace' | 'api-platform'
+
+export type GtmMotion = 'sales' | 'self-serve' | 'partnerships'
+
+export type TractionStatus = 'idea' | 'pilots' | 'revenue'
+
+export type Region = 'us' | 'eu' | 'apac' | 'other'
+
+export type TeamSize = 'solo' | 'co-founder' | 'full-team'
 
 export interface NarrativeConfig {
   id: Narrative

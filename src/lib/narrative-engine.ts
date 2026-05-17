@@ -1,4 +1,4 @@
-import type { SlideId, Narrative, NarrativeConfig, AudienceType, UseCase, Stage, Industry } from './types'
+import type { SlideId, Narrative, NarrativeConfig, AudienceType, UseCase, Stage, Industry, BusinessModel, GtmMotion, TractionStatus, Region, TeamSize } from './types'
 
 // ─── Narrative Configs ────────────────────────────────────────────────────────
 // Each config defines: which slides appear, in what order, with what
@@ -169,11 +169,89 @@ export function applyIndustryModifiers(slides: SlideId[], industry: Industry): S
   return result
 }
 
+// ─── Business Model Modifiers ──────────────────────────────────────────────────
+// Business model affects how we frame GTM, market, customers.
+// These modifiers primarily affect prompt context, not slide structure.
+
+export function applyBusinessModelModifiers(slides: SlideId[], businessModel?: BusinessModel): SlideId[] {
+  const result = [...slides]
+
+  // Marketplace model: always ensure both customers and competition slides for two-sided network effects
+  if (businessModel === 'marketplace') {
+    if (!result.includes('s9_customers')) {
+      const fixIdx = result.indexOf('s5_fix')
+      if (fixIdx !== -1) result.splice(fixIdx + 1, 0, 's9_customers')
+    }
+  }
+
+  return result
+}
+
+// ─── GTM Motion Modifiers ──────────────────────────────────────────────────────
+// How the company acquires customers affects emphasis in s6_how and metrics.
+// Primarily prompt context, not slide structure.
+
+export function applyGtmMotionModifiers(slides: SlideId[], gtmMotion?: GtmMotion): SlideId[] {
+  // GTM motion is primarily handled via prompt instructions, not slide structure changes.
+  // Sales motions emphasize customer concentration and CAC payback.
+  // Self-serve emphasizes viral/organic and retention. Partnerships emphasize channel.
+  return slides
+}
+
+// ─── Traction Status Modifiers ─────────────────────────────────────────────────
+// Whether company has idea/pilots/revenue affects what s7_validation emphasizes.
+// Prompt context, not structural changes.
+
+export function applyTractionStatusModifiers(slides: SlideId[], tractionStatus?: TractionStatus): SlideId[] {
+  // s7_validation is always present (handled by stage/narrative modifiers).
+  // Traction status changes the framing: LOIs → pilots → revenue.
+  return slides
+}
+
+// ─── Region Modifiers ──────────────────────────────────────────────────────────
+// Geographic region affects regulatory risk (EU → GDPR, data residency).
+// May add risk slide for EU companies if not present.
+
+export function applyRegionModifiers(slides: SlideId[], region?: Region): SlideId[] {
+  const result = [...slides]
+
+  // EU companies should always address data residency/GDPR risks
+  if (region === 'eu' && !result.includes('s11_risks')) {
+    const askIdx = result.indexOf('s12_team_ask')
+    result.splice(askIdx, 0, 's11_risks')
+  }
+
+  return result
+}
+
+// ─── Team Size Modifiers ──────────────────────────────────────────────────────
+// Team size affects s1_intro framing (solo founder obsession vs. co-founder chemistry vs. execution team).
+// Prompt context, not structural changes.
+
+export function applyTeamSizeModifiers(slides: SlideId[], teamSize?: TeamSize): SlideId[] {
+  // Team size changes the framing of s1_intro but doesn't change slide structure.
+  return slides
+}
+
 // ─── Main Entry Point ─────────────────────────────────────────────────────────
 
-export function getSlideSet(narrative: NarrativeConfig, stage: Stage, industry: Industry): SlideId[] {
+export function getSlideSet(
+  narrative: NarrativeConfig,
+  stage: Stage,
+  industry: Industry,
+  businessModel?: BusinessModel,
+  gtmMotion?: GtmMotion,
+  tractionStatus?: TractionStatus,
+  region?: Region,
+  teamSize?: TeamSize,
+): SlideId[] {
   let slides = [...narrative.slideOrder]
   slides = applyStageModifiers(slides, narrative, stage)
   slides = applyIndustryModifiers(slides, industry)
+  slides = applyBusinessModelModifiers(slides, businessModel)
+  slides = applyGtmMotionModifiers(slides, gtmMotion)
+  slides = applyTractionStatusModifiers(slides, tractionStatus)
+  slides = applyRegionModifiers(slides, region)
+  slides = applyTeamSizeModifiers(slides, teamSize)
   return slides
 }

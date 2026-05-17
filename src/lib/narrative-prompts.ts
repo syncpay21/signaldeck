@@ -1,4 +1,4 @@
-import type { SlideId, Narrative, NarrativeConfig, Stage, Industry, DeckInput } from './types'
+import type { SlideId, Narrative, NarrativeConfig, Stage, Industry, DeckInput, BusinessModel, GtmMotion, TractionStatus, Region, TeamSize } from './types'
 
 // ─── System prompt ─────────────────────────────────────────────────────────────
 // Tells Claude the story it's telling before it writes a single word.
@@ -8,12 +8,22 @@ export function buildSystemPrompt(
   stage: Stage,
   industry: Industry,
   opts?: {
-    framework?:     { name: string; summary: string; steps: string[] }
-    industryVoice?: { tone: string; avoid: string[] }
+    framework?:        { name: string; summary: string; steps: string[] }
+    industryVoice?:    { tone: string; avoid: string[] }
+    businessModel?:    BusinessModel
+    gtmMotion?:        GtmMotion
+    tractionStatus?:   TractionStatus
+    region?:           Region
+    teamSize?:         TeamSize
   },
 ): string {
   const industryContext = INDUSTRY_CONTEXT[industry] ?? ''
   const stageContext = STAGE_CONTEXT[stage] ?? ''
+  const businessModelContext = opts?.businessModel ? BUSINESS_MODEL_CONTEXT[opts.businessModel] ?? '' : ''
+  const gtmMotionContext = opts?.gtmMotion ? GTM_MOTION_CONTEXT[opts.gtmMotion] ?? '' : ''
+  const tractionContext = opts?.tractionStatus ? TRACTION_STATUS_CONTEXT[opts.tractionStatus] ?? '' : ''
+  const regionContext = opts?.region ? REGION_CONTEXT[opts.region] ?? '' : ''
+  const teamSizeContext = opts?.teamSize ? TEAM_SIZE_CONTEXT[opts.teamSize] ?? '' : ''
 
   const frameworkBlock = opts?.framework
     ? `\nNARRATIVE FRAMEWORK to apply (overlays the spine):
@@ -28,6 +38,10 @@ Tone: ${opts.industryVoice.tone}
 Avoid in copy: ${opts.industryVoice.avoid.join(', ')}\n`
     : ''
 
+  const contextBlocks = [businessModelContext, gtmMotionContext, tractionContext, regionContext, teamSizeContext]
+    .filter(Boolean)
+    .join('\n')
+
   return `You are a world-class pitch deck writer building a deck with a specific narrative purpose.
 
 NARRATIVE: "${narrative.id}"
@@ -35,7 +49,7 @@ The audience's core question: "${narrative.coreQuestion}"
 Story spine: ${narrative.narrativeSpine}
 
 ${stageContext}
-${industryContext}${frameworkBlock}${voiceBlock}
+${industryContext}${businessModelContext}${gtmMotionContext}${tractionContext}${regionContext}${teamSizeContext}${frameworkBlock}${voiceBlock}
 WRITING RULES:
 - Headlines: 2–6 words, SHORT, punchy, UPPERCASE-friendly. No buzzwords.
 - Tags: 2–4 words, category label for the slide.
@@ -418,6 +432,126 @@ const STAGE_CONTEXT: Record<string, string> = {
 - Financial projections (3-year model) are expected.
 - GTM must show documented repeatability — not just results, the documented process.
 - Competitive moat must be demonstrated, not asserted.`,
+}
+
+// ─── Business Model context ────────────────────────────────────────────────────
+
+const BUSINESS_MODEL_CONTEXT: Record<string, string> = {
+  'b2b': `BUSINESS MODEL: B2B
+- Emphasize sales motion, contract value, and expansion within accounts.
+- CAC payback period is critical — show math.
+- Land-and-expand is the expected narrative — how do customers grow with you?
+- Enterprise customers may have long sales cycles — address deal complexity.`,
+
+  'b2c': `BUSINESS MODEL: B2C
+- Emphasize viral coefficient, organic growth, and unit economics.
+- D30 retention is more important than early revenue at pre-seed/seed.
+- CAC is typically lower than B2B but must be sustainable via lifetime value.
+- Show how you acquire the first 1K users — founder-driven, viral loop, paid?`,
+
+  'marketplace': `BUSINESS MODEL: Marketplace
+- Two-sided network effects are critical — you must show both supply and demand sides.
+- Address the chicken-and-egg problem: how did you bootstrap supply or demand first?
+- GMV (gross merchandise value) is important but net revenue (take rate) is what matters.
+- Show cohort growth — are both sides growing in parallel?`,
+
+  'api-platform': `BUSINESS MODEL: API/Platform
+- Developer adoption and ecosystem growth matter most — show GitHub stars, API usage, SDK adoption.
+- Pricing model must be transparent: per-call, per-deployment, per-user?
+- Show integration ease: time-to-first-success, code samples, documentation quality.
+- Developer trust and community engagement replace traditional marketing.`,
+}
+
+// ─── GTM Motion context ───────────────────────────────────────────────────────
+
+const GTM_MOTION_CONTEXT: Record<string, string> = {
+  'sales': `GTM MOTION: Sales-Led
+- Emphasize AE hiring plan, quota ramp, and sales cycle length.
+- Show CAC and payback period prominently — investors will scrutinize.
+- Ideal customer profile (ICP) must be crystal clear — who are the first 10 customers?
+- Proof: initial pilot results, LOIs, signed contracts.`,
+
+  'self-serve': `GTM MOTION: Self-Serve / Product-Led
+- Emphasize funnel conversion: signup → activation → retention → expansion.
+- Show organic/viral coefficient if available — how fast does word-of-mouth spread?
+- CAC via organic is more credible than paid at early stage.
+- Proof: signup velocity, D30 retention curve, NPS / virality signals.`,
+
+  'partnerships': `GTM MOTION: Partnerships
+- Emphasize distribution leverage — which strategic partners can accelerate growth?
+- Show signed partnership agreements, joint go-to-market plans, or revenue share models.
+- Address risk: are you dependent on one or two partners?
+- Proof: initial partner commitments, joint pipeline, expansion partners.`,
+}
+
+// ─── Traction Status context ──────────────────────────────────────────────────
+
+const TRACTION_STATUS_CONTEXT: Record<string, string> = {
+  'idea': `TRACTION STATUS: Idea / Pre-Product
+- Validation comes from LOIs, customer discovery interviews, or letters of intent.
+- Show founder credibility — why does the founder have the right to build this?
+- Address the earliest assumption you'll prove with this funding round.
+- Avoid invented metrics — be honest about what's unknown.`,
+
+  'pilots': `TRACTION STATUS: Pilots / Early Customers
+- Show pilot results concretely: number of pilots, duration, customer outcomes.
+- Quantify: time saved, cost reduced, satisfaction (NPS, feedback quotes).
+- Be specific about pilot customers — why them, what did they learn?
+- Proof of concept is stronger than proof of demand — are pilots ready to buy?`,
+
+  'revenue': `TRACTION STATUS: Revenue-Generating
+- Lead with ARR or MRR prominently — this is your strongest signal.
+- Show growth trajectory: monthly or quarterly growth rates.
+- Include cohort analysis: retention curves, NRR, expansion revenue.
+- Benchmarks: compare against peer companies at your stage.`,
+}
+
+// ─── Region context ──────────────────────────────────────────────────────────
+
+const REGION_CONTEXT: Record<string, string> = {
+  'us': `REGION: United States
+- Standard venture benchmarks apply — market sizing assumes US TAM first.
+- Unit economics expectations are aggressive: CAC payback <18mo for Series A.
+- Mention Series B or IPO path if raising for scale.`,
+
+  'eu': `REGION: European Union
+- GDPR and data residency MUST be addressed explicitly in the deck.
+- Market adoption is slower than US — extend TAM timeline assumptions.
+- Unit economics may differ (lower customer density per geography, higher compliance costs).
+- Highlight data sovereignty or compliance as a competitive advantage if applicable.`,
+
+  'apac': `REGION: Asia-Pacific
+- Market heterogeneity — treat India, Southeast Asia, Australia, Japan differently.
+- Regulatory environment varies dramatically; address compliance per key markets.
+- Localization (language, payment methods) is a go-to-market requirement.
+- Partner-led growth may be more efficient than direct sales.`,
+
+  'other': `REGION: Global / Multi-region
+- Show which markets you're serving first and why.
+- Address multi-currency and multi-language complexity in GTM plan.
+- Regional expansion strategy should be clear — simultaneous or sequential?`,
+}
+
+// ─── Team Size context ───────────────────────────────────────────────────────
+
+const TEAM_SIZE_CONTEXT: Record<string, string> = {
+  'solo': `TEAM SIZE: Solo Founder
+- S1_intro emphasizes founder obsession, skin-in-game, personal investment.
+- Address execution risk explicitly — no co-founder means all weight on one person.
+- Show if co-founder or key hires are in pipeline.
+- Investors may ask: "Why not co-founder? Why now?"`,
+
+  'co-founder': `TEAM SIZE: Co-Founder(s)
+- S1_intro emphasizes complementary skills and co-founder chemistry.
+- Show how you met and why you're the right pair for this problem.
+- Each founder's relevant background should be highlighted (relevance > prestige).
+- Prove alignment: shared narrative on vision, values, decision-making.`,
+
+  'full-team': `TEAM SIZE: Full Team (3+)
+- S1_intro shifts from "founder bet" to "execution capability."
+- Show full leadership team + org structure — who owns what?
+- Key hires (technical, sales, ops) matter at this stage.
+- Culture and retention risk — who's been with you longest?`,
 }
 
 // ─── Main builder ─────────────────────────────────────────────────────────────
