@@ -43,17 +43,22 @@ function resolveOrigin(req: NextApiRequest): string {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { instruction, context } = req.body || {}
+  const { instruction, context, history } = req.body || {}
   if (!instruction || typeof instruction !== 'string') {
     return res.status(400).json({ error: 'instruction (string) is required' })
   }
   const ctx: ConductorContext = (context && typeof context === 'object') ? context : {}
 
+  // Conversation memory: prior turns the panel sent up. Stays in-memory on the
+  // client; server is still stateless. Trim to last 6 turns to bound prompt cost.
+  const priorTurns: Array<{ role: 'founder' | 'andreas'; text: string }> =
+    Array.isArray(history) ? history.slice(-6).filter(t => t && typeof t.text === 'string') : []
+
   const origin = resolveOrigin(req)
 
   try {
     /* ─── STAGE 1: PLANNER ──────────────────────────────────────── */
-    const plan = await planSteps(anthropic, instruction, ctx, TOOL_CATALOG)
+    const plan = await planSteps(anthropic, instruction, ctx, TOOL_CATALOG, priorTurns)
     const steps = plan?.steps ?? []
 
     /* ─── STAGE 2: DISPATCH ─────────────────────────────────────── */
@@ -71,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }))
 
     /* ─── STAGE 3: SYNTHESISER ──────────────────────────────────── */
-    const reply = await synthesiseReply(anthropic, instruction, results, ctx)
+    const reply = await synthesiseReply(anthropic, instruction, results, ctx, priorTurns)
 
     return res.status(200).json({
       reply,

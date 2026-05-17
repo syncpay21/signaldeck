@@ -106,11 +106,19 @@ function buildContextSummary(ctx: ConductorContext): string {
   return lines.join('\n')
 }
 
+export interface PriorTurn { role: 'founder' | 'andreas'; text: string }
+
+function formatHistory(prior: PriorTurn[]): string {
+  if (!prior || prior.length === 0) return '(no prior turns — this is the start of the conversation)'
+  return prior.map(t => `${t.role === 'founder' ? 'Founder' : 'Andreas'}: ${t.text.slice(0, 600)}`).join('\n\n')
+}
+
 export async function planSteps(
   client: Anthropic,
   instruction: string,
   ctx: ConductorContext,
   catalog: ToolSpec[],
+  prior: PriorTurn[] = [],
 ): Promise<ConductorPlan | null> {
   try {
     const message = await client.messages.create({
@@ -119,13 +127,16 @@ export async function planSteps(
       system: buildPlannerSystemPrompt(catalog),
       messages: [{
         role: 'user',
-        content: `FOUNDER INSTRUCTION:
+        content: `CONVERSATION SO FAR:
+${formatHistory(prior)}
+
+LATEST FOUNDER INSTRUCTION:
 "${instruction}"
 
 WORKSPACE CONTEXT:
 ${buildContextSummary(ctx)}
 
-Return the JSON plan.`,
+Plan tools based on the LATEST instruction. Use the conversation so far for context — if the founder is referring back to something you said earlier ("rewrite that slide", "the one you mentioned"), resolve the reference from history. Return the JSON plan.`,
       }],
     })
 
@@ -185,6 +196,7 @@ export async function synthesiseReply(
   instruction: string,
   results: ToolResult[],
   ctx: ConductorContext,
+  prior: PriorTurn[] = [],
 ): Promise<string> {
   const resultsBlock = results.length === 0
     ? '(no tools dispatched — answer from context and your own expertise)'
@@ -200,7 +212,10 @@ export async function synthesiseReply(
       system: SYNTHESISER_PROMPT,
       messages: [{
         role: 'user',
-        content: `FOUNDER INSTRUCTION:
+        content: `CONVERSATION SO FAR:
+${formatHistory(prior)}
+
+LATEST FOUNDER INSTRUCTION:
 "${instruction}"
 
 WORKSPACE CONTEXT:
@@ -209,7 +224,7 @@ ${buildContextSummary(ctx)}
 TOOL RESULTS:
 ${resultsBlock}
 
-Write your reply.`,
+Write your reply to the LATEST instruction. Reference prior turns when relevant — don't repeat what you've already said. If the founder is following up on something specific you mentioned earlier, build on it directly.`,
       }],
     })
 

@@ -69,6 +69,9 @@ export default function AndreasPanel(props: AndreasPanelProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           instruction,
+          // Send the prior conversation so Andreas can resolve back-references
+          // ("rewrite that slide", "the one you mentioned"). Server trims to last 6.
+          history: messages.map(m => ({ role: m.role, text: m.text })),
           context: {
             company:       props.company,
             industry:      props.industry,
