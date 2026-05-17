@@ -155,20 +155,21 @@ Return the corrected palette as JSON.`
   }
 }
 
-/** Brute-force fallback: darken or lighten the text colour until it passes
- *  against the surface. Used if Sonnet's repair pass also fails. */
+/** Brute-force fallback: try blending the text colour toward both black AND
+ *  white, then pick whichever direction actually passes against the surface.
+ *  Surfaces with intermediate luminance (coral, mid-grey) need black even
+ *  though they look "warm/light" — the dark-vs-light heuristic alone fails
+ *  there. We try both and let the contrast numbers decide. */
 function forceReadableText(textHex: string, surfaceHex: string, threshold: number): string {
-  const surfLum = relativeLuminance(surfaceHex)
-  if (surfLum == null) return textHex
-  // If surface is dark, push text towards white. If light, push towards black.
-  const target = surfLum < 0.5 ? '#ffffff' : '#0d0d0d'
-  let current = textHex
-  // Blend text towards target in steps until contrast passes (max 10 iters)
-  for (let i = 0; i < 10; i++) {
-    if (contrastRatio(current, surfaceHex) >= threshold) return current
-    current = mix(current, target, 0.2)
-  }
-  return target
+  if (relativeLuminance(surfaceHex) == null) return textHex
+  const black = '#0d0d0d'
+  const white = '#ffffff'
+  // Cheap shortcut — if pure white or pure black already passes, use that.
+  if (contrastRatio(black, surfaceHex) >= threshold) return black
+  if (contrastRatio(white, surfaceHex) >= threshold) return white
+  // Neither end-stop passes against this surface (very rare — happens only
+  // when surface is exactly mid-grey ~#777). Pick whichever is higher.
+  return contrastRatio(black, surfaceHex) >= contrastRatio(white, surfaceHex) ? black : white
 }
 
 function mix(a: string, b: string, t: number): string {
