@@ -97,10 +97,15 @@ interface WorkspaceProps {
 ═══════════════════════════════════════════════════════════════════ */
 export default function Workspace({
   company, accentColor, generatedHtml, generatedContent, onRestart, onRegenerate,
-  logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry, brandWorld,
+  logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry, brandWorld: propBrandWorld,
 }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Plain theme toggle — when on, the workspace ignores the generated BrandWorld
+  // and renders in the default monochrome SignalDeck shell. Useful for resetting
+  // a noisy brand world to a neutral baseline without re-running intake.
+  const [plainTheme, setPlainTheme] = useState(false)
+  const brandWorld = plainTheme ? null : propBrandWorld
 
   /* Per-brand icon set — Luma gets duotone, fintech gets line, sports gets glyph.
      Falls back to line when no BrandWorld is generated yet (intake). */
@@ -786,6 +791,27 @@ export default function Workspace({
     const tints = [liveAccent, liveAccent+'cc', liveAccent+'99', liveAccent+'55', liveAccent+'22']
     return (
       <div className="p-6 lg:p-8">
+        {/* Plain-theme toggle — reset the workspace to the default SignalDeck
+            monochrome shell. Useful when the generated brand world is too noisy
+            or the founder just wants to focus on content. */}
+        <Card className="p-4 mb-5 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[13px] font-semibold tracking-tight">Plain SignalDeck theme</div>
+            <div className="text-[12px] ink-muted mt-0.5">
+              {plainTheme ? 'Workspace is in the default black/white shell — your brand world is paused.' : 'Override the brand world with the default black/white shell.'}
+            </div>
+          </div>
+          <button
+            onClick={() => setPlainTheme(v => !v)}
+            className="h-9 px-3.5 rounded-xl text-[13px] font-medium hairline focus-ring inline-flex items-center gap-2 flex-shrink-0"
+            style={{
+              background: plainTheme ? '#0F1115' : '#fff',
+              color:      plainTheme ? '#fff'    : '#0F1115',
+            }}
+          >
+            {plainTheme ? 'Restore brand theme' : 'Reset to plain theme'}
+          </button>
+        </Card>
         <div className="grid lg:grid-cols-3 gap-5">
           <Card className="p-6 space-y-5 lg:col-span-1">
             <div>
