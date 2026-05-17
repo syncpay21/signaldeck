@@ -1,0 +1,86 @@
+{
+  "form": {
+    "company":     "SyncPay",
+    "industry":    "Fintech",
+    "oneLiner":    "Reconcile payments to records by embedding metadata into every transaction",
+    "stage":       "Seed",
+    "founderName": "Ezana",
+    "audience":    "Seed VC",
+    "websiteUrl":  "https://syncpay.au",
+    "realStory":   "Businesses lack the data richness to understand cash flow without manual reconciliation across disconnected systems. We embed structured metadata into every transaction so records and payments stay in sync automatically.",
+    "customers":   "Australian SMBs running Xero, Stripe, Square, and Tyro — finance ops teams burning hours per week on manual matching",
+    "proof":       "Live integrations with Xero + Stripe. Pilot merchants reducing reconciliation time by 80%+."
+  },
+  "logoUrl":     "https://icons.duckduckgo.com/ip3/syncpay.au.ico",
+  "accentColor": "#00e5c3",
+  "brandWorld": {
+    "industry":         "fintech",
+    "brandPersonality": "Precision-engineered payments reconciliation — dark, data-dense, technically credible, with a teal pulse that signals accuracy over aesthetics.",
+    "visualDirection":  "Command-operational fintech tooling — dark navy field, single teal accent, ledger-precise typography in Barlow Condensed for displays + DM Sans for body + JetBrains Mono for numbers. Glow, grid, and grain overlay communicate that the chrome itself is part of the engineering credibility.",
+    "avoid": [
+      "Generic AI gradient (purple-blue glowing orbs)",
+      "Glassmorphism / frosted panels",
+      "Warm consumer palette (the brand is not friendly, it is precise)",
+      "Editorial serif typography",
+      "Pastel anything"
+    ],
+    "whyThisWorks": "SyncPay's product is precision reconciliation — every transaction either matches or doesn't. The chrome mirrors that: hairline grid, teal pulse, no ambiguity. Investors immediately read 'engineered for finance ops' before they read a single word.",
+    "colour": {
+      "background":   "#06080d",
+      "surface":      "#0a0e17",
+      "surfaceSoft":  "#0f1521",
+      "primary":      "#00e5c3",
+      "primarySoft":  "rgba(0, 229, 195, 0.10)",
+      "secondary":    "#5e8cff",
+      "accent":       "#ffb800",
+      "text":         "#eef2f7",
+      "textMuted":    "#7a8fa8",
+      "border":       "rgba(255, 255, 255, 0.08)",
+      "success":      "#00d084",
+      "warning":      "#ffb800",
+      "error":        "#ff4d6d",
+      "gridLine":     "rgba(255, 255, 255, 0.025)",
+      "glow":         "rgba(0, 229, 195, 0.28)"
+    },
+    "typography": {
+      "heading":       "Barlow Condensed",
+      "body":          "DM Sans",
+      "mono":          "JetBrains Mono",
+      "style":         "bold-condensed",
+      "headingWeight": "900",
+      "bodyWeight":    "400",
+      "tracking":      "-0.01em"
+    },
+    "motifs": [
+      "Ledger ruled lines as structural dividers",
+      "Payment rail arrows — left-to-right directional match lines",
+      "Reconciliation diff columns — debit beside credit, hairline gap",
+      "Statement-style row stripes with mono digit columns",
+      "Teal pulse on match — single accent moment, no ambient noise"
+    ],
+    "layoutStyle":      "command-operational",
+    "cardStyle":        "statement",
+    "buttonStyle":      "sharp",
+    "iconStyle":        "line",
+    "motionStyle":      "crisp",
+    "dataVizStyle":     "ledger-rows",
+    "backgroundSystem": "Dark navy field, subtle 64px grid mask, two soft radial teal washes top-corners, fractal noise grain overlay at 25% opacity",
+    "radius":           14,
+    "density":          "normal",
+    "visualRichness":   "maximal",
+    "effects": {
+      "gridOverlay":    true,
+      "radialAmbient":  true,
+      "heroWatermark":  true,
+      "monoLabels":     true,
+      "glow":           true,
+      "grainOverlay":   true
+    },
+    "deckTheme":        "A dark command-operational fintech deck — Barlow Condensed displays in teal/snow, statement-style metric cards, ledger-rules between sections, glow on the load-bearing accent",
+    "deckMode":         "dark",
+    "origin": {
+      "primaryFrom": "website",
+      "fontsFrom":   "industry-default"
+    }
+  }
+}

@@ -413,7 +413,7 @@ export default function Workspace({
   }
 
   const MiniLabel = ({ children }: any) => (
-    <div className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: liveAccent }}>{children}</div>
+    <div className="mini-label text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: liveAccent }}>{children}</div>
   )
 
   const ScoreCard = ({ label, value, suffix='/ 100' }: { label: string; value: number; suffix?: string }) => (
@@ -474,7 +474,10 @@ export default function Workspace({
           <div className="relative grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
             <div>
               <MiniLabel>Project command centre</MiniLabel>
-              <h1 className="display-heading text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight mt-2">
+              <h1
+                className={`display-heading text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight mt-2 ${fx.heroWatermark ? 'has-watermark' : ''}`}
+                data-watermark={fx.heroWatermark ? (company || 'OVERVIEW').toUpperCase() : undefined}
+              >
                 From rough founder notes to a live <span style={{ color: liveAccent }}>investor deck</span>
               </h1>
               <p className="ink-muted mt-3 text-[14px] leading-relaxed max-w-lg">
@@ -1846,7 +1849,10 @@ export default function Workspace({
           <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
             <div>
               <MiniLabel>Presentation mode</MiniLabel>
-              <h1 className="display-heading text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+              <h1
+                className={`display-heading text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2 ${fx.heroWatermark ? 'has-watermark' : ''}`}
+                data-watermark={fx.heroWatermark ? 'PRESENT' : undefined}
+              >
                 Turn the deck into a <span style={{ color: liveAccent }}>talk track</span>
               </h1>
               <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
@@ -2344,22 +2350,40 @@ export default function Workspace({
   // (audit, claims, signals, sources) stay flat so density isn't disturbed.
   const SHOWCASE_SCREENS = new Set(['overview', 'theme', 'style', 'present'])
   const isShowcase = !!brandWorld && SHOWCASE_SCREENS.has(active)
+  const fx = brandWorld?.effects ?? { gridOverlay:false, radialAmbient:false, heroWatermark:false, monoLabels:false, glow:false, grainOverlay:false }
   const motifLayer = isShowcase ? brandWorldMotifBackground(brandWorld!.motifs, brandWorld!.colour.primary).css : ''
-  const wantsGradient = isShowcase && (brandWorld!.layoutStyle === 'editorial-spacious' || brandWorld!.layoutStyle === 'gallery-expressive')
-  const gradientLayer = wantsGradient ? 'radial-gradient(at 20% 0%, var(--primary-soft), transparent 50%)' : ''
-  const layered = [gradientLayer, motifLayer].filter(Boolean).join(', ')
+  const wantsLayoutGradient = isShowcase && (brandWorld?.layoutStyle === 'editorial-spacious' || brandWorld?.layoutStyle === 'gallery-expressive')
+  const layoutGradient = wantsLayoutGradient ? 'radial-gradient(at 20% 0%, var(--primary-soft), transparent 50%)' : ''
+  // Richness-driven ambient washes + 64px grid overlay. Always-on (not gated by
+  // showcase), because the chrome should feel branded regardless of screen.
+  const ambientLayer = brandWorld && fx.radialAmbient
+    ? `radial-gradient(circle at 12% 8%, ${brandWorld.colour.primarySoft}, transparent 28%), radial-gradient(circle at 88% 16%, ${brandWorld.colour.primarySoft}, transparent 26%)`
+    : ''
+  const gridLayer = brandWorld && fx.gridOverlay
+    ? `linear-gradient(${brandWorld.colour.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${brandWorld.colour.gridLine} 1px, transparent 1px)`
+    : ''
+  const layers = [layoutGradient, ambientLayer, motifLayer, gridLayer].filter(Boolean)
+  const sizes  = [layoutGradient, ambientLayer, motifLayer].filter(Boolean).map(() => 'auto').concat(gridLayer ? ['64px 64px'] : [])
+  const repeats = [layoutGradient, ambientLayer].filter(Boolean).map(() => 'no-repeat').concat(motifLayer ? ['repeat'] : []).concat(gridLayer ? ['repeat'] : [])
+  const layered = layers.join(', ')
 
   const worldStyle: any = brandWorld
     ? {
         ...brandWorldToCssVars(brandWorld),
         background: 'var(--bg)',
         color: 'var(--text)',
-        ...(layered ? { backgroundImage: layered, backgroundRepeat: 'no-repeat, repeat', backgroundSize: 'auto, auto' } : {}),
+        ...(layered ? { backgroundImage: layered, backgroundRepeat: repeats.join(', '), backgroundSize: sizes.join(', ') } : {}),
       }
     : { background: 'var(--bg)', color: 'var(--ink)' }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={worldStyle}>
+    <div
+      className="flex h-screen overflow-hidden relative"
+      style={worldStyle}
+      data-richness={brandWorld?.visualRichness || 'balanced'}
+      data-mono-labels={String(fx.monoLabels)}
+      data-glow={String(fx.glow)}
+    >
       {brandWorld && (
         <style>{`
           .display-heading {
@@ -2369,7 +2393,43 @@ export default function Workspace({
             font-size: clamp(36px, 5vw, 64px) !important;
             line-height: 1.05 !important;
           }
+          [data-mono-labels="true"] .mini-label {
+            font-family: var(--font-mono), ui-monospace, monospace !important;
+            letter-spacing: 0.16em !important;
+            font-weight: 500 !important;
+          }
+          [data-glow="true"] .brand-glow {
+            box-shadow: 0 12px 30px ${brandWorld.colour.primarySoft.replace(/0\.\d+/, '0.35')}, 0 0 0 1px ${brandWorld.colour.primary} inset;
+          }
+          .has-watermark { position: relative; overflow: hidden; }
+          .has-watermark::after {
+            content: attr(data-watermark);
+            position: absolute;
+            right: -16px;
+            bottom: -28px;
+            font-family: var(--font-heading), system-ui, sans-serif;
+            font-weight: var(--heading-weight);
+            font-size: clamp(110px, 14vw, 210px);
+            line-height: 1;
+            letter-spacing: -4px;
+            color: ${brandWorld.colour.primary};
+            opacity: 0.035;
+            pointer-events: none;
+            text-transform: uppercase;
+            z-index: 0;
+          }
+          .has-watermark > * { position: relative; z-index: 1; }
         `}</style>
+      )}
+      {brandWorld && fx.grainOverlay && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999,
+            opacity: 0.25, mixBlendMode: 'overlay',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E")`,
+          }}
+        />
       )}
       <aside className="hidden lg:flex flex-col flex-shrink-0 border-r border-[var(--line)] bg-[var(--paper)]" style={{ width: sidebarWidth }}>
         <SidebarContent />
@@ -2400,7 +2460,7 @@ export default function Workspace({
               Theme
             </button>
           </div>
-          <button onClick={() => setActive('present')} className="h-8 px-3.5 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5" style={{ background: liveAccent }}>
+          <button onClick={() => setActive('present')} className="brand-glow h-8 px-3.5 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-1.5" style={{ background: liveAccent }}>
             <ic.play className="w-3.5 h-3.5"/> Present
           </button>
           <div className="w-9 h-9 rounded-full surface hairline flex items-center justify-center text-[12px] font-semibold flex-shrink-0" style={{ background:'var(--surface)' }}>
