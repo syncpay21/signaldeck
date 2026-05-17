@@ -2366,7 +2366,11 @@ export default function Workspace({
   }
   const ambientLayer = brandWorld && fx.radialAmbient
     ? (isRichBrand
-        ? `radial-gradient(ellipse 90% 60% at 20% 0%, ${hexAlpha(brandWorld.colour.primary, 0.18)}, transparent 60%), radial-gradient(ellipse 80% 50% at 80% 10%, ${hexAlpha(brandWorld.colour.accent, 0.16)}, transparent 55%), radial-gradient(ellipse 70% 50% at 50% 100%, ${hexAlpha(brandWorld.colour.secondary, 0.20)}, transparent 60%)`
+        // Rich/maximal: three big saturated ellipses — primary top-left, accent
+        // top-right, secondary bottom-centre. Opacities tuned high (0.30+) so
+        // the "reflective mirror" aurora actually reads instead of looking like
+        // a faint wash. Widened to 120% so the bleed crosses the centre.
+        ? `radial-gradient(ellipse 120% 80% at 18% -10%, ${hexAlpha(brandWorld.colour.primary, 0.34)}, transparent 65%), radial-gradient(ellipse 110% 75% at 85% 5%, ${hexAlpha(brandWorld.colour.accent, 0.28)}, transparent 60%), radial-gradient(ellipse 100% 70% at 55% 110%, ${hexAlpha(brandWorld.colour.secondary, 0.32)}, transparent 65%)`
         : `radial-gradient(circle at 12% 8%, ${brandWorld.colour.primarySoft}, transparent 28%), radial-gradient(circle at 88% 16%, ${brandWorld.colour.primarySoft}, transparent 26%)`)
     : ''
   const gridLayer = brandWorld && fx.gridOverlay
@@ -2399,7 +2403,7 @@ export default function Workspace({
         color: 'var(--text)',
         '--primary-fill': primaryFill,
         '--accent-text': accentTextFill,
-        ...(layered ? { backgroundImage: layered, backgroundRepeat: repeats.join(', '), backgroundSize: sizes.join(', ') } : {}),
+        ...(layered ? { backgroundImage: layered, backgroundRepeat: repeats.join(', '), backgroundSize: sizes.join(', '), backgroundAttachment: 'fixed' } : {}),
       }
     : { background: 'var(--bg)', color: 'var(--ink)' }
 
