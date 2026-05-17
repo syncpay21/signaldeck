@@ -89,26 +89,49 @@ surface. Do NOT default to cream/white "for legibility" — adjust text
 contrast (deep navy on yellow, white on magenta) instead.
 
 DUAL-SATURATED BRANDS — when the extractor returns TWO highly saturated
-colours (e.g. Up Bank: coral #FF7575 + yellow #FFEB00), use BOTH as
-actual surfaces, but keep card legibility intact:
-  - colour.background → the dominant body bg (the back panel — Up = coral)
-  - colour.surface    → LIGHT/cream/off-white (#FFFEF8, #FFFBF0) — cards
-                        sit on top of the saturated background and need
-                        legible text. Do NOT make the card surface saturated;
-                        that destroys readability.
-  - colour.surfaceSoft→ slightly tinted version of surface for nested cards
-  - colour.primary    → the second saturated colour (Up = yellow) — used
-                        for headings, accent text, key CTAs. Up's "investor
-                        deck" heading text renders in YELLOW on the coral
-                        background. Buttons, stat numbers, active nav all
-                        get this colour.
-  - colour.accent     → contrast colour for emphasis on the saturated bg
-                        (black / navy)
-  - colour.text       → deep navy / black for card body copy on the light
-                        surface
-This produces: saturated back panel (coral) + light cards (readable) +
-yellow accents/headlines/buttons. The Up Bank workspace looks like the Up
-Bank website without sacrificing usability.
+colours (e.g. Up Bank: coral + yellow), look at the ACTUAL website
+screenshots to see what colour the BRAND USES FOR CARDS, then mirror it:
+
+  STEP 1 — Examine the screenshots. What colour are the actual card/tile
+  surfaces on the brand's marketing site? Common patterns:
+    - Black/dark cards on saturated bg (Up Bank, Liquid Death, Adidas)
+    - Cream/off-white cards on saturated bg (Notion, Mailchimp)
+    - The same saturated colour as bg but slightly different shade
+    - Glass / outlined / no fill cards
+  USE WHAT YOU SEE. Do NOT default to cream cards if the brand uses
+  black cards. Do NOT default to dark cards if the brand uses cream.
+
+  STEP 2 — Set the palette to match:
+  - colour.background → saturated dominant from website body (Up = coral)
+  - colour.surface    → MATCH THE WEBSITE'S CARDS (Up = #0D0D0D black,
+                        Notion = #FAFAF7 cream). This is not your taste
+                        decision — it is observed from screenshots.
+  - colour.primary    → the second saturated colour, used for high-contrast
+                        accents (Up = yellow for headings/CTAs on dark cards;
+                        Mailchimp = yellow against cream cards)
+  - colour.text       → text colour MUST hit 4.5:1 contrast against surface.
+                        Dark cards → white/cream text. Light cards → black/
+                        navy text. If you set yellow text on cream cards
+                        you have failed this rule — pick a darker accent.
+
+  STEP 3 — Verify contrast:
+  - accent text (primary on surface) MUST be readable. Yellow on cream =
+    fail. Yellow on black = perfect. Coral on cream = good. Coral on coral
+    = fail.
+  - If primary doesn't contrast against surface, swap roles: use the
+    saturated bg colour as the accent text instead (Up: coral text on
+    black cards, with yellow CTAs).
+
+SUBTLE CUES YOU MUST CATCH from screenshots (don't miss these):
+  - Card border radius (Up = ~24px rounded, Stripe = 8px, Notion = 6px)
+  - Card stroke vs fill (outlined vs solid)
+  - Accent illustrations / mascots visible (Up = yellow triangle character)
+  - Tertiary brand colours used decoratively (Up has pink/peach as
+    illustration ink — list them in motifs even if not in main palette)
+  - Whether headlines are SANS or SERIF (Up = sans, Stripe = sans, NYT = serif)
+  - Button shape (Up = black pill, Stripe = sharp rectangle, Apple = rounded)
+  These cues matter as much as the palette. Output them in motifs[] and
+  use them to anchor cardStyle, buttonStyle, radius.
 
 If you choose to soften the saturated colours into neutrals, you must
 explain in whyThisWorks exactly why this brand reads as "subtle" rather
