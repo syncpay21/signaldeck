@@ -1,0 +1,87 @@
+{
+  "form": {
+    "company": "Up",
+    "industry": "Fintech",
+    "oneLiner": "Australia's mobile-first bank built for people who actually live on their phones.",
+    "stage": "Series A",
+    "founderName": "Dom Pym",
+    "audience": "Series A",
+    "websiteUrl": "https://up.com.au",
+    "realStory": "We started Up because banking in Australia felt like it was built for a generation that still wrote cheques. So we built Up inside Bendigo's licence — a real bank, designed phone-first from the ground up. Instant notifications. Savers you can name. Pay-day automation that splits your money before you can spend it.",
+    "customers": "Australians 18-34 who want their bank to feel like a product, not a utility — early-career professionals, freelancers, couples managing shared savings goals.",
+    "proof": "700,000+ customers in 5 years with zero paid acquisition in year one. NPS in the 70s. Maybi shared accounts hit 100k users in 6 months. Backed by Bendigo & Adelaide Bank ADI licence."
+  },
+  "logoUrl": "https://icons.duckduckgo.com/ip3/up.com.au.ico",
+  "accentColor": "#ffee52",
+  "brandWorld": {
+    "industry": "fintech",
+    "brandPersonality": "Loud, colour-first mobile bank that makes money feel alive — not anxious",
+    "visualDirection": "A coral workspace where cream cards float on top, punched with electric yellow headlines and stat numbers. The visual language borrows from phone UI surfaces — chunky touch targets, high-contrast type, zero corporate grey.",
+    "avoid": [
+      "Dark navy / teal 'trustworthy fintech' palette",
+      "Glassmorphism or frosted panels",
+      "Thin serif typography or editorial long-form layouts",
+      "Glowing orbs or neural-network particle fields",
+      "Muted pastels or 'calm fintech' whitespace approach",
+      "Generic bento grid layouts with equal-weight cards"
+    ],
+    "whyThisWorks": "Up's brand is built on coral, yellow, and pink as actual surfaces — not accents — so the deck must honour that aggressive saturation rather than retreating to cream. Cards sit light on the coral field; yellow functions as the headline and number ink, making data feel punchy and mobile-native.",
+    "colour": {
+      "background": "#ff705c",
+      "surface": "#fffef0",
+      "surfaceSoft": "#fff8e1",
+      "primary": "#ffee52",
+      "primarySoft": "rgba(255, 238, 82, 0.18)",
+      "secondary": "#ff8bd1",
+      "accent": "#1a1a1a",
+      "text": "#1a1a1a",
+      "textMuted": "#4e6280",
+      "border": "rgba(26, 26, 26, 0.10)",
+      "success": "#305555",
+      "warning": "#fb5d40",
+      "error": "#d93025",
+      "gridLine": "rgba(26, 26, 26, 0.07)",
+      "glow": "transparent"
+    },
+    "typography": {
+      "heading": "Manrope",
+      "body": "DM Sans",
+      "mono": "Space Mono",
+      "style": "geometric-sans",
+      "headingWeight": "800",
+      "bodyWeight": "400",
+      "tracking": "-0.02em"
+    },
+    "motifs": [
+      "Phone UI card stacks",
+      "Transaction feed rows",
+      "Spending category chips",
+      "Round balance numerals",
+      "Swipe-action gesture lines"
+    ],
+    "layoutStyle": "workspace-clean",
+    "cardStyle": "statement",
+    "buttonStyle": "pill",
+    "iconStyle": "glyph",
+    "motionStyle": "crisp",
+    "dataVizStyle": "stat-cards",
+    "backgroundSystem": "Flat coral surface — no gradient blobs, no grid overlay — letting the saturated colour do the structural work",
+    "radius": 18,
+    "density": "normal",
+    "visualRichness": "rich",
+    "effects": {
+      "gridOverlay": false,
+      "radialAmbient": false,
+      "heroWatermark": false,
+      "monoLabels": true,
+      "glow": false,
+      "grainOverlay": false
+    },
+    "deckTheme": "Coral-field mobile bank deck — cream statement cards, electric yellow headlines, pink as a tertiary pop, all on a flat Up coral ground",
+    "deckMode": "light",
+    "origin": {
+      "primaryFrom": "website",
+      "fontsFrom": "industry-default"
+    }
+  }
+}
