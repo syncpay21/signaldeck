@@ -123,7 +123,9 @@ export default function Home() {
         setGeneratedHtml(`<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:'Source Sans 3',sans-serif;color:${accent};font-size:18px;font-weight:600;text-align:center;padding:32px;">Demo workspace for ${preset.form?.company || demo}.<br/><span style="font-weight:400;color:#666;font-size:14px;margin-top:8px;display:block;">Run the full intake to generate real slides — the chrome here shows how the BrandWorld adapts every surface.</span></div>`)
         setGeneratedContent({})
         setStep('canvas')
-      } catch {}
+      } catch (err) {
+        console.error('demo preset load failed', err)
+      }
     })()
   }, [])
 
