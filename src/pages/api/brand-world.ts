@@ -79,6 +79,42 @@ COLOUR SOURCING — in order of preference:
   5. Brand personality (premium / playful / serious / technical)
   Use ONE primary, ONE supporting accent, neutrals, semantic colours. Never overload.
 
+⚡ SATURATED-BACKGROUND BRANDS — do NOT soften these into "tasteful" neutrals.
+Some brands (Up Bank's electric yellow + coral, Cash App's lime, Yotel's
+magenta, Klarna's pink, Mailchimp's yellow, Liquid Death's neon green)
+define themselves by aggressive, saturated colours used as ACTUAL surfaces
+— not just accents. If the og:image or extracted body-bg shows a fully-
+saturated colour covering >40% of the hero, that colour IS a workspace
+surface. Do NOT default to cream/white "for legibility" — adjust text
+contrast (deep navy on yellow, white on magenta) instead.
+
+DUAL-SATURATED BRANDS — when the extractor returns TWO highly saturated
+colours (e.g. Up Bank: coral #FF7575 + yellow #FFEB00), use BOTH as
+actual surfaces, but keep card legibility intact:
+  - colour.background → the dominant body bg (the back panel — Up = coral)
+  - colour.surface    → LIGHT/cream/off-white (#FFFEF8, #FFFBF0) — cards
+                        sit on top of the saturated background and need
+                        legible text. Do NOT make the card surface saturated;
+                        that destroys readability.
+  - colour.surfaceSoft→ slightly tinted version of surface for nested cards
+  - colour.primary    → the second saturated colour (Up = yellow) — used
+                        for headings, accent text, key CTAs. Up's "investor
+                        deck" heading text renders in YELLOW on the coral
+                        background. Buttons, stat numbers, active nav all
+                        get this colour.
+  - colour.accent     → contrast colour for emphasis on the saturated bg
+                        (black / navy)
+  - colour.text       → deep navy / black for card body copy on the light
+                        surface
+This produces: saturated back panel (coral) + light cards (readable) +
+yellow accents/headlines/buttons. The Up Bank workspace looks like the Up
+Bank website without sacrificing usability.
+
+If you choose to soften the saturated colours into neutrals, you must
+explain in whyThisWorks exactly why this brand reads as "subtle" rather
+than "loud". If you can't justify it concretely, use the saturated
+colours as actual surfaces.
+
 TYPOGRAPHY — match the brand, do not default. CRITICAL: if the visualReference says "NOT a serif" or "geometric sans" or names a specific font family, that override wins over the industry default:
   - Fintech / enterprise: Neue Haas Grotesk, IBM Plex Sans, Inter, Source Sans
   - Premium / luxury: Suisse, Cormorant Garamond pair, Editorial serif + clean sans
