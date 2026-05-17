@@ -1,0 +1,87 @@
+{
+  "form": {
+    "company":     "Luma",
+    "industry":    "Consumer",
+    "oneLiner":    "Events for what you care about",
+    "stage":       "Series B",
+    "founderName": "Guillaume",
+    "audience":    "Series B",
+    "websiteUrl":  "https://lu.ma",
+    "realStory":   "We started Luma to make hosting events feel as easy as making a calendar invite, and as joyful as the gathering itself. Today millions of people use Luma every month to discover and host events — from supper clubs to founder dinners to community meetups.",
+    "customers":   "Hosts running creator dinners, founder community meetups, conference side-events, supper clubs, workshops, salons",
+    "proof":       "Millions of events hosted. Discovery feed surfacing curated local events. Used by communities at YC, On Deck, South Park Commons, and most major creator scenes."
+  },
+  "logoUrl":     "https://lu.ma/apple-touch-icon.png",
+  "accentColor": "#f058c5",
+  "brandWorld": {
+    "industry":         "retail",
+    "brandPersonality": "Warm, luminous, socially magnetic — events platform that makes gathering feel joyful and effortless",
+    "visualDirection":  "A soft-light gradient world built from Luma's signature aurora palette — pink, peach, lavender, and gold blending like light through a frosted window at golden hour. Cards feel like event covers: warm, inviting, personal — not enterprise dashboards.",
+    "avoid": [
+      "Dark navy or black backgrounds — this brand lives in warmth and light",
+      "Hard geometric grids or ledger-precise layouts — too cold for a social events product",
+      "Corporate sans-serif with tight tracking — clashes with the playful rounded wordmark",
+      "Monochrome or desaturated palettes — the aurora gradient IS the brand",
+      "Generic AI sparkle iconography — the 4-point star is Luma's own mark, don't dilute it",
+      "Dense data-table layouts — this is social, not SaaS"
+    ],
+    "whyThisWorks": "Luma's entire visual identity is built on soft, saturated aurora gradients that evoke warmth, anticipation, and social energy — the palette directly mirrors the emotional state of looking forward to an event. The rounded wordmark and pastel-to-warm gradient system demand a friendly, light, expressive design world that feels like the brand's own og:image come to life.",
+    "colour": {
+      "background":   "#fff8f5",
+      "surface":      "#ffffff",
+      "surfaceSoft":  "#fdf0f7",
+      "primary":      "#f058c5",
+      "primarySoft":  "rgba(240, 88, 197, 0.12)",
+      "secondary":    "#ff9a6c",
+      "accent":       "#6863f8",
+      "text":         "#1a0a14",
+      "textMuted":    "#9a7a8e",
+      "border":       "rgba(240, 88, 197, 0.15)",
+      "success":      "#34c77b",
+      "warning":      "#ffb347",
+      "error":        "#f04f5a",
+      "gridLine":     "rgba(240, 88, 197, 0.07)",
+      "glow":         "rgba(240, 88, 197, 0.18)"
+    },
+    "typography": {
+      "heading":       "DM Sans",
+      "body":          "DM Sans",
+      "mono":          "DM Mono",
+      "style":         "geometric-sans",
+      "headingWeight": "700",
+      "bodyWeight":    "400",
+      "tracking":      "-0.02em"
+    },
+    "motifs": [
+      "aurora gradient pools — soft radial washes of pink, peach, lavender, gold",
+      "event cover cards — photo-forward tiles with date chips and host avatars",
+      "RSVP / attendee count badges",
+      "calendar dot grids — sparse, warm-coloured day markers",
+      "4-point sparkle glyph from the Luma wordmark"
+    ],
+    "layoutStyle":      "gallery-expressive",
+    "cardStyle":        "editorial",
+    "buttonStyle":      "pill",
+    "iconStyle":        "glyph",
+    "motionStyle":      "calm",
+    "dataVizStyle":     "stat-cards",
+    "backgroundSystem": "Soft full-bleed radial aurora gradient — pink top-left bleeding into peach bottom-right, layered at low opacity over warm white; no hard geometry, no grid lines",
+    "radius":           18,
+    "density":          "spacious",
+    "visualRichness":   "rich",
+    "effects": {
+      "gridOverlay":    false,
+      "radialAmbient":  true,
+      "heroWatermark":  false,
+      "monoLabels":     false,
+      "glow":           true,
+      "grainOverlay":   false
+    },
+    "deckTheme":        "Warm aurora light-mode deck: soft pink-to-peach radial ambient on white, event-cover cards, DM Sans, pill buttons, sparkle accents — joyful, social, unmistakably Luma",
+    "deckMode":         "light",
+    "origin": {
+      "primaryFrom": "logo",
+      "fontsFrom":   "industry-default"
+    }
+  }
+}
