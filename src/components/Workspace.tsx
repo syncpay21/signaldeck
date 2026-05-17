@@ -2509,6 +2509,21 @@ export default function Workspace({
 
         <main className="flex-1 overflow-y-auto"><Screen /></main>
       </div>
+
+      {/* Andreas — floating chat panel. Sees workspace context so it can
+         dispatch the right sub-agents per founder instruction. */}
+      <AndreasPanel
+        company={company}
+        industry={industry}
+        audience={audience}
+        stage={stage}
+        founderName={founderName}
+        brandWorld={brandWorld}
+        currentScreen={active}
+        deckContent={liveContent}
+        slideIds={realSlides.map((s: any) => s.key)}
+        activeSlideId={realSlides[activeSlide]?.key}
+      />
     </div>
   )
 }
