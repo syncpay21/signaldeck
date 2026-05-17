@@ -2369,9 +2369,16 @@ export default function Workspace({
   // backgrounds. Background-attachment:fixed is intentionally omitted — it
   // doesn't work on elements with overflow:hidden (the root). Instead the
   // ambient is painted onto a position:fixed div that sits behind everything.
+  // Light brands need MUCH lower opacity — saturated colours on white flood the
+  // page and destroy text contrast. Dark brands can take 30%+ alpha because
+  // the background absorbs most of the colour.
+  const isDarkMode = brandWorld?.deckMode === 'dark'
+  const aP = isDarkMode ? 0.38 : 0.10   // primary alpha
+  const aA = isDarkMode ? 0.30 : 0.08   // accent alpha
+  const aS = isDarkMode ? 0.34 : 0.09   // secondary alpha
   const ambientLayer = brandWorld && fx.radialAmbient
     ? (isRichBrand
-        ? `radial-gradient(ellipse 130% 70% at 18% 22%, ${hexAlpha(brandWorld.colour.primary, 0.38)}, transparent 62%), radial-gradient(ellipse 120% 65% at 82% 12%, ${hexAlpha(brandWorld.colour.accent, 0.30)}, transparent 58%), radial-gradient(ellipse 110% 60% at 52% 80%, ${hexAlpha(brandWorld.colour.secondary, 0.34)}, transparent 62%)`
+        ? `radial-gradient(ellipse 130% 70% at 18% 22%, ${hexAlpha(brandWorld.colour.primary, aP)}, transparent 62%), radial-gradient(ellipse 120% 65% at 82% 12%, ${hexAlpha(brandWorld.colour.accent, aA)}, transparent 58%), radial-gradient(ellipse 110% 60% at 52% 80%, ${hexAlpha(brandWorld.colour.secondary, aS)}, transparent 62%)`
         : `radial-gradient(circle at 12% 15%, ${brandWorld.colour.primarySoft}, transparent 32%), radial-gradient(circle at 88% 18%, ${brandWorld.colour.primarySoft}, transparent 28%)`)
     : ''
   const gridLayer = brandWorld && fx.gridOverlay
