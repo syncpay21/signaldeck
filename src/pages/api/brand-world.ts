@@ -68,21 +68,24 @@ INDUSTRY-SPECIFIC visual world — pick the right one:
   - AI products               → DO NOT default to generic AI. Pick the underlying industry. AI for law looks like legal. AI for sports looks like sports. AI is a capability, not a brand.
 
 COLOUR SOURCING — in order of preference:
-  1. Colours present in the uploaded logo / screenshots
-  2. Colours from the website (when fetched)
-  3. Industry norms above
-  4. Brand personality (premium / playful / serious / technical)
+  1. EXPLICIT visualReference in the user prompt (if user described the brand visually, FOLLOW IT verbatim)
+  2. Uploaded logo / screenshots
+  3. Colours from the website (when fetched)
+  4. Industry norms above
+  5. Brand personality (premium / playful / serious / technical)
   Use ONE primary, ONE supporting accent, neutrals, semantic colours. Never overload.
 
-TYPOGRAPHY — match the brand, do not default:
+TYPOGRAPHY — match the brand, do not default. CRITICAL: if the visualReference says "NOT a serif" or "geometric sans" or names a specific font family, that override wins over the industry default:
   - Fintech / enterprise: Neue Haas Grotesk, IBM Plex Sans, Inter, Source Sans
   - Premium / luxury: Suisse, Cormorant Garamond pair, Editorial serif + clean sans
   - Sports: Barlow Condensed, Oswald, bold condensed
   - Developer: Geist, Sora, Space Grotesk + JetBrains Mono
-  - Consumer: Manrope, Circular, Nunito Sans
+  - Consumer / events / social: DM Sans, Manrope, Circular, Inter Display — clean grotesks NOT serifs (most consumer brands deliberately avoid editorial serif)
+  - Editorial / publishing / luxury hotel: editorial serif fits, otherwise consumer = grotesk
   - Education: Lexend, Nunito, Rubik
   - Legal / gov: Merriweather, Libre Baskerville pairing
   - Use real Google Fonts names so they actually load.
+  - When choosing typography.style, only pick "editorial-serif" if the brand visibly uses one — most consumer brands are "geometric-sans".
 
 WRITING — the visualDirection / brandPersonality / whyThisWorks fields must be CONCRETE, not generic:
   Bad:  "Modern, sleek, AI-powered design"
