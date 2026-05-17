@@ -3,6 +3,7 @@ import { getTemplate, VC_PROFILES, personalize, extractWedge, type Template, typ
 import { brandWorldToCssVars, type BrandWorld } from '@/lib/brand-world'
 import { getIconSet } from '@/lib/icons'
 import { brandWorldMotifBackground } from '@/lib/motifs'
+import AndreasPanel from '@/components/AndreasPanel'
 import { FRAMEWORKS } from '@/lib/frameworks/library'
 import { DARK_FRAMEWORKS } from '@/lib/frameworks/dark'
 import { rankFrameworks, recommendCompanions } from '@/lib/frameworks/scoring'
