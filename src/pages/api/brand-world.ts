@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
 import type { BrandWorld } from '../../lib/brand-world'
 import { extractBrand, type ExtractedBrand } from '../../lib/pipeline/brand-extractor'
+import { resolveLogoUrl } from '../../lib/pipeline/logo-resolver'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -305,7 +306,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     }
 
-    res.status(200).json({ brandWorld, reasoning: parsed.whyThisWorks || '' })
+    // Resolve a logo URL the client can render in the workspace sidebar.
+    // User-uploaded logoData wins on the client; this is the auto-sourced fallback.
+    const resolvedLogoUrl = resolveLogoUrl({
+      websiteUrl:       input.websiteUrl,
+      extractedLogoUrl: extracted?.logoUrl,
+    })
+
+    res.status(200).json({
+      brandWorld,
+      reasoning: parsed.whyThisWorks || '',
+      resolvedLogoUrl,
+      extractedLogoUrl: extracted?.logoUrl ?? null,
+      extractedOgImage: extracted?.ogImage ?? null,
+    })
   } catch (err: any) {
     console.error('brand-world error:', err)
     res.status(500).json({ error: err.message || 'brand-world generation failed' })

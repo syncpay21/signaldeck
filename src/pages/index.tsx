@@ -153,6 +153,9 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'brand-world failed')
       setBrandWorld(data.brandWorld)
+      // If the intake auto-detect missed a logo, take what /api/brand-world
+      // resolved (extracted apple-touch-icon, or DuckDuckGo favicon fallback).
+      if (!logoUrl && data.resolvedLogoUrl) setLogoUrl(data.resolvedLogoUrl)
       setStep('world')
     } catch (e: any) {
       setError(e.message)
@@ -235,7 +238,7 @@ export default function Home() {
         accentColor={form.accentColor}
         generatedHtml={generatedHtml}
         generatedContent={generatedContent}
-        logoUrl={logoUrl}
+        logoUrl={form.logoData || logoUrl}
         audience={form.audience}
         websiteUrl={form.websiteUrl}
         realStory={form.realStory}
