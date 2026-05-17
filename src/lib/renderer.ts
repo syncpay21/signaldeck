@@ -141,6 +141,7 @@ export function renderDeck(
     bgColor:     input.bgColor     || theme?.bg          || guide?.palette[1]    || '#06080d',
     fontHeading: input.fontHeading || theme?.fontHeading || guide?.display       || 'Barlow Condensed',
     fontBody:    input.fontBody    || theme?.fontBody    || guide?.body          || 'DM Sans',
+    fontData:    theme?.fontData   || guide?.data        || 'JetBrains Mono',
     isDark:      input.isDark !== false && (theme?.isDark ?? true),
     totalSlides: slideHtmlList.length,
     slidesHtml:  slideHtmlList.join('\n'),

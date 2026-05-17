@@ -6,6 +6,7 @@ export interface TemplateVars {
   bgColor: string
   fontHeading: string
   fontBody: string
+  fontData?: string          // mono / numeric stack (default: JetBrains Mono)
   isDark: boolean
   totalSlides: number
   slidesHtml: string
@@ -16,7 +17,9 @@ export function deckTemplate(v: TemplateVars): string {
   const fg = v.isDark ? '#eef2f7' : '#0f1d2e'
   const wire = v.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,29,46,0.06)'
   const mist = v.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(15,29,46,0.03)'
-  const fonts = [v.fontHeading, v.fontBody, 'JetBrains Mono']
+  const fontMono = v.fontData || 'JetBrains Mono'
+  const fonts = [v.fontHeading, v.fontBody, fontMono]
+    .filter(Boolean)
     .filter((f, i, a) => a.indexOf(f) === i)
     .map(f => f.replace(/ /g, '+') + ':ital,wght@0,400;0,700;0,900')
     .join('&family=')
@@ -34,7 +37,7 @@ export function deckTemplate(v: TemplateVars): string {
     '  --snow:' + fg + ';',
     "  --fh:'" + v.fontHeading + "',system-ui,sans-serif;",
     "  --fb:'" + v.fontBody + "',system-ui,sans-serif;",
-    "  --fm:'JetBrains Mono',monospace;",
+    "  --fm:'" + fontMono + "',monospace;",
     '}',
     'body{background:var(--bg);color:var(--fg);font-family:var(--fb)}',
     '#deck{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none}',
