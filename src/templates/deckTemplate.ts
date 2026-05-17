@@ -4,6 +4,11 @@ export interface TemplateVars {
   domain: string
   accentColor: string
   bgColor: string
+  /** Card / surface colour from BrandWorld. Optional; falls back to a
+   *  light/dark-mode-derived tint if omitted. */
+  surfaceColor?: string
+  /** Body text colour from BrandWorld. Wins over the dark/light fg default. */
+  textColor?: string
   fontHeading: string
   fontBody: string
   fontData?: string          // mono / numeric stack (default: JetBrains Mono)
@@ -14,9 +19,10 @@ export interface TemplateVars {
 }
 
 export function deckTemplate(v: TemplateVars): string {
-  const fg = v.isDark ? '#eef2f7' : '#0f1d2e'
+  const fg = v.textColor || (v.isDark ? '#eef2f7' : '#0f1d2e')
   const wire = v.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,29,46,0.06)'
   const mist = v.isDark ? 'rgba(255,255,255,0.03)' : 'rgba(15,29,46,0.03)'
+  const surface = v.surfaceColor || (v.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,29,46,0.04)')
   const fontMono = v.fontData || 'JetBrains Mono'
   const fonts = [v.fontHeading, v.fontBody, fontMono]
     .filter(Boolean)
@@ -35,6 +41,7 @@ export function deckTemplate(v: TemplateVars): string {
     '  --wire:' + wire + ';',
     '  --mist:' + mist + ';',
     '  --snow:' + fg + ';',
+    '  --surface:' + surface + ';',
     "  --fh:'" + v.fontHeading + "',system-ui,sans-serif;",
     "  --fb:'" + v.fontBody + "',system-ui,sans-serif;",
     "  --fm:'" + fontMono + "',monospace;",
@@ -53,7 +60,7 @@ export function deckTemplate(v: TemplateVars): string {
     '.slide-sub{font-size:clamp(14px,1.7vw,21px);font-weight:500;opacity:.65;margin-bottom:18px;max-width:620px;line-height:1.4}',
     '.slide-lede{font-size:clamp(14px,1.5vw,19px);line-height:1.7;max-width:580px;opacity:.72}',
     '.stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:28px}',
-    '.stat-card{background:var(--mist);border:1px solid var(--wire);border-radius:12px;padding:18px 24px;min-width:130px;opacity:0;transform:translateY(18px);transition:opacity .4s ease calc(var(--i,0) * .1s + .3s),transform .4s ease calc(var(--i,0) * .1s + .3s)}',
+    '.stat-card{background:var(--surface);border:1px solid var(--wire);border-radius:14px;padding:18px 24px;min-width:130px;opacity:0;transform:translateY(18px);transition:opacity .4s ease calc(var(--i,0) * .1s + .3s),transform .4s ease calc(var(--i,0) * .1s + .3s)}',
     '.in-view .stat-card{opacity:1;transform:translateY(0)}',
     '.stat-val{font-family:var(--fh);font-size:clamp(26px,3.8vw,48px);font-weight:900;color:var(--accent);line-height:1;margin-bottom:5px}',
     '.stat-lbl{font-family:var(--fm);font-size:10px;letter-spacing:2px;text-transform:uppercase;opacity:.45}',

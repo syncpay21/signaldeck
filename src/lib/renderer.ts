@@ -170,16 +170,31 @@ export function renderDeck(
     labels.push('Demo')
   }
 
+  // BrandWorld wins for theme — same source of truth the workspace uses.
+  // For dual-saturated brands (Up, Klarna) the deck inherits the same coral
+  // back panel + black cards + yellow accents the workspace shows, not a
+  // generic teal-on-navy fallback.
+  const accentColor = world?.colour.primary    || input.accentColor || theme?.accent      || guide?.color      || '#00e5c3'
+  const bgColor     = world?.colour.background || input.bgColor     || theme?.bg          || guide?.palette[1] || '#06080d'
+  const surfaceColor = world?.colour.surface   || undefined
+  const textColor    = world?.colour.text       || undefined
+  const fontHeading = world?.typography.heading || input.fontHeading || theme?.fontHeading || guide?.display    || 'Barlow Condensed'
+  const fontBody    = world?.typography.body    || input.fontBody    || theme?.fontBody    || guide?.body       || 'DM Sans'
+  const fontData    = world?.typography.mono    || theme?.fontData   || guide?.data        || 'JetBrains Mono'
+  const isDark      = world ? world.deckMode === 'dark' : (input.isDark !== false && (theme?.isDark ?? true))
+
   return deckTemplate({
     company:     input.company,
     oneLiner:    input.oneLiner,
     domain:      input.domain,
-    accentColor: input.accentColor || theme?.accent      || guide?.color         || '#00e5c3',
-    bgColor:     input.bgColor     || theme?.bg          || guide?.palette[1]    || '#06080d',
-    fontHeading: input.fontHeading || theme?.fontHeading || guide?.display       || 'Barlow Condensed',
-    fontBody:    input.fontBody    || theme?.fontBody    || guide?.body          || 'DM Sans',
-    fontData:    theme?.fontData   || guide?.data        || 'JetBrains Mono',
-    isDark:      input.isDark !== false && (theme?.isDark ?? true),
+    accentColor,
+    bgColor,
+    surfaceColor,
+    textColor,
+    fontHeading,
+    fontBody,
+    fontData,
+    isDark,
     totalSlides: slideHtmlList.length,
     slidesHtml:  slideHtmlList.join('\n'),
     dotNav:      labels.map((l,i) => `<button data-idx="${i}" data-label="${l}" aria-label="${l}"></button>`).join('\n'),
