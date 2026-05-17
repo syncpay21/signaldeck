@@ -4,6 +4,7 @@ import type { BrandWorld } from '../../lib/brand-world'
 import { extractBrand, type ExtractedBrand } from '../../lib/pipeline/brand-extractor'
 import { resolveLogoUrl } from '../../lib/pipeline/logo-resolver'
 import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
+import { critiqueAndFix } from '../../lib/pipeline/design-critic'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -467,6 +468,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     }
 
+    // DESIGN CRITIC — deterministic WCAG contrast check on the palette, then
+    // a Haiku repair pass if anything failed. Catches the "yellow text on
+    // cream cards" class of bug that Sonnet sometimes ships when it's busy
+    // matching brand voice and forgets readability is a hard constraint.
+    const critique = await critiqueAndFix(anthropic, brandWorld.colour).catch(() => ({ failures: [], fixedColour: undefined, reasoning: '' }))
+    if (critique.fixedColour) {
+      // Apply only the keys the critic actually returned; preserve everything else.
+      brandWorld.colour = { ...brandWorld.colour, ...critique.fixedColour } as typeof brandWorld.colour
+    }
+
     // Resolve a logo URL the client can render in the workspace sidebar.
     // User-uploaded logoData wins on the client; this is the auto-sourced fallback.
     const resolvedLogoUrl = resolveLogoUrl({
@@ -480,6 +491,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       resolvedLogoUrl,
       extractedLogoUrl: extracted?.logoUrl ?? null,
       extractedOgImage: extracted?.ogImage ?? null,
+      designCritique: { failures: critique.failures, reasoning: critique.reasoning || null },
     })
   } catch (err: any) {
     console.error('brand-world error:', err)
