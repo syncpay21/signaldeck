@@ -7,9 +7,26 @@ export function buildSystemPrompt(
   narrative: NarrativeConfig,
   stage: Stage,
   industry: Industry,
+  opts?: {
+    framework?:     { name: string; summary: string; steps: string[] }
+    industryVoice?: { tone: string; avoid: string[] }
+  },
 ): string {
   const industryContext = INDUSTRY_CONTEXT[industry] ?? ''
   const stageContext = STAGE_CONTEXT[stage] ?? ''
+
+  const frameworkBlock = opts?.framework
+    ? `\nNARRATIVE FRAMEWORK to apply (overlays the spine):
+"${opts.framework.name}" — ${opts.framework.summary}
+Steps: ${opts.framework.steps.join(' → ')}
+Use these steps as the connective tissue between slides. The narrative chooses WHICH slides; this framework chooses HOW they connect.\n`
+    : ''
+
+  const voiceBlock = opts?.industryVoice
+    ? `\nINDUSTRY VOICE (per agency design guide):
+Tone: ${opts.industryVoice.tone}
+Avoid in copy: ${opts.industryVoice.avoid.join(', ')}\n`
+    : ''
 
   return `You are a world-class pitch deck writer building a deck with a specific narrative purpose.
 
@@ -18,8 +35,7 @@ The audience's core question: "${narrative.coreQuestion}"
 Story spine: ${narrative.narrativeSpine}
 
 ${stageContext}
-${industryContext}
-
+${industryContext}${frameworkBlock}${voiceBlock}
 WRITING RULES:
 - Headlines: 2–6 words, SHORT, punchy, UPPERCASE-friendly. No buzzwords.
 - Tags: 2–4 words, category label for the slide.

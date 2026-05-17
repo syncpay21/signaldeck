@@ -97,6 +97,7 @@ const CLAIM_STYLES: Record<string, { bg: string; color: string; label: string }>
 }
 
 interface WorkspaceProps {
+  onRegenerate?: (frameworkId: string) => Promise<void>
   company: string
   accentColor: string
   generatedHtml: string
@@ -115,7 +116,7 @@ interface WorkspaceProps {
    WORKSPACE — per-industry adaptation via templates engine
 ═══════════════════════════════════════════════════════════════════ */
 export default function Workspace({
-  company, accentColor, generatedHtml, generatedContent, onRestart,
+  company, accentColor, generatedHtml, generatedContent, onRestart, onRegenerate,
   logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry,
 }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
@@ -216,6 +217,10 @@ export default function Workspace({
 
   /* Signals */
   const [signalSeed, setSignalSeed] = useState(0)
+
+  /* Frameworks regenerate */
+  const [regenLoading, setRegenLoading] = useState(false)
+  const [regenStatus, setRegenStatus] = useState<string>('')
 
   const [error, setError] = useState('')
 
@@ -1013,9 +1018,44 @@ export default function Workspace({
     const ranked = rankFrameworks(visible, ctx, activeFramework)
     const all: Framework[] = [...FRAMEWORKS, ...DARK_FRAMEWORKS]
     const companions = activeFramework ? recommendCompanions(activeFramework, ctx, all) : { combos: [], swaps: [] }
+    const activeFw = activeFramework ? all.find(f => f.id === activeFramework) : null
+
+    const handleRegen = async () => {
+      if (!activeFramework || !onRegenerate) return
+      setRegenLoading(true); setRegenStatus('')
+      try {
+        await onRegenerate(activeFramework)
+        setRegenStatus(`Deck regenerated with ${activeFw?.name || activeFramework}`)
+        setActive('deck')
+      } catch (e: any) {
+        setRegenStatus(e?.message || 'Regenerate failed')
+      } finally {
+        setRegenLoading(false)
+        setTimeout(() => setRegenStatus(''), 4000)
+      }
+    }
 
     return (
       <div className="p-6 lg:p-8 space-y-6">
+        {/* Sticky regen bar — only when something is applied */}
+        {activeFw && onRegenerate && (
+          <Card className="p-4 flex items-center gap-3 flex-wrap" style={{ background:`${liveAccent}08`, borderColor:`${liveAccent}33` }}>
+            <div className="flex-1 min-w-0">
+              <MiniLabel>Applied framework</MiniLabel>
+              <div className="font-medium text-[14px] mt-1 truncate">{activeFw.name}</div>
+              <div className="text-[12px] ink-muted mt-0.5">{activeFw.summary}</div>
+            </div>
+            <button onClick={handleRegen} disabled={regenLoading}
+              className="h-9 px-4 rounded-xl text-[13px] font-medium text-white disabled:opacity-40 inline-flex items-center gap-2"
+              style={{ background: liveAccent }}>
+              {regenLoading ? <><span className="sd-spinner">◐</span> Regenerating…</> : <><ic.refresh className="w-3.5 h-3.5"/> Regenerate deck</>}
+            </button>
+            {regenStatus && (
+              <div className="w-full text-[12px] ink-muted">{regenStatus}</div>
+            )}
+          </Card>
+        )}
+
         {/* Header with dark-tactics toggle */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="text-[13px] ink-muted">

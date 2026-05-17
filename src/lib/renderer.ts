@@ -1,5 +1,22 @@
 import { deckTemplate } from '../templates/deckTemplate'
 import type { SlideId } from './types'
+import type { IndustryGuide } from './industry-guide'
+
+// Transition durations (matched to design-reference.html demoTx timings)
+const TX_DUR: Record<string, number> = {
+  'reveal-wipe': 900, 'reveal-up': 750, 'reveal-stagger': 700,
+  'zoom-passage': 800, 'fold': 800, 'warp': 850, 'glitch': 650,
+  'dropzoom': 750, 'prism': 900, 'vortex': 1000, 'explode': 750, 'shake': 500,
+}
+
+/** Swap a slide's hardcoded transition for one from the industry guide if it isn't already in-style.
+ *  s1_intro stays on zoom-passage (load-coupled). */
+function adaptTransition(slideId: string, defaultTx: string, guide?: IndustryGuide): string {
+  if (slideId === 's1_intro' || !guide) return defaultTx
+  if (guide.transitions.includes(defaultTx)) return defaultTx
+  const swap = guide.transitions.find(t => TX_DUR[t])
+  return swap || defaultTx
+}
 
 function stats(items: any[] = []) {
   if (!items.length) return ''
@@ -72,14 +89,23 @@ function buildDemoSlide(idx: number, input: any): string {
 
 // slideIds controls which slides render and in what order.
 // When omitted, all 12 slides render in default order (backward compat).
-export function renderDeck(input: any, content: any, slideIds?: SlideId[]): string {
+// opts.industryGuide supplies fallback fonts / accent / palette /
+// transition list per the agency design guide — user theme overrides win.
+export function renderDeck(
+  input: any,
+  content: any,
+  slideIds?: SlideId[],
+  opts?: { industryGuide?: IndustryGuide },
+): string {
   const ids: SlideId[] = slideIds ?? (Object.keys(SLIDE_DEFS) as SlideId[])
+  const guide = opts?.industryGuide
 
   const slideHtmlList = ids.map((id, idx) => {
     if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})
     const def = SLIDE_DEFS[id]
     if (!def) return ''
-    return slide(def.htmlId, idx, def.label, def.tx, def.bgx, def.bgy, content[id] || {})
+    const tx = adaptTransition(id, def.tx, guide)
+    return slide(def.htmlId, idx, def.label, tx, def.bgx, def.bgy, content[id] || {})
   })
 
   const demoIdx = slideHtmlList.length
@@ -92,10 +118,10 @@ export function renderDeck(input: any, content: any, slideIds?: SlideId[]): stri
     company:     input.company,
     oneLiner:    input.oneLiner,
     domain:      input.domain,
-    accentColor: input.accentColor || '#00e5c3',
-    bgColor:     input.bgColor     || '#06080d',
-    fontHeading: input.fontHeading || 'Barlow Condensed',
-    fontBody:    input.fontBody    || 'DM Sans',
+    accentColor: input.accentColor || guide?.color         || '#00e5c3',
+    bgColor:     input.bgColor     || guide?.palette[1]    || '#06080d',
+    fontHeading: input.fontHeading || guide?.display       || 'Barlow Condensed',
+    fontBody:    input.fontBody    || guide?.body          || 'DM Sans',
     isDark:      input.isDark !== false,
     totalSlides: slideHtmlList.length,
     slidesHtml:  slideHtmlList.join('\n'),

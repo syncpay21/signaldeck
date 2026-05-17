@@ -97,8 +97,8 @@ export default function Home() {
     }, 900)
   }
 
-  async function generate() {
-    setStep('building')
+  async function generate(frameworkId?: string) {
+    if (!frameworkId) setStep('building')
     setError('')
     try {
       const res = await fetch('/api/generate', {
@@ -106,6 +106,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          frameworkId,
           // realStory maps to the generate API's structured fields
           problem: form.realStory,
           solution: '', howItWorks: '', traction: '', market: '',
@@ -118,11 +119,18 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error)
       setGeneratedHtml(data.html)
       setGeneratedContent(data.content)
-      setStep('canvas')
+      if (!frameworkId) setStep('canvas')
+      return data
     } catch (e: any) {
       setError(e.message)
-      setStep('brand')
+      if (!frameworkId) setStep('brand')
+      throw e
     }
+  }
+
+  /** Used by Workspace's Frameworks screen — re-runs generate with a framework applied. */
+  async function regenerateWithFramework(frameworkId: string) {
+    await generate(frameworkId)
   }
 
   // ── Building ──────────────────────────────────────────────────────────
@@ -157,6 +165,7 @@ export default function Home() {
         founderName={form.founderName}
         stage={form.stage}
         industry={form.industry}
+        onRegenerate={regenerateWithFramework}
         onRestart={() => {
           setStep('basics')
           setForm(empty)
