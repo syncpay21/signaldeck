@@ -161,7 +161,7 @@ export const TEMPLATES: Record<string, Template> = {
     engagementLabels: ['Pain','Why now','Agent','Proof','Moat'],
     followupAngle: { headline: 'Output quality benchmark + moat story', reason: 'They lingered on {company}’s agent loop but skipped the moat slide — pre-empt the wrapper concern.' },
     speakerTone: 'Technical but not jargon-heavy. Slow down on {company}’s agent loop diagram.',
-    motionFlavor: 'futuristic, decisive, proof-driven',
+    motionFlavor: 'restrained, evidence-led, proof-first — avoid generic AI futurism unless the brand explicitly leans into it',
   },
 
   /* ── ENTERPRISE ──────────────────────────────────────────── */

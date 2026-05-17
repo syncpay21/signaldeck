@@ -48,7 +48,14 @@ Pick from these exact values:
   imageryArchetype: "3d-render" | "photography" | "illustration" | "abstract" | "none"
   layout:           "centered-hero" | "split-image-text" | "gradient-blob" | "minimalist-text-only" | "dense-product"
 
-Color hexes: extract from what you actually see. dominantHex is the primary color (often the accent/CTA color); accentHex is a complementary secondary.
+CRITICAL — describe THIS brand, not its genre:
+- Do NOT default to "technical-mono" / dark purple-cyan just because the company is in AI or tech. Many AI/tech brands are deliberately restrained, editorial, or warm.
+- A clean white SaaS with one strong colour is "editorial-minimal", not "technical-mono".
+- "playful-gradient" only when the brand actually leans on multi-colour gradient blobs (Luma, Linear, Notion AI).
+- "technical-mono" only when the brand actually is mono-heavy and dense (Vercel old design, Raycast, terminal-first).
+- Reserve the generic-AI look (dark + purple-cyan glow + glass) for brands that visibly use it — don't infer it from category.
+
+Color hexes: extract from what you actually see. dominantHex is the primary color (often the accent/CTA colour); accentHex is a complementary secondary.
 
 confidence: 0-100. Lower if the image is ambiguous or off-brand (e.g. a screenshot of a third-party login modal).
 
@@ -61,7 +68,7 @@ Return ONLY valid JSON, no markdown fences:
   "imageryArchetype": "<one of the values>",
   "layout": "<one of the values>",
   "confidence": 0-100,
-  "reasoning": "1-2 sentence justification"
+  "reasoning": "1-2 sentence justification grounded in what's actually visible"
 }`
 
 const VALID = {

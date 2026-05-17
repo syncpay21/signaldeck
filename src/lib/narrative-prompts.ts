@@ -58,6 +58,12 @@ WRITING RULES:
 - Stats: real numbers only. Never invent metrics not given in the input.
 - Every slide must answer: "So what does this prove about the business?"
 
+ANTI-CLICHÉ GUARDRAIL — avoid the generic AI / SaaS pitch deck look unless the founder's brand explicitly uses it:
+- DO NOT default to "AI-powered", "next-gen", "intelligent", "futuristic", "neural", "revolutionary"
+- DO NOT describe the product with visual metaphors of glowing orbs, gradients, particles, code streams, neural networks
+- DO NOT use glassmorphism / dark+purple+cyan as the visual lens unless the founder's actual site uses that aesthetic
+- DEFAULT preference: real product specifics, real customer language, restraint. The premium move is one strong brand colour, real screenshots, light grid, one accent — not the same dark gradient every AI deck uses.
+
 Objections this deck must proactively address:
 ${narrative.objectionsToPreempt.map(o => `- ${o}`).join('\n')}
 
