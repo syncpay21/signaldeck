@@ -21,6 +21,7 @@
 ═══════════════════════════════════════════════════════════════════ */
 
 import Anthropic from '@anthropic-ai/sdk'
+import { ANDREAS_PERSONA } from '../andreas-persona'
 
 export type BrandMood       = 'playful-gradient' | 'editorial-minimal' | 'technical-mono' | 'luxury-restraint' | 'bold-loud'
 export type TypographyFeel  = 'bold-condensed' | 'serif-editorial' | 'geometric-sans' | 'playful-script' | 'mono-technical'
@@ -38,9 +39,10 @@ export interface VisionResult {
   reasoning:        string
 }
 
-const SYSTEM_PROMPT = `You are a senior brand designer analyzing a company's website screenshot or product image.
+const SYSTEM_PROMPT = `${ANDREAS_PERSONA}
 
-Look at the image and return a structured analysis of its visual identity.
+YOUR JOB HERE
+Brand-vision pass. Look at the company's website screenshot or product image and return a structured analysis of its visual identity — the way a senior brand designer would.
 
 Pick from these exact values:
   mood:             "playful-gradient" | "editorial-minimal" | "technical-mono" | "luxury-restraint" | "bold-loud"

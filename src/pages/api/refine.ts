@@ -2,13 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import OpenAI from 'openai'
 import { renderDeck } from '@/lib/renderer'
 import type { DeckInput, DeckContent } from '@/lib/types'
+import { ANDREAS_PERSONA } from '@/lib/andreas-persona'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-const REFINE_SYSTEM = `You are a world-class VC pitch coach and copywriter specialising in early-stage fundraising decks.
-You will receive slide content JSON from a pitch deck. Your job is to:
-1. Critique the copy slide-by-slide (be direct, sharp, specific)
-2. Rewrite every text field to be tighter, more investor-grade, and more emotionally resonant
+const REFINE_SYSTEM = `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Pitch-coach pass. You receive slide content JSON from a pitch deck. Two passes:
+1. Critique the copy slide-by-slide — direct, sharp, specific.
+2. Rewrite every text field to be tighter, more investor-grade, more emotionally resonant.
 
 Rewrite rules:
 - Headlines: 2–5 words max, punchy, UPPERCASE-friendly, no clichés

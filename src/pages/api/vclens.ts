@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
+import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -23,7 +24,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
-      system: `You are ${personaDesc}. You just heard this pitch. Be direct, sharp, and honest — no flattery. Return ONLY valid JSON.`,
+      system: `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+You are running a VC-lens simulation for the founder. For THIS reading, channel the voice of ${personaDesc} The output should sound like that investor speaking, not like you summarising their view. Stay sharp, honest, no flattery. Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
         content: `Review this pitch deck for ${company}:

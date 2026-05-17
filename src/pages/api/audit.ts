@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
+import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -13,7 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
-      system: `You are a ruthless pitch deck auditor. Score honestly — most decks score 40–70. Return ONLY valid JSON.`,
+      system: `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Audit this pitch deck like the ruthless first reviewer you'd want before sending it to a real investor. Score honestly — most decks score 40-70. Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
         content: `Audit this pitch deck for ${company}:

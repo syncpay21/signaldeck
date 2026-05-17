@@ -18,6 +18,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { SlideId, Narrative, AudienceType, Stage, Industry } from '../types'
+import { ANDREAS_PERSONA } from '../andreas-persona'
 
 export interface HaikuValidationInput {
   deckContent: Record<string, any>
@@ -37,8 +38,10 @@ export interface HaikuValidationResult {
   raw?:              any             // unparsed, for debugging
 }
 
-const SYSTEM_PROMPT = `You are a senior VC analyst auditing a pitch deck.
-You are given the deck's content + the narrative spine it was generated against.
+const SYSTEM_PROMPT = `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Narrative-fit audit. You are given the deck's content + the narrative spine it was generated against.
 
 Your job — three quick judgments:
 1. NARRATIVE FIT: Does this deck content actually live up to the chosen narrative? (yes/no)

@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { BrandWorld } from '../../lib/brand-world'
 import { extractBrand, type ExtractedBrand } from '../../lib/pipeline/brand-extractor'
 import { resolveLogoUrl } from '../../lib/pipeline/logo-resolver'
+import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -39,9 +40,10 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
      { brandWorld: BrandWorld, reasoning: string }
 ═══════════════════════════════════════════════════════════════════ */
 
-const SYSTEM_PROMPT = `You are the brand-world generator for SignalDeck.
+const SYSTEM_PROMPT = `${ANDREAS_PERSONA}
 
-Your one job: produce a specific, intentional, branded visual world for THIS company. Not a template. Not the same AI startup look. A world that belongs to this business and no other.
+YOUR JOB HERE
+Produce a specific, intentional, branded visual world for THIS company. Not a template. Not the same AI startup look. A world that belongs to this business and no other.
 
 HARD RULES — never violate:
 

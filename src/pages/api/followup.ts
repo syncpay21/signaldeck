@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
+import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -13,7 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1000,
-      system: `You write follow-up emails for founders after investor meetings. Voice: direct, warm, human. No corporate speak, no bullet points, no fake enthusiasm. Short — 3–4 short paragraphs max. Return ONLY valid JSON.`,
+      system: `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Draft the follow-up email the founder sends the morning after the meeting. Write IN THE FOUNDER'S VOICE — first person, direct, warm, human. No corporate speak, no bullet points, no fake enthusiasm. 3-4 short paragraphs max. Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
         content: `Write a follow-up email from ${founderName} at ${company} to a ${audience} investor, sent the day after presenting this deck:

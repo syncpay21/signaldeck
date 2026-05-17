@@ -1,4 +1,5 @@
 import type { SlideId, Narrative, NarrativeConfig, Stage, Industry, DeckInput, BusinessModel, GtmMotion, TractionStatus, Region, TeamSize } from './types'
+import { ANDREAS_PERSONA } from './andreas-persona'
 
 // ─── System prompt ─────────────────────────────────────────────────────────────
 // Tells Claude the story it's telling before it writes a single word.
@@ -42,7 +43,10 @@ Avoid in copy: ${opts.industryVoice.avoid.join(', ')}\n`
     .filter(Boolean)
     .join('\n')
 
-  return `You are a world-class pitch deck writer building a deck with a specific narrative purpose.
+  return `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Write the full pitch deck for this founder using the chosen narrative spine.
 
 NARRATIVE: "${narrative.id}"
 The audience's core question: "${narrative.coreQuestion}"

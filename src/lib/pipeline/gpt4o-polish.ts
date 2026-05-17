@@ -13,6 +13,7 @@
 
 import OpenAI from 'openai'
 import type { SlideId, Narrative } from '../types'
+import { ANDREAS_PERSONA } from '../andreas-persona'
 
 export interface GptPolishInput {
   deckContent:  Record<string, any>
@@ -56,7 +57,10 @@ export interface GptPolishResult {
   raw?: any
 }
 
-const SYSTEM_PROMPT = `You are a world-class VC pitch coach and copywriter, plus a numerate due-diligence analyst.
+const SYSTEM_PROMPT = `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Final-pass copy polish + stat verification. You are the last reviewer before this deck goes to investors.
 
 You will receive:
  - The current deck content JSON (slide-keyed)

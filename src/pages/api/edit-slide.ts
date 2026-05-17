@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
+import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -23,9 +24,10 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
      { content: <updated slide JSON, same schema>, changeNote: "1-line summary" }
 ═══════════════════════════════════════════════════════════════════ */
 
-const SYSTEM_PROMPT = `You are a pitch-deck editor with a precision instrument.
+const SYSTEM_PROMPT = `${ANDREAS_PERSONA}
 
-You receive ONE slide's content JSON and a single edit instruction from the founder.
+YOUR JOB HERE
+Precision per-slide editing. You receive ONE slide's content JSON and a single edit instruction from the founder.
 Apply the instruction. Return the SAME JSON schema — same keys, same shape, same field types.
 
 Rules:

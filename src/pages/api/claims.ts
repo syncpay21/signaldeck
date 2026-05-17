@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
+import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -13,7 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
-      system: `You are a due diligence analyst. Extract every factual or persuasive claim from a pitch deck and classify each one. Return ONLY valid JSON.`,
+      system: `${ANDREAS_PERSONA}
+
+YOUR JOB HERE
+Pull every factual or persuasive claim out of this deck and classify each one — the way you'd want them lined up before a real DD meeting. Return ONLY valid JSON.`,
       messages: [{
         role: 'user',
         content: `Extract and classify every claim in this ${company} pitch deck:
