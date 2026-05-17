@@ -2267,37 +2267,56 @@ export default function Workspace({
   }
   const Screen = SCREENS[active] || ScreenOverview
 
+  /* Per-industry layout variant derived from BrandWorld.layoutStyle.
+     Falls back to 'default' when no world is generated yet (intake). */
+  const layoutVariant: 'ledger' | 'arena' | 'editorial' | 'default' = (() => {
+    const ls = brandWorld?.layoutStyle
+    if (ls === 'ledger-precise') return 'ledger'
+    if (ls === 'arena-kinetic')  return 'arena'
+    if (ls === 'editorial-spacious' || ls === 'gallery-expressive') return 'editorial'
+    return 'default'
+  })()
+  const SIDEBAR_WIDTHS = { default: 240, ledger: 200, arena: 240, editorial: 76 } as const
+  const sidebarWidth = SIDEBAR_WIDTHS[layoutVariant]
+  const iconOnlySidebar = layoutVariant === 'editorial'
+  const navLabelStyle: React.CSSProperties =
+    layoutVariant === 'ledger' ? { fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.02em' } :
+    layoutVariant === 'arena'  ? { textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-heading)' } :
+    {}
+
   /* ── Sidebar ─────────────────────────────────────────────────── */
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="px-6 py-4 border-b border-[var(--line)] flex items-center gap-3">
+      <div className={`px-${iconOnlySidebar ? 3 : 6} py-4 border-b border-[var(--line)] flex items-center gap-3 ${iconOnlySidebar ? 'justify-center' : ''}`}>
         {logoUrl
           ? <img src={logoUrl} alt="Logo" className="h-7 max-w-[100px] object-contain rounded"/>
           : <div className="w-7 h-7 rounded-lg flex-shrink-0" style={{ background: liveAccent }}/>
         }
-        {company && <span className="font-semibold tracking-tight text-[14px] truncate">{company}</span>}
+        {!iconOnlySidebar && company && <span className="font-semibold tracking-tight text-[14px] truncate">{company}</span>}
       </div>
 
-      {/* Project chip */}
-      <div className="px-4 py-3 border-b border-[var(--line)]">
-        <MiniLabel>Current project</MiniLabel>
-        <div className="text-[13px] font-medium mt-1 truncate">{company || 'Untitled'} investor deck</div>
-        <div className="mt-2"><Pill tone="accent">{tpl.status}</Pill></div>
-      </div>
+      {!iconOnlySidebar && (
+        <div className="px-4 py-3 border-b border-[var(--line)]">
+          <MiniLabel>Current project</MiniLabel>
+          <div className="text-[13px] font-medium mt-1 truncate">{company || 'Untitled'} investor deck</div>
+          <div className="mt-2"><Pill tone="accent">{tpl.status}</Pill></div>
+        </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
         {NAV.map(group => (
           <div key={group.group}>
-            <div className="px-3 mb-1 text-[10px] uppercase tracking-widest ink-muted font-medium">{group.group}</div>
+            {!iconOnlySidebar && <div className="px-3 mb-1 text-[10px] uppercase tracking-widest ink-muted font-medium">{group.group}</div>}
             {group.items.map(item => {
               const Ico = ic[item.icon as keyof typeof ic]
               const isActive = active === item.id
               return (
                 <button key={item.id} onClick={() => { setActive(item.id); setSidebarOpen(false) }}
-                  className="w-full text-left h-9 px-3 rounded-xl flex items-center gap-2.5 text-[13px] font-medium transition-all"
+                  title={iconOnlySidebar ? item.label : undefined}
+                  className={`w-full text-left h-9 ${iconOnlySidebar ? 'px-0 justify-center' : 'px-3'} rounded-xl flex items-center gap-2.5 text-[13px] font-medium transition-all`}
                   style={isActive ? { background: liveAccent, color:'#fff' } : { color:'var(--ink)' }}>
                   {Ico && <Ico className="w-4 h-4 flex-shrink-0"/>}
-                  {item.label}
+                  {!iconOnlySidebar && <span style={navLabelStyle}>{item.label}</span>}
                 </button>
               )
             })}
@@ -2305,9 +2324,11 @@ export default function Workspace({
         ))}
       </nav>
 
-      <div className="p-4 border-t border-[var(--line)]">
-        <button onClick={onRestart} className="w-full h-8 rounded-xl text-[12px] hairline ink-muted">← New deck</button>
-      </div>
+      {!iconOnlySidebar && (
+        <div className="p-4 border-t border-[var(--line)]">
+          <button onClick={onRestart} className="w-full h-8 rounded-xl text-[12px] hairline ink-muted">← New deck</button>
+        </div>
+      )}
     </div>
   )
 
