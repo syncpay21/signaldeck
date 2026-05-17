@@ -61,9 +61,9 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'edit_slide',
-    description: 'Rewrite ONE slide based on a plain-English instruction. Use when the founder asks to change, sharpen, rewrite, fix, or tweak a specific slide (e.g. "rewrite my problem slide", "make slide 3 punchier", "the headline on the validation slide is weak"). The slide ID will come from activeSlideId (current slide) or from the slideIds list if the founder named a different one.',
-    argsSchema: '{ "slideId": "<id from slideIds e.g. s3_problem>", "instruction": "<the founder\'s edit instruction>" }',
-    execute: async (args: { slideId: string; instruction: string }, ctx, origin) => {
+    description: 'Surgically edit ONE specific field of ONE slide based on a plain-English instruction. SURGICAL — only the targeted field changes, nothing else. Use when the founder targets a specific element: "make the headline punchier", "shorten the lede on slide 3", "add a stat to the traction slide". The slide ID comes from activeSlideId (current slide) or from slideIds if the founder named a different slide. Include a targetField hint when the instruction clearly targets a specific field.',
+    argsSchema: '{ "slideId": "<id from slideIds e.g. s3_problem>", "instruction": "<the founder\'s targeted edit instruction>", "targetField": "<optional: headline|lede|bullets|stats|tag|notes>" }',
+    execute: async (args: { slideId: string; instruction: string; targetField?: string }, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       const currentContent = ctx.deckContent[args.slideId]
       if (!currentContent) throw new Error(`Slide ${args.slideId} not found in deck`)
@@ -71,6 +71,7 @@ export const TOOL_CATALOG: ToolSpec[] = [
         slideId: args.slideId,
         currentContent,
         instruction: args.instruction,
+        targetField: args.targetField || '',
         company:  ctx.company  || '',
         industry: ctx.industry || '',
       })

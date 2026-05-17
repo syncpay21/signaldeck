@@ -2365,21 +2365,21 @@ export default function Workspace({
     const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
     return `rgba(${r}, ${g}, ${b}, ${a})`
   }
+  // Ambient ellipse centres are INSIDE the viewport so the glow reads on dark
+  // backgrounds. Background-attachment:fixed is intentionally omitted — it
+  // doesn't work on elements with overflow:hidden (the root). Instead the
+  // ambient is painted onto a position:fixed div that sits behind everything.
   const ambientLayer = brandWorld && fx.radialAmbient
     ? (isRichBrand
-        // Rich/maximal: three big saturated ellipses — primary top-left, accent
-        // top-right, secondary bottom-centre. Opacities tuned high (0.30+) so
-        // the "reflective mirror" aurora actually reads instead of looking like
-        // a faint wash. Widened to 120% so the bleed crosses the centre.
-        ? `radial-gradient(ellipse 120% 80% at 18% -10%, ${hexAlpha(brandWorld.colour.primary, 0.34)}, transparent 65%), radial-gradient(ellipse 110% 75% at 85% 5%, ${hexAlpha(brandWorld.colour.accent, 0.28)}, transparent 60%), radial-gradient(ellipse 100% 70% at 55% 110%, ${hexAlpha(brandWorld.colour.secondary, 0.32)}, transparent 65%)`
-        : `radial-gradient(circle at 12% 8%, ${brandWorld.colour.primarySoft}, transparent 28%), radial-gradient(circle at 88% 16%, ${brandWorld.colour.primarySoft}, transparent 26%)`)
+        ? `radial-gradient(ellipse 130% 70% at 18% 22%, ${hexAlpha(brandWorld.colour.primary, 0.38)}, transparent 62%), radial-gradient(ellipse 120% 65% at 82% 12%, ${hexAlpha(brandWorld.colour.accent, 0.30)}, transparent 58%), radial-gradient(ellipse 110% 60% at 52% 80%, ${hexAlpha(brandWorld.colour.secondary, 0.34)}, transparent 62%)`
+        : `radial-gradient(circle at 12% 15%, ${brandWorld.colour.primarySoft}, transparent 32%), radial-gradient(circle at 88% 18%, ${brandWorld.colour.primarySoft}, transparent 28%)`)
     : ''
   const gridLayer = brandWorld && fx.gridOverlay
     ? `linear-gradient(${brandWorld.colour.gridLine} 1px, transparent 1px), linear-gradient(90deg, ${brandWorld.colour.gridLine} 1px, transparent 1px)`
     : ''
-  const layers = [layoutGradient, ambientLayer, motifLayer, gridLayer].filter(Boolean)
-  const sizes  = [layoutGradient, ambientLayer, motifLayer].filter(Boolean).map(() => 'auto').concat(gridLayer ? ['64px 64px'] : [])
-  const repeats = [layoutGradient, ambientLayer].filter(Boolean).map(() => 'no-repeat').concat(motifLayer ? ['repeat'] : []).concat(gridLayer ? ['repeat'] : [])
+  const layers = [layoutGradient, motifLayer, gridLayer].filter(Boolean)
+  const sizes  = [layoutGradient, motifLayer].filter(Boolean).map(() => 'auto').concat(gridLayer ? ['64px 64px'] : [])
+  const repeats = [layoutGradient].filter(Boolean).map(() => 'no-repeat').concat(motifLayer ? ['repeat'] : []).concat(gridLayer ? ['repeat'] : [])
   const layered = layers.join(', ')
 
   // Brand-aware fill tokens. Rich/maximal brands get gradient fills built from
@@ -2397,16 +2397,17 @@ export default function Workspace({
         : brandWorld.colour.primary)
     : ''
 
+  // Use backgroundColor (not background shorthand) to avoid resetting backgroundImage.
   const worldStyle: any = brandWorld
     ? {
         ...brandWorldToCssVars(brandWorld),
-        background: 'var(--bg)',
+        backgroundColor: 'var(--bg)',
         color: 'var(--text)',
         '--primary-fill': primaryFill,
         '--accent-text': accentTextFill,
-        ...(layered ? { backgroundImage: layered, backgroundRepeat: repeats.join(', '), backgroundSize: sizes.join(', '), backgroundAttachment: 'fixed' } : {}),
+        ...(layered ? { backgroundImage: layered, backgroundRepeat: repeats.join(', '), backgroundSize: sizes.join(', ') } : {}),
       }
-    : { background: 'var(--bg)', color: 'var(--ink)' }
+    : { backgroundColor: 'var(--bg)', color: 'var(--ink)' }
 
   return (
     <div
@@ -2416,6 +2417,14 @@ export default function Workspace({
       data-mono-labels={String(fx.monoLabels)}
       data-glow={String(fx.glow)}
     >
+      {/* Fixed-position ambient glow — bypasses overflow:hidden on root so the
+          gradient is always visible regardless of scroll position or clipping. */}
+      {brandWorld && ambientLayer && (
+        <div aria-hidden="true" style={{
+          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+          backgroundImage: ambientLayer, backgroundRepeat: 'no-repeat', backgroundSize: 'auto',
+        }} />
+      )}
       {brandWorld && (
         <style>{`
           .display-heading {
