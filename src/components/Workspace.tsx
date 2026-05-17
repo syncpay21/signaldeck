@@ -80,6 +80,12 @@ const TITLES: Record<string, [string, string]> = {
 }
 
 const AUDIENCES = ['Seed VC', 'Series A', 'Angel', 'Strategic', 'Internal']
+
+/** Get a short label from a URL ("stripe.com/pricing" from "https://stripe.com/pricing"). */
+function hostOf(url: string): string {
+  try { const u = new URL(url.startsWith('http') ? url : 'https://' + url); return u.host + (u.pathname !== '/' ? u.pathname : '') }
+  catch { return url }
+}
 const STAGES    = ['Pre-seed', 'Seed', 'Series A', 'Series B+', 'Bootstrapped']
 
 const SEVERITY_STYLE: Record<string, { bg: string; color: string }> = {
@@ -181,6 +187,19 @@ export default function Workspace({
   /* Deck Build */
   const [activeSlide, setActiveSlide] = useState(0)
   const [deckOpts, setDeckOpts] = useState({ motion: true, analytics: true, password: false })
+  // Per-slide chat panel: scoped to whatever slide is currently active
+  const [chatInput, setChatInput] = useState('')
+  const [chatBusy,  setChatBusy]  = useState(false)
+  const [chatLog,   setChatLog]   = useState<Record<string, { instruction: string; changeNote: string; at: number }[]>>({})
+  // Locally-editable content — starts from generatedContent prop and can be
+  // mutated by chat edits and inline contentEditable saves.
+  const [liveContent, setLiveContent] = useState<any>(generatedContent)
+  useEffect(() => { setLiveContent(generatedContent) }, [generatedContent])
+
+  /* Sources — inspiration uploads (NEW) */
+  const [inspoLinks, setInspoLinks] = useState<{ url: string; title?: string; image?: string }[]>([])
+  const [inspoImages, setInspoImages] = useState<string[]>([])   // data URLs of uploaded inspo images
+  const [inspoInput, setInspoInput] = useState('')
 
   /* Style Library */
   const [styleTab, setStyleTab] = useState<'transitions'|'layouts'|'palettes'|'moods'>('transitions')
@@ -225,7 +244,7 @@ export default function Workspace({
   const [error, setError] = useState('')
 
   /* derived: real slides if AI generated, else template slides */
-  const realSlides = generatedContent ? Object.entries(generatedContent).map(([key, val]: [string, any], i) => ({
+  const realSlides = liveContent ? Object.entries(liveContent).map(([key, val]: [string, any], i) => ({
     key, kind: tpl.slides[i]?.kind || key, title: val.headline || px(tpl.slides[i]?.title) || key,
     body: val.lede || val.sub || px(tpl.slides[i]?.body) || '',
     motion: tpl.slides[i]?.motion || 'smooth reveal',
@@ -339,6 +358,41 @@ export default function Workspace({
       setFuData(data)
     } catch (e: any) { setError(e.message) }
     finally { setFuLoading(false) }
+  }
+
+  /** Per-slide AI chat — sends current slide JSON + instruction to /api/edit-slide,
+   *  updates liveContent in place when Claude returns. */
+  async function editSlide(slideKey: string, instruction: string) {
+    if (!instruction.trim() || !liveContent?.[slideKey]) return
+    setChatBusy(true); setError('')
+    try {
+      const res = await fetch('/api/edit-slide', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slideId:        slideKey,
+          currentContent: liveContent[slideKey],
+          instruction,
+          company, industry: productType,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'edit-slide failed')
+      setLiveContent((prev: any) => ({ ...prev, [slideKey]: data.content }))
+      setChatLog(prev => ({
+        ...prev,
+        [slideKey]: [...(prev[slideKey] || []), { instruction, changeNote: data.changeNote, at: Date.now() }],
+      }))
+      setChatInput('')
+    } catch (e: any) { setError(e.message) }
+    finally { setChatBusy(false) }
+  }
+
+  /** Inline edit — user typed into contentEditable; save the new value back. */
+  function patchSlide(slideKey: string, field: string, value: string) {
+    setLiveContent((prev: any) => prev ? {
+      ...prev,
+      [slideKey]: { ...prev[slideKey], [field]: value },
+    } : prev)
   }
 
   /* ── Primitives ──────────────────────────────────────────────── */
@@ -540,6 +594,10 @@ export default function Workspace({
                     { type:'Voice',   title:'Voice profile',              value:'Extracted tone from your story input',              status:'Used in audit',  confidence:'Medium', tag:'info', body:'Voice match used for follow-up email generation and speaker notes tone.' },
                     { type:'Deck',    title:'Claude Sonnet 4.6 output',   value:`Generated ${realSlides.length}-slide deck`,        status:'Used in deck',    confidence:'High',   tag:'good', body:'Structured slide JSON returned by Claude, rendered through the deterministic template.' },
       isRefined && { type:'Deck',    title:'GPT-4o pitch coach',          value:'Refined all copy — headlines, bullets, lede',       status:'Applied',         confidence:'High',   tag:'good', body:'Pitch coach pass rewrote headlines to 2–5 words and sharpened proof claims.' },
+      // Inspo links from this session
+      ...inspoLinks.map(l => ({ type:'Inspo', title: l.title || l.url, value: l.url, status:'Reference', confidence:'Medium', tag:'info', body:`Inspiration link — Claude will pull tone + structure from this.` })),
+      // Inspo images uploaded this session
+      ...inspoImages.map((_, i) => ({ type:'Inspo', title:`Inspiration image ${i+1}`, value:'(uploaded)', status:'Reference', confidence:'Medium', tag:'info', body:'Uploaded image. Used as a visual reference for layout and feel.' })),
     ].filter(Boolean)
 
     const filtered = sourcesFilter === 'All' ? sources : sources.filter(s => s.type === sourcesFilter)
@@ -585,7 +643,7 @@ export default function Workspace({
 
         {/* Filter */}
         <div className="flex flex-wrap items-center gap-2">
-          {['All','Brand','Story','Voice','Deck'].map(f => (
+          {['All','Brand','Story','Voice','Deck','Inspo'].map(f => (
             <button key={f} onClick={() => setSourcesFilter(f)}
               className="h-8 px-3.5 rounded-full text-[13px] font-medium hairline transition-all"
               style={sourcesFilter===f ? { background: liveAccent, color:'#fff', border:'none' } : {}}>
@@ -594,6 +652,85 @@ export default function Workspace({
           ))}
           <Pill tone="soft">{sources.length} sources</Pill>
         </div>
+
+        {/* Inspiration uploader — paste a link OR drop an image. Claude pulls tone + layout cues from these. */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <div className="font-semibold tracking-tight">Inspiration</div>
+              <div className="text-[12px] ink-muted mt-0.5">
+                Paste links to decks / sites / videos you want this to feel like, or drop an image. Used as reference, not copied.
+              </div>
+            </div>
+          </div>
+
+          {/* URL input */}
+          <div className="flex gap-2 mb-3">
+            <input
+              value={inspoInput}
+              onChange={e => setInspoInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && inspoInput.trim()) {
+                  e.preventDefault()
+                  const url = inspoInput.trim()
+                  setInspoLinks(prev => [...prev, { url, title: hostOf(url) }])
+                  setInspoInput('')
+                }
+              }}
+              placeholder='e.g. https://stripe.com  /  https://vimeo.com/...  /  a competitor deck URL'
+              className="flex-1 h-10 px-3 rounded-xl text-[13px] hairline" />
+            <button
+              onClick={() => {
+                if (!inspoInput.trim()) return
+                const url = inspoInput.trim()
+                setInspoLinks(prev => [...prev, { url, title: hostOf(url) }])
+                setInspoInput('')
+              }}
+              className="h-10 px-4 rounded-xl text-[13px] font-medium text-white"
+              style={{ background: liveAccent }}>
+              Add link
+            </button>
+          </div>
+
+          {/* Image drop */}
+          <label
+            className="block cursor-pointer rounded-xl text-center text-[12px] py-4 transition-all"
+            style={{ border:'1.5px dashed var(--line)', color:'var(--ink-muted)' }}>
+            + Drop or click to upload an inspiration image (PNG/JPG)
+            <input type="file" accept="image/*" multiple className="hidden"
+              onChange={async e => {
+                const files = e.target.files
+                if (!files) return
+                const { compressMany } = await import('@/lib/image-upload')
+                const imgs = await compressMany(files)
+                setInspoImages(prev => [...prev, ...imgs.map(i => i.dataUrl)])
+                e.target.value = ''
+              }} />
+          </label>
+
+          {/* Active inspo list */}
+          {(inspoLinks.length > 0 || inspoImages.length > 0) && (
+            <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {inspoLinks.map((l, i) => (
+                <div key={`l-${i}`} className="p-3 rounded-lg hairline flex items-start justify-between gap-2" style={{ background:'var(--surface)' }}>
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-wider ink-muted">Link</div>
+                    <div className="text-[12px] font-mono truncate">{l.url}</div>
+                  </div>
+                  <button onClick={() => setInspoLinks(prev => prev.filter((_, j) => j !== i))}
+                    className="text-[16px] leading-none ink-muted hover:text-red-500">×</button>
+                </div>
+              ))}
+              {inspoImages.map((src, i) => (
+                <div key={`i-${i}`} className="p-2 rounded-lg hairline relative" style={{ background:'var(--surface)' }}>
+                  <img src={src} alt={`inspo ${i+1}`} className="w-full h-24 object-cover rounded" />
+                  <button onClick={() => setInspoImages(prev => prev.filter((_, j) => j !== i))}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-[12px]">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
 
         {/* Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -790,12 +927,22 @@ export default function Workspace({
                   <div className="text-[10px] font-mono uppercase tracking-[0.2em] mb-3" style={{ color: liveAccent }}>
                     Slide {String(activeSlide+1).padStart(2,'0')} · {cur?.kind?.toLowerCase()}
                   </div>
-                  <h2 className="text-[36px] sm:text-[48px] font-semibold tracking-tight leading-[0.95] uppercase">
-                    {cur?.title}. <span style={{ color: liveAccent }}>{company} makes it obvious.</span>
+                  <h2 className="text-[36px] sm:text-[48px] font-semibold tracking-tight leading-[0.95] uppercase outline-none"
+                      contentEditable suppressContentEditableWarning
+                      onBlur={e => cur?.key && patchSlide(cur.key, 'headline', e.currentTarget.innerText.trim())}
+                      title="Click to edit">
+                    {cur?.title}
                   </h2>
                 </div>
                 <div className="flex items-end justify-between gap-3">
-                  <p className="ink-muted text-[13px] leading-relaxed max-w-md">{cur?.body}</p>
+                  <p className="ink-muted text-[13px] leading-relaxed max-w-md outline-none"
+                     contentEditable suppressContentEditableWarning
+                     onBlur={e => {
+                       if (!cur?.key) return
+                       const v = e.currentTarget.innerText.trim()
+                       patchSlide(cur.key, cur?.val?.lede !== undefined ? 'lede' : 'sub', v)
+                     }}
+                     title="Click to edit">{cur?.body}</p>
                   <MotionChip>transition: {cur?.motion}</MotionChip>
                 </div>
               </div>
@@ -836,40 +983,101 @@ export default function Workspace({
           </div>
         </Card>
 
-        {/* Inspector */}
+        {/* Inspector — inline-editable */}
         <Card className="p-5">
-          <div className="font-semibold tracking-tight mb-4">Inspector — slide {activeSlide+1}</div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="font-semibold tracking-tight">Inspector — slide {activeSlide+1}</div>
+            <div className="text-[11px] ink-muted">Edits save instantly. Use chat below for AI rewrites.</div>
+          </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <MiniLabel>Title</MiniLabel>
-              <input defaultValue={cur?.title} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
+              <MiniLabel>Headline</MiniLabel>
+              <input value={cur?.val?.headline ?? cur?.title ?? ''}
+                onChange={e => patchSlide(cur.key, 'headline', e.target.value)}
+                className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div>
-              <MiniLabel>Kind</MiniLabel>
-              <input defaultValue={cur?.kind} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
+              <MiniLabel>Tag</MiniLabel>
+              <input value={cur?.val?.tag ?? ''}
+                onChange={e => patchSlide(cur.key, 'tag', e.target.value)}
+                className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div className="sm:col-span-2">
-              <MiniLabel>Body</MiniLabel>
-              <textarea defaultValue={cur?.body} rows={3} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none" />
+              <MiniLabel>Lede / sub</MiniLabel>
+              <textarea
+                value={cur?.val?.lede ?? cur?.val?.sub ?? cur?.body ?? ''}
+                onChange={e => patchSlide(cur.key, cur?.val?.lede !== undefined ? 'lede' : 'sub', e.target.value)}
+                rows={3} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none" />
             </div>
-            <div className="sm:col-span-2">
-              <MiniLabel>Speaker notes</MiniLabel>
-              <textarea defaultValue={cur?.notes} rows={3} className="w-full px-3 py-2 mt-2 rounded-xl text-[13px] hairline resize-none" />
-            </div>
-            <div>
-              <MiniLabel>Framework</MiniLabel>
-              <select className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline">
-                <option>None</option>
-                {FRAMEWORKS.map(f => <option key={f.id}>{f.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <MiniLabel>Motion</MiniLabel>
-              <select defaultValue={cur?.motion} className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline">
-                {['smooth reveal','zoom passage','glitch','fold','explode','stat pulse','vortex','clean fade','hard cut','flow','pop','orbit'].map(m => <option key={m}>{m}</option>)}
-              </select>
-            </div>
+            {Array.isArray(cur?.val?.bullets) && cur.val.bullets.length > 0 && (
+              <div className="sm:col-span-2">
+                <MiniLabel>Bullets</MiniLabel>
+                <div className="space-y-1.5 mt-2">
+                  {cur.val.bullets.map((b: string, i: number) => (
+                    <input key={i} value={b}
+                      onChange={e => {
+                        const next = [...cur.val.bullets]; next[i] = e.target.value
+                        patchSlide(cur.key, 'bullets', next as any)
+                      }}
+                      className="w-full h-9 px-3 rounded-xl text-[13px] hairline" />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+        </Card>
+
+        {/* Per-slide AI chat */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="font-semibold tracking-tight">Ask Claude to change this slide</div>
+            <Pill tone="soft">{cur?.kind || cur?.key}</Pill>
+          </div>
+          <div className="text-[12px] ink-muted mb-3 leading-relaxed">
+            Tell Claude what to change in plain English. The headline, the bullets, the tone — anything. Edits apply to slide {activeSlide+1} only.
+          </div>
+
+          {/* Chat log for this slide */}
+          {(chatLog[cur?.key] || []).length > 0 && (
+            <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
+              {(chatLog[cur.key] || []).map((entry, i) => (
+                <div key={i} className="text-[12px] grid grid-cols-[60px_1fr] gap-2 p-2 rounded-lg" style={{ background:'var(--surface)' }}>
+                  <span className="ink-muted">You</span>
+                  <span>"{entry.instruction}"</span>
+                  <span className="ink-muted" style={{ color: liveAccent }}>Claude</span>
+                  <span className="ink-muted">{entry.changeNote}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !chatBusy && cur?.key) { e.preventDefault(); editSlide(cur.key, chatInput) } }}
+              placeholder='e.g. "make the headline punchier" / "add a bullet about retention"'
+              disabled={chatBusy}
+              className="flex-1 h-10 px-3 rounded-xl text-[13px] hairline" />
+            <button
+              onClick={() => cur?.key && editSlide(cur.key, chatInput)}
+              disabled={chatBusy || !chatInput.trim() || !cur?.key}
+              className="h-10 px-4 rounded-xl text-[13px] font-medium text-white disabled:opacity-40 inline-flex items-center gap-1.5"
+              style={{ background: liveAccent }}>
+              {chatBusy ? <><span className="sd-spinner">◐</span> Editing…</> : 'Send'}
+            </button>
+          </div>
+
+          {/* Quick suggestion chips */}
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {['Make headline punchier','Tighten the lede','Add one more bullet','Rewrite for Series A audience','Less buzzwordy'].map(s => (
+              <button key={s} onClick={() => setChatInput(s)}
+                className="text-[11px] px-2.5 h-7 rounded-full hairline ink-muted hover:ink-muted">
+                {s}
+              </button>
+            ))}
+          </div>
+          {error && <div className="sd-error mt-3">{error}</div>}
         </Card>
       </div>
     )
