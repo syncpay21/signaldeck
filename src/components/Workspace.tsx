@@ -2371,18 +2371,21 @@ export default function Workspace({
           }
         `}</style>
       )}
-      <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--line)] bg-[var(--paper)]">
+      <aside className="hidden lg:flex flex-col flex-shrink-0 border-r border-[var(--line)] bg-[var(--paper)]" style={{ width: sidebarWidth }}>
         <SidebarContent />
       </aside>
 
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}/>
-          <aside className="relative w-[240px] h-full bg-[var(--paper)] flex flex-col shadow-xl"><SidebarContent /></aside>
+          <aside className="relative h-full bg-[var(--paper)] flex flex-col shadow-xl" style={{ width: Math.max(sidebarWidth, 240) }}><SidebarContent /></aside>
         </div>
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
+        {layoutVariant === 'arena' && (
+          <div style={{ height: 4, background: `linear-gradient(90deg, var(--primary), var(--accent))`, flexShrink: 0 }} />
+        )}
         <header className="sticky top-0 z-10 flex items-center gap-3 px-5 h-14 border-b border-[var(--line)] bg-[var(--paper)] flex-shrink-0">
           <button className="lg:hidden" onClick={() => setSidebarOpen(true)}><ic.menu className="w-5 h-5 ink-muted"/></button>
           <div className="flex items-center gap-2 min-w-0">
