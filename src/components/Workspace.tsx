@@ -2389,15 +2389,11 @@ export default function Workspace({
   const repeats = [layoutGradient].filter(Boolean).map(() => 'no-repeat').concat(motifLayer ? ['repeat'] : []).concat(gridLayer ? ['repeat'] : [])
   const layered = layers.join(', ')
 
-  // Brand-aware fill tokens. Rich/maximal brands get gradient fills built from
-  // primary + secondary + accent so primary buttons + accent-text spans pick up
-  // the brand's actual character (Luma's pink->peach, SyncPay's teal->blue)
-  // instead of a single flat colour. Restrained/balanced brands stay solid.
-  const primaryFill = brandWorld
-    ? (isRichBrand
-        ? `linear-gradient(135deg, ${brandWorld.colour.primary}, ${brandWorld.colour.secondary})`
-        : brandWorld.colour.primary)
-    : ''
+  // Buttons use the brand's solid primary colour. Earlier this was a
+  // gradient for rich/maximal brands but it conflicted with brands like Up
+  // that use single saturated colours as their identity — the gradient made
+  // every CTA look generic instead of brand-correct.
+  const primaryFill = brandWorld ? brandWorld.colour.primary : ''
   // Solid primary — matches the brand's main font colour. No rainbow.
   const accentTextFill = brandWorld ? brandWorld.colour.primary : ''
 
