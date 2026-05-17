@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Workspace from '@/components/Workspace'
+import { FRAMEWORKS } from '@/lib/frameworks/library'
+import { rankFrameworks } from '@/lib/frameworks/scoring'
 
 type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'building' | 'canvas'
 
@@ -19,6 +21,7 @@ interface FormData {
   founderName: string
   founderRole: string
   domain: string
+  frameworkId?: string
 }
 
 const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']
@@ -53,6 +56,15 @@ export default function Home() {
   const debounceRef = useRef<any>(null)
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
+
+  // Top 6 frameworks ranked for this (industry, stage, audience). Recomputed
+  // when those change so the chips reflect the user's choices.
+  const rankedFrameworks = useMemo(
+    () => rankFrameworks(FRAMEWORKS, {
+      industry: form.industry, stage: form.stage, audience: form.audience,
+    }, null).slice(0, 6),
+    [form.industry, form.stage, form.audience],
+  )
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', form.accentColor)
@@ -336,6 +348,36 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="mt-6">
+                <div className="text-[13px] mb-1" style={{ color: 'var(--ink-muted)' }}>Narrative framework <span className="text-[11px]">(optional)</span></div>
+                <div className="text-[12px] mb-2" style={{ color: 'var(--ink-muted)' }}>
+                  How the story connects between slides. Auto lets Claude pick.
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => set('frameworkId', undefined as any)}
+                    className="text-[13px] px-3 h-9 rounded-xl hairline focus-ring transition-all"
+                    style={!form.frameworkId
+                      ? { background: 'var(--accent)', color: '#fff', border: 'none' }
+                      : { background: 'var(--paper)', color: 'var(--ink)' }}>
+                    Auto
+                  </button>
+                  {rankedFrameworks.map(f => (
+                    <button key={f.id} onClick={() => set('frameworkId', f.id)}
+                      title={f.summary}
+                      className="text-[13px] px-3 h-9 rounded-xl hairline focus-ring transition-all"
+                      style={form.frameworkId === f.id
+                        ? { background: 'var(--accent)', color: '#fff', border: 'none' }
+                        : { background: 'var(--paper)', color: 'var(--ink)' }}>
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+                {form.frameworkId && (
+                  <div className="mt-2 text-[12px]" style={{ color: 'var(--ink-muted)' }}>
+                    {rankedFrameworks.find(f => f.id === form.frameworkId)?.summary}
+                  </div>
+                )}
               </div>
               <NavRow onBack={() => setStep('story')} onNext={() => setStep('brand')} />
             </>}

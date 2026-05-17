@@ -91,14 +91,16 @@ function buildDemoSlide(idx: number, input: any): string {
 // When omitted, all 12 slides render in default order (backward compat).
 // opts.industryGuide supplies fallback fonts / accent / palette /
 // transition list per the agency design guide — user theme overrides win.
+// opts.includeDemo controls whether to append the demo slide (default: true if demoUrl or demoDescription exists).
 export function renderDeck(
   input: any,
   content: any,
   slideIds?: SlideId[],
-  opts?: { industryGuide?: IndustryGuide },
+  opts?: { industryGuide?: IndustryGuide; includeDemo?: boolean },
 ): string {
   const ids: SlideId[] = slideIds ?? (Object.keys(SLIDE_DEFS) as SlideId[])
   const guide = opts?.industryGuide
+  const hasDemo = opts?.includeDemo !== false && (input.demoUrl || input.demoDescription)
 
   const slideHtmlList = ids.map((id, idx) => {
     if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})
@@ -108,11 +110,13 @@ export function renderDeck(
     return slide(def.htmlId, idx, def.label, tx, def.bgx, def.bgy, content[id] || {})
   })
 
-  const demoIdx = slideHtmlList.length
-  slideHtmlList.push(buildDemoSlide(demoIdx, input))
-
   const labels = ids.map(id => SLIDE_DEFS[id]?.label || id)
-  labels.push('Demo')
+
+  if (hasDemo) {
+    const demoIdx = slideHtmlList.length
+    slideHtmlList.push(buildDemoSlide(demoIdx, input))
+    labels.push('Demo')
+  }
 
   return deckTemplate({
     company:     input.company,
