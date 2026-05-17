@@ -3,6 +3,8 @@ import type { SlideId } from './types'
 import type { IndustryGuide } from './industry-guide'
 import type { SynthesisedTheme } from './pipeline/theme-synthesizer'
 import type { SlideVisual } from './pipeline/visual-mood'
+import type { BrandWorld } from './brand-world'
+import { brandWorldMotifBackground } from './motifs'
 
 // Transition durations (matched to design-reference.html demoTx timings)
 const TX_DUR: Record<string, number> = {
@@ -28,10 +30,12 @@ function bullets(items: string[] = []) {
   if (!items.length) return ''
   return `<ul class="bullet-list reveal-stagger">${items.map((b,i)=>`<li style="--i:${i}">${b}</li>`).join('')}</ul>`
 }
-function slide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any) {
+function slide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle = '') {
+  // motifStyle is an optional inline-style string carrying a background-image
+  // for the industry motif. Sits on the slide-grid layer at low opacity.
   return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
   <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
-  <div class="slide-grid"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
   <div class="slide-inner">
     <div class="slide-tag">${c.tag||''}</div>
     <h2 class="slide-title"><span class="reveal-wipe">${c.headline||''}</span></h2>
@@ -110,6 +114,9 @@ function buildDemoSlide(idx: number, input: any): string {
 
 // slideIds controls which slides render and in what order.
 // When omitted, all 12 slides render in default order (backward compat).
+// opts.brandWorld  — full BrandWorld from /api/brand-world. Wins over
+//                    everything else for theme + motif. Drives industry-
+//                    specific SVG backgrounds via motifs.ts.
 // opts.theme       — synthesized theme (Track B2). Wins over industryGuide.
 // opts.slideVisuals — per-slide transition / mood / bgx / bgy (Track B3).
 //                    Wins over SLIDE_DEFS hardcoded transition + bg position.
@@ -124,6 +131,7 @@ export function renderDeck(
     industryGuide?: IndustryGuide
     theme?:         SynthesisedTheme
     slideVisuals?:  Record<string, SlideVisual>
+    brandWorld?:    BrandWorld | null
     includeDemo?:   boolean
   },
 ): string {
@@ -131,7 +139,17 @@ export function renderDeck(
   const guide  = opts?.industryGuide
   const theme  = opts?.theme
   const visuals = opts?.slideVisuals
+  const world = opts?.brandWorld
   const hasDemo = opts?.includeDemo !== false && (input.demoUrl || input.demoDescription || input.productData)
+
+  // Industry motif background — picked from BrandWorld.motifs. Applied to
+  // every slide's bg layer at low opacity so it reads as texture, not
+  // decoration. No motif → empty string (current visual unchanged).
+  const motifColour = world?.colour.primary || theme?.accent || guide?.color || '#0F1115'
+  const motif = world ? brandWorldMotifBackground(world.motifs || [], motifColour) : { name: null, css: '' }
+  const motifBg = motif.css ? `background-image:${motif.css};background-size:auto;background-repeat:repeat;` : ''
+  // Make the motif visible via a data attribute so the deckTemplate CSS can
+  // optionally style it (workspace consumers also see this in dev tools).
 
   const slideHtmlList = ids.map((id, idx) => {
     if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})
@@ -141,7 +159,7 @@ export function renderDeck(
     const tx  = v?.transition || adaptTransition(id, def.tx, guide)
     const bgx = v?.bgx        || def.bgx
     const bgy = v?.bgy        || def.bgy
-    return slide(def.htmlId, idx, def.label, tx, bgx, bgy, content[id] || {})
+    return slide(def.htmlId, idx, def.label, tx, bgx, bgy, content[id] || {}, motifBg)
   })
 
   const labels = ids.map(id => SLIDE_DEFS[id]?.label || id)

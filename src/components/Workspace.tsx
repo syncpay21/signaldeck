@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getTemplate, VC_PROFILES, personalize, extractWedge, type Template, type PersonalCtx } from '@/lib/templates'
+import { brandWorldToCssVars, type BrandWorld } from '@/lib/brand-world'
 import { FRAMEWORKS } from '@/lib/frameworks/library'
 import { DARK_FRAMEWORKS } from '@/lib/frameworks/dark'
 import { rankFrameworks, recommendCompanions } from '@/lib/frameworks/scoring'
@@ -116,6 +117,7 @@ interface WorkspaceProps {
   founderName?: string
   stage?: string
   industry?: string
+  brandWorld?: BrandWorld | null
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -123,7 +125,7 @@ interface WorkspaceProps {
 ═══════════════════════════════════════════════════════════════════ */
 export default function Workspace({
   company, accentColor, generatedHtml, generatedContent, onRestart, onRegenerate,
-  logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry,
+  logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry, brandWorld,
 }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -253,6 +255,29 @@ export default function Workspace({
   })) : tpl.slides.map((s, i) => ({ key: `s${i}_${s.kind.toLowerCase()}`, ...s, title: px(s.title), body: px(s.body), notes: px(s.notes), val: {} as any }))
 
   useEffect(() => { document.documentElement.style.setProperty('--accent', liveAccent) }, [liveAccent])
+
+  // When a BrandWorld is provided, inject a Google Fonts <link> for its
+  // heading/body/mono so the CSS vars actually have something to render.
+  // Re-injects only when the font triplet changes; cleans up on unmount.
+  useEffect(() => {
+    if (!brandWorld) return
+    const fams = [brandWorld.typography.heading, brandWorld.typography.body, brandWorld.typography.mono]
+      .filter(Boolean)
+      .filter((f, i, a) => a.indexOf(f) === i)
+      .map(f => `family=${f.replace(/\s+/g, '+')}:wght@400;500;600;700;800;900`)
+      .join('&')
+    if (!fams) return
+    const href = `https://fonts.googleapis.com/css2?${fams}&display=swap`
+    const id = 'brand-world-fonts'
+    let link = document.getElementById(id) as HTMLLinkElement | null
+    if (!link) {
+      link = document.createElement('link')
+      link.id = id
+      link.rel = 'stylesheet'
+      document.head.appendChild(link)
+    }
+    link.href = href
+  }, [brandWorld?.typography.heading, brandWorld?.typography.body, brandWorld?.typography.mono])
 
   useEffect(() => {
     if (timerRunning) timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000)
@@ -2312,8 +2337,17 @@ export default function Workspace({
   )
 
   /* ── Shell ───────────────────────────────────────────────────── */
+  // BrandWorld CSS vars — applied at the root so every nested component
+  // reading `var(--bg)`, `var(--surface)`, `var(--primary)`, `var(--text)`,
+  // `var(--border)`, `var(--paper)`, `var(--accent)`, `var(--ink)`, etc.
+  // automatically picks up the generated visual world. Aliases mean the
+  // legacy class system (paper, hairline, ink-muted) keeps working.
+  const worldStyle: any = brandWorld
+    ? { ...brandWorldToCssVars(brandWorld), background: 'var(--bg)', color: 'var(--text)' }
+    : { background: 'var(--bg)', color: 'var(--ink)' }
+
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background:'var(--bg)', color:'var(--ink)' }}>
+    <div className="flex h-screen overflow-hidden" style={worldStyle}>
       <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--line)] bg-[var(--paper)]">
         <SidebarContent />
       </aside>

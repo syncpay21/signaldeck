@@ -3,8 +3,9 @@ import Workspace from '@/components/Workspace'
 import { FRAMEWORKS } from '@/lib/frameworks/library'
 import { rankFrameworks } from '@/lib/frameworks/scoring'
 import { compressToDataUrl, type UploadedImage } from '@/lib/image-upload'
+import { type BrandWorld, brandWorldToCssVars } from '@/lib/brand-world'
 
-type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'assets' | 'building' | 'canvas'
+type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'assets' | 'world' | 'building' | 'canvas'
 
 interface FormData {
   company: string
@@ -61,6 +62,8 @@ export default function Home() {
   const [detecting, setDetecting] = useState(false)
   const [detectedColors, setDetectedColors] = useState<string[]>([])
   const [logoUrl, setLogoUrl] = useState('')
+  const [brandWorld, setBrandWorld] = useState<BrandWorld | null>(null)
+  const [worldLoading, setWorldLoading] = useState(false)
   const debounceRef = useRef<any>(null)
 
   const set = (k: keyof FormData, v: any) => setForm(f => ({ ...f, [k]: v }))
@@ -124,6 +127,40 @@ export default function Home() {
     }, 900)
   }
 
+  /** Generate the BrandWorld from all collected intake data. Runs on
+   *  user clicking "Build my workspace" on the Assets step. */
+  async function buildBrandWorld() {
+    setWorldLoading(true); setError('')
+    try {
+      const res = await fetch('/api/brand-world', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company:     form.company,
+          industry:    form.industry,
+          oneLiner:    form.oneLiner,
+          realStory:   form.realStory,
+          customers:   form.customers,
+          proof:       form.proof,
+          audience:    form.audience,
+          stage:       form.stage,
+          websiteUrl:  form.websiteUrl,
+          logoData:    form.logoData,
+          heroData:    form.heroData,
+          productData: form.productData,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'brand-world failed')
+      setBrandWorld(data.brandWorld)
+      setStep('world')
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setWorldLoading(false)
+    }
+  }
+
   async function generate(frameworkId?: string) {
     if (!frameworkId) setStep('building')
     setError('')
@@ -146,8 +183,13 @@ export default function Home() {
           problem: enrichedStory,
           solution: '', howItWorks: '', traction: form.proof, market: '',
           businessModel: '', competition: '', team: '', ask: '',
+          // Brand world overrides — if generated, use ITS palette + fonts; otherwise fall back
+          accentColor: brandWorld?.colour.primary ?? form.accentColor,
+          bgColor:     brandWorld?.colour.background ?? form.bgColor,
+          fontHeading: brandWorld?.typography.heading ?? 'Inter',
+          fontBody:    brandWorld?.typography.body    ?? 'Inter',
+          brandWorld,
           demoUrl: '', demoDescription: '',
-          fontHeading: 'Inter', fontBody: 'Inter',
         }),
       })
       const data = await res.json()
@@ -158,7 +200,7 @@ export default function Home() {
       return data
     } catch (e: any) {
       setError(e.message)
-      if (!frameworkId) setStep('assets')
+      if (!frameworkId) setStep(brandWorld ? 'world' : 'assets')
       throw e
     }
   }
@@ -200,6 +242,7 @@ export default function Home() {
         founderName={form.founderName}
         stage={form.stage}
         industry={form.industry}
+        brandWorld={brandWorld}
         onRegenerate={regenerateWithFramework}
         onRestart={() => {
           setStep('basics')
@@ -214,8 +257,8 @@ export default function Home() {
     )
   }
 
-  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4, assets: 5 } as any)[step] || 1
-  const total = 5
+  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4, assets: 5, world: 6 } as any)[step] || 1
+  const total = step === 'world' ? 6 : 5
 
   const NavRow = ({ onBack, onNext, nextLabel = 'Continue', canNext = true, isFirst = false }: any) => (
     <div className="mt-8 flex items-center justify-between">
@@ -515,7 +558,112 @@ export default function Home() {
 
               {error && <div className="mt-4 sd-error">{error}</div>}
 
-              <NavRow onBack={() => setStep('brand')} onNext={() => generate()} nextLabel="Build the deck →" />
+              <NavRow onBack={() => setStep('brand')} onNext={buildBrandWorld} nextLabel={worldLoading ? 'Reading your sources…' : 'Build my workspace →'} canNext={!worldLoading} />
+            </>}
+
+            {/* ── Step 6: Brand world preview ─────────────────────────── */}
+            {step === 'world' && brandWorld && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">Your brand world</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                {brandWorld.visualDirection}
+              </p>
+
+              {/* Palette */}
+              <div className="mt-6">
+                <div className="text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--ink-muted)' }}>Palette</div>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                  {([
+                    ['Bg',        brandWorld.colour.background],
+                    ['Surface',   brandWorld.colour.surface],
+                    ['Primary',   brandWorld.colour.primary],
+                    ['Secondary', brandWorld.colour.secondary],
+                    ['Accent',    brandWorld.colour.accent],
+                    ['Text',      brandWorld.colour.text],
+                    ['Border',    brandWorld.colour.border],
+                  ] as const).map(([l, c]) => (
+                    <div key={l} className="rounded-lg overflow-hidden hairline">
+                      <div className="h-16" style={{ background: c }} />
+                      <div className="text-[10px] px-2 py-1.5">
+                        <div className="font-medium">{l}</div>
+                        <div className="font-mono" style={{ color: 'var(--ink-muted)' }}>{c}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Typography */}
+              <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                <div className="paper hairline rounded-xl p-4">
+                  <div className="text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--ink-muted)' }}>Heading</div>
+                  <div style={{ fontFamily: brandWorld.typography.heading, fontWeight: brandWorld.typography.headingWeight, fontSize: 32, letterSpacing: brandWorld.typography.tracking, color: brandWorld.colour.primary }}>
+                    {form.company || 'Your company'}
+                  </div>
+                  <div className="text-[12px] mt-2" style={{ color: 'var(--ink-muted)' }}>
+                    {brandWorld.typography.heading} · {brandWorld.typography.style} · weight {brandWorld.typography.headingWeight}
+                  </div>
+                </div>
+                <div className="paper hairline rounded-xl p-4">
+                  <div className="text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--ink-muted)' }}>Body</div>
+                  <div style={{ fontFamily: brandWorld.typography.body, fontSize: 14, lineHeight: 1.55, color: brandWorld.colour.text }}>
+                    {form.oneLiner || 'A clean specimen sentence in the chosen body face. Readable, intentional, not generic.'}
+                  </div>
+                  <div className="text-[12px] mt-3" style={{ color: 'var(--ink-muted)' }}>
+                    {brandWorld.typography.body} · body
+                  </div>
+                </div>
+              </div>
+
+              {/* Motifs + layout */}
+              <div className="mt-6">
+                <div className="text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--ink-muted)' }}>Motifs</div>
+                <div className="flex flex-wrap gap-2">
+                  {brandWorld.motifs.map(m => (
+                    <span key={m} className="text-[12px] px-3 h-7 inline-flex items-center rounded-full hairline" style={{ background: brandWorld.colour.surfaceSoft, color: brandWorld.colour.text }}>
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 text-[12px]" style={{ color: 'var(--ink-muted)' }}>
+                <span className="font-medium" style={{ color: brandWorld.colour.text }}>Layout:</span> {brandWorld.layoutStyle} ·
+                <span className="font-medium ml-1" style={{ color: brandWorld.colour.text }}>Cards:</span> {brandWorld.cardStyle} ·
+                <span className="font-medium ml-1" style={{ color: brandWorld.colour.text }}>Motion:</span> {brandWorld.motionStyle} ·
+                <span className="font-medium ml-1" style={{ color: brandWorld.colour.text }}>Density:</span> {brandWorld.density}
+              </div>
+
+              {/* Avoid + why */}
+              <div className="mt-5 grid sm:grid-cols-2 gap-4">
+                <div className="paper hairline rounded-xl p-4">
+                  <div className="text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--ink-muted)' }}>Won't use</div>
+                  <ul className="space-y-1">
+                    {brandWorld.avoid.map(a => (
+                      <li key={a} className="text-[13px] flex gap-2" style={{ color: 'var(--ink-muted)' }}>
+                        <span style={{ color: brandWorld.colour.error }}>×</span>{a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="paper hairline rounded-xl p-4">
+                  <div className="text-[12px] uppercase tracking-wider mb-2" style={{ color: 'var(--ink-muted)' }}>Why this works</div>
+                  <p className="text-[13px] leading-relaxed">{brandWorld.whyThisWorks}</p>
+                </div>
+              </div>
+
+              {error && <div className="mt-4 sd-error">{error}</div>}
+
+              <div className="mt-8 flex items-center justify-between">
+                <button onClick={buildBrandWorld} disabled={worldLoading}
+                  className="h-10 px-4 text-sm rounded-xl font-medium hairline focus-ring inline-flex items-center gap-2 disabled:opacity-40">
+                  {worldLoading ? 'Regenerating…' : '↻ Regenerate'}
+                </button>
+                <button onClick={() => generate()}
+                  className="h-10 px-5 text-sm rounded-xl font-medium text-white shadow-card focus-ring inline-flex items-center gap-2"
+                  style={{ background: brandWorld.colour.primary }}>
+                  Build the deck →
+                </button>
+              </div>
             </>}
 
           </div>

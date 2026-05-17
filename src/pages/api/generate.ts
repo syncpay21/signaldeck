@@ -96,17 +96,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const stage2TokensUsed = (sonnetMessage.usage?.input_tokens || 0) + (sonnetMessage.usage?.output_tokens || 0)
 
     /* ─── STAGE B2 — Theme synthesis (deterministic, no AI) ──────────── */
-    // Vision result wins over HTML extraction if confidence is high.
-    // User explicit override still wins over both.
+    // Priority chain for the final theme:
+    //   1. BrandWorld from /api/brand-world (the user just confirmed in the preview screen)
+    //   2. User explicit override on the intake form
+    //   3. Vision result on uploaded screenshot
+    //   4. HTML extraction + industry-guide default fallback
+    const userBrandWorld = input.brandWorld || null
     const accentFromVision = visionResult && visionResult.confidence >= 60 ? visionResult.dominantHex : undefined
     const theme = synthesiseTheme({
       brand:       extractedBrand || undefined,
       guide:       industryGuide,
-      accentColor: input.accentColor || accentFromVision,
-      bgColor:     input.bgColor,
-      fontHeading: input.fontHeading,
-      fontBody:    input.fontBody,
-      isDark:      input.isDark,
+      accentColor: userBrandWorld?.colour?.primary    || input.accentColor || accentFromVision,
+      bgColor:     userBrandWorld?.colour?.background || input.bgColor,
+      fontHeading: userBrandWorld?.typography?.heading || input.fontHeading,
+      fontBody:    userBrandWorld?.typography?.body    || input.fontBody,
+      isDark:      typeof input.isDark === 'boolean' ? input.isDark : userBrandWorld?.deckMode === 'dark',
     })
 
     /* ─── STAGE 3 — Haiku narrative validation (best-effort) ─────────── */
@@ -183,6 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       industryGuide,
       theme,
       slideVisuals,
+      brandWorld: userBrandWorld,
     })
 
     /* ─── STAGE C2 — Quality gate (deterministic, post-render) ───────── */
@@ -195,6 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       slideOrder:       activeSlideIds,
       frameworkApplied: fw?.id ?? null,
       industryGuide:    guideKey,
+      brandWorld:       userBrandWorld,
       theme,
       slideVisuals,
       brand:            extractedBrand,
