@@ -9,6 +9,7 @@ import { DARK_FRAMEWORKS } from '../../lib/frameworks/dark'
 import { resolveIndustry, getIndustryGuide } from '../../lib/industry-guide'
 import { validateNarrative, shouldApplySuggestion } from '../../lib/pipeline/haiku-validator'
 import { pickStrategicNarrative, shouldApplyStrategistPick } from '../../lib/pipeline/strategist'
+import { critiqueAndRevise, shouldApplyRevisions } from '../../lib/pipeline/critic'
 import { NARRATIVE_CONFIGS } from '../../lib/narrative-engine'
 import { polishDeck } from '../../lib/pipeline/gpt4o-polish'
 import { extractBrand } from '../../lib/pipeline/brand-extractor'
@@ -196,6 +197,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    /* ─── STAGE A5 — Andreas the critic (best-effort) ───────────────
+       Final pass before render. Sonnet re-reads the polished deck,
+       scores each slide on hook/evidence/specificity/punch, picks the
+       weakest 1-3, and rewrites them. Merge revisions into the final
+       content. Failure is non-blocking. Gated by ENABLE_CRITIC=false. */
+    let criticResult: any = null
+    let criticApplied = false
+    if (process.env.ENABLE_CRITIC !== 'false') {
+      try {
+        criticResult = await critiqueAndRevise(anthropic, {
+          deckContent:  polishedContent,
+          slideIds:     activeSlideIds,
+          narrativeId:  narrative.id,
+          audience,
+          stage,
+          industry,
+          maxRevisions: 3,
+        })
+        if (shouldApplyRevisions(criticResult)) {
+          polishedContent = { ...polishedContent, ...criticResult.revisedSlides }
+          criticApplied = true
+        }
+      } catch (e: any) {
+        console.error('Stage A5 (critic) error:', e?.message || e)
+      }
+    }
+
     /* ─── STAGE B3 — Per-slide visual mood + transition (deterministic) */
     const slideVisuals = assignVisuals(activeSlideIds, industryGuide)
 
@@ -239,6 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stage_a2:   { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
         stage_a3:   { model: 'claude-haiku-4-5', haiku: haikuResult, applied: haikuApplied, error: haikuError },
         stage_a4: { model: 'gpt-4o', statVerification, copyFeedback, applied: polishApplied, error: polishError },
+        stage_a5: { model: 'claude-sonnet-4-6 (critic)', critic: criticResult, applied: criticApplied },
         /* Track B — brand × theme × vision */
         stage_b0: visionResult ? {
           model:      'claude-sonnet-4-6 (vision)',
