@@ -26,13 +26,14 @@ export interface ExtractedColor {
 
 export interface ExtractedBrand {
   colors:         ExtractedColor[]
-  logoUrl:        string | null
+  logoUrl:        string | null  // small mark (favicon / apple-touch-icon)
+  ogImage:        string | null  // social card / hero (much bigger, better for cover bg)
   detectedFonts:  string[]
   domain:         string
   fetchedAt:      number  // ms epoch
 }
 
-const EMPTY: ExtractedBrand = { colors: [], logoUrl: null, detectedFonts: [], domain: '', fetchedAt: 0 }
+const EMPTY: ExtractedBrand = { colors: [], logoUrl: null, ogImage: null, detectedFonts: [], domain: '', fetchedAt: 0 }
 
 export async function extractBrand(websiteUrl?: string): Promise<ExtractedBrand> {
   if (!websiteUrl) return EMPTY
@@ -46,9 +47,11 @@ export async function extractBrand(websiteUrl?: string): Promise<ExtractedBrand>
     catch { return { ...EMPTY, domain: base, fetchedAt: Date.now() } }
   }
 
+  const { logo, og } = extractLogoAndOg(html, base)
   return {
     colors:        extractColors(html),
-    logoUrl:       extractLogo(html, base),
+    logoUrl:       logo,
+    ogImage:       og,
     detectedFonts: extractFonts(html),
     domain:        base,
     fetchedAt:     Date.now(),
@@ -132,23 +135,25 @@ function normalizeHex(hex: string): string | null {
   return hex
 }
 
-function extractLogo(html: string, base: string): string | null {
+/** Split logo (small mark) from og:image (large hero) — they have different uses. */
+function extractLogoAndOg(html: string, base: string): { logo: string | null; og: string | null } {
   const resolve = (rel: string) => {
     try { return new URL(rel, base).href } catch { return null }
   }
 
-  const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-          || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
-  if (og?.[1]) return resolve(og[1])
+  const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  const og = ogMatch?.[1] ? resolve(ogMatch[1]) : null
 
+  // Prefer apple-touch-icon (high-res) → icon → /favicon.ico
   const apple = html.match(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i)
              || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon["']/i)
-  if (apple?.[1]) return resolve(apple[1])
+  if (apple?.[1]) return { logo: resolve(apple[1]), og }
 
   const fav = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i)
-  if (fav?.[1]) return resolve(fav[1])
+  if (fav?.[1]) return { logo: resolve(fav[1]), og }
 
-  try { return new URL('/favicon.ico', base).href } catch { return null }
+  try { return { logo: new URL('/favicon.ico', base).href, og } } catch { return { logo: null, og } }
 }
 
 function isGrayish(hex: string): boolean {

@@ -13,6 +13,7 @@ import { extractBrand } from '../../lib/pipeline/brand-extractor'
 import { synthesiseTheme } from '../../lib/pipeline/theme-synthesizer'
 import { assignVisuals } from '../../lib/pipeline/visual-mood'
 import { runQualityGate } from '../../lib/pipeline/quality-gate'
+import { analyzeBrand } from '../../lib/pipeline/vision-analyzer'
 import type { AudienceType, UseCase, Stage, Industry, BusinessModel, GtmMotion, TractionStatus, Region, TeamSize, SlideId } from '../../lib/types'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -70,8 +71,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     })
     const userPrompt = buildGenerationPrompt({ ...input, audience, goal, stage, industry }, narrative, originalSlideIds)
 
-    /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand) — run in parallel ──────── */
-    const [sonnetMessage, extractedBrand] = await Promise.all([
+    /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand HTML) + STAGE B0.5 (Vision)
+       — all run in parallel. Vision only fires when the user uploaded
+       a hero image; B1 only when they gave a websiteUrl. */
+    const heroImage = typeof input.heroData === 'string' && input.heroData.startsWith('data:image') ? input.heroData : null
+    const productImage = typeof input.productData === 'string' && input.productData.startsWith('data:image') ? input.productData : null
+    const visionSource = heroImage || productImage   // hero preferred for brand-feel; product as fallback
+
+    const [sonnetMessage, extractedBrand, visionResult] = await Promise.all([
       anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
@@ -79,6 +86,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: [{ role: 'user', content: userPrompt }],
       }),
       extractBrand(input.websiteUrl || input.domain).catch(() => null),
+      visionSource
+        ? analyzeBrand(anthropic, visionSource, { company: input.company, industry }).catch(() => null)
+        : Promise.resolve(null),
     ])
     const sonnetRaw = (sonnetMessage.content[0] as any).text.trim()
     const sonnetJson = sonnetRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
@@ -86,10 +96,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const stage2TokensUsed = (sonnetMessage.usage?.input_tokens || 0) + (sonnetMessage.usage?.output_tokens || 0)
 
     /* ─── STAGE B2 — Theme synthesis (deterministic, no AI) ──────────── */
+    // Vision result wins over HTML extraction if confidence is high.
+    // User explicit override still wins over both.
+    const accentFromVision = visionResult && visionResult.confidence >= 60 ? visionResult.dominantHex : undefined
     const theme = synthesiseTheme({
       brand:       extractedBrand || undefined,
       guide:       industryGuide,
-      accentColor: input.accentColor,
+      accentColor: input.accentColor || accentFromVision,
       bgColor:     input.bgColor,
       fontHeading: input.fontHeading,
       fontBody:    input.fontBody,
@@ -156,7 +169,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const slideVisuals = assignVisuals(activeSlideIds, industryGuide)
 
     /* ─── STAGE C1 — Render ──────────────────────────────────────────── */
-    const html = renderDeck(input, polishedContent, activeSlideIds, {
+    // Pass uploaded images + vision hints to the renderer via input augmentation.
+    const renderInput = {
+      ...input,
+      logoData:     input.logoData,
+      heroData:     input.heroData,
+      productData:  input.productData,
+      founderPhoto: input.founderPhoto,
+      visionMood:   visionResult?.mood,
+      visionLayout: visionResult?.layout,
+    }
+    const html = renderDeck(renderInput, polishedContent, activeSlideIds, {
       industryGuide,
       theme,
       slideVisuals,
@@ -182,8 +205,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stage_a2: { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
         stage_a3: { model: 'claude-haiku-4-5', haiku: haikuResult, applied: haikuApplied, error: haikuError },
         stage_a4: { model: 'gpt-4o', statVerification, copyFeedback, applied: polishApplied, error: polishError },
-        /* Track B — brand × theme */
-        stage_b1: { brandFound: !!extractedBrand?.colors.length, colorCount: extractedBrand?.colors.length || 0, logoFound: !!extractedBrand?.logoUrl },
+        /* Track B — brand × theme × vision */
+        stage_b0: visionResult ? {
+          model:      'claude-sonnet-4-6 (vision)',
+          source:     heroImage ? 'hero' : 'product',
+          dominantHex: visionResult.dominantHex,
+          mood:        visionResult.mood,
+          typography:  visionResult.typography,
+          layout:      visionResult.layout,
+          imagery:     visionResult.imageryArchetype,
+          confidence:  visionResult.confidence,
+          reasoning:   visionResult.reasoning,
+        } : { skipped: !visionSource ? 'no-image-uploaded' : 'failed' },
+        stage_b1: { brandFound: !!extractedBrand?.colors.length, colorCount: extractedBrand?.colors.length || 0, logoFound: !!extractedBrand?.logoUrl, ogImage: !!extractedBrand?.ogImage },
         stage_b2: { accent: theme.accent, bg: theme.bg, origin: theme.origin, contrast: theme.contrast, reasoning: theme.reasoning },
         stage_b3: { slideCount: Object.keys(slideVisuals).length },
         /* Track C — render + quality gate */

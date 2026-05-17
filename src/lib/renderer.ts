@@ -59,10 +59,20 @@ const SLIDE_DEFS: Record<string, { htmlId: string; label: string; tx: string; bg
 }
 
 function buildIntroSlide(idx: number, input: any, c: any): string {
+  // User-uploaded hero image becomes a soft background layer; logo appears
+  // above the company wordmark. If neither is uploaded the slide stays as it was.
+  const heroBg = input.heroData
+    ? `<div class="hero-image-bg" style="position:absolute;inset:0;background-image:url('${input.heroData}');background-size:cover;background-position:center;opacity:0.18;filter:blur(2px);"></div>`
+    : ''
+  const logoMark = input.logoData
+    ? `<img src="${input.logoData}" alt="${input.company} logo" style="max-height:72px;max-width:200px;object-fit:contain;margin-bottom:24px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));" class="reveal-up" />`
+    : ''
   return `<section class="slide" id="s1" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="Intro" data-tx="zoom-passage">
   <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
   <div class="slide-grid"></div><div class="slide-bg" style="--bgx:20%;--bgy:30%;"></div>
-  <div class="slide-inner">
+  ${heroBg}
+  <div class="slide-inner" style="position:relative;z-index:2;">
+    ${logoMark}
     <div class="hero-tag reveal-up">${c.tag||''}</div>
     <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:900;font-size:clamp(80px,16vw,220px);line-height:0.88;letter-spacing:-4px;text-transform:uppercase;margin-bottom:12px;">${input.company}</div>
     <h1 class="hero-title reveal-wipe d1">${c.sub||input.oneLiner}</h1>
@@ -75,16 +85,25 @@ function buildIntroSlide(idx: number, input: any, c: any): string {
 }
 
 function buildDemoSlide(idx: number, input: any): string {
+  // Priority: live demoUrl iframe > uploaded product screenshot > placeholder
+  let body: string
+  if (input.demoUrl) {
+    body = `<div class="demo-embed-wrap reveal-up d2"><iframe src="${input.demoUrl}" class="demo-iframe" allow="fullscreen" loading="lazy"></iframe></div>`
+  } else if (input.productData) {
+    body = `<div class="demo-embed-wrap reveal-up d2" style="display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.2);border-radius:16px;padding:24px;">
+      <img src="${input.productData}" alt="${input.company} product"
+           style="max-width:100%;max-height:60vh;object-fit:contain;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.4);" />
+    </div>`
+  } else {
+    body = `<div class="demo-placeholder reveal-up d2"><div class="demo-ph-inner"><div class="demo-ph-icon">▶</div><p style="color:var(--mist);margin-bottom:16px;">${input.demoDescription||'Interactive demo'}</p><a href="https://${input.domain}" target="_blank" class="demo-ph-link">Visit ${input.domain}</a></div></div>`
+  }
   return `<section class="slide" id="s13" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="Demo" data-tx="fold">
   <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
   <div class="slide-grid"></div><div class="slide-bg" style="--bgx:50%;--bgy:50%;"></div>
   <div class="slide-inner">
     <div class="slide-tag">live demo</div>
     <h2 class="slide-title"><span class="reveal-wipe">See it in action</span></h2>
-    ${input.demoUrl
-      ? `<div class="demo-embed-wrap reveal-up d2"><iframe src="${input.demoUrl}" class="demo-iframe" allow="fullscreen" loading="lazy"></iframe></div>`
-      : `<div class="demo-placeholder reveal-up d2"><div class="demo-ph-inner"><div class="demo-ph-icon">▶</div><p style="color:var(--mist);margin-bottom:16px;">${input.demoDescription||'Interactive demo'}</p><a href="https://${input.domain}" target="_blank" class="demo-ph-link">Visit ${input.domain}</a></div></div>`
-    }
+    ${body}
   </div>
 </section>`
 }
@@ -112,7 +131,7 @@ export function renderDeck(
   const guide  = opts?.industryGuide
   const theme  = opts?.theme
   const visuals = opts?.slideVisuals
-  const hasDemo = opts?.includeDemo !== false && (input.demoUrl || input.demoDescription)
+  const hasDemo = opts?.includeDemo !== false && (input.demoUrl || input.demoDescription || input.productData)
 
   const slideHtmlList = ids.map((id, idx) => {
     if (id === 's1_intro') return buildIntroSlide(idx, input, content.s1_intro || {})

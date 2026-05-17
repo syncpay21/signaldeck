@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import Workspace from '@/components/Workspace'
 import { FRAMEWORKS } from '@/lib/frameworks/library'
 import { rankFrameworks } from '@/lib/frameworks/scoring'
+import { compressToDataUrl, type UploadedImage } from '@/lib/image-upload'
 
-type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'building' | 'canvas'
+type Step = 'basics' | 'story' | 'purpose' | 'brand' | 'assets' | 'building' | 'canvas'
 
 interface FormData {
   company: string
@@ -11,6 +12,8 @@ interface FormData {
   industry: string
   stage: string
   realStory: string
+  customers: string       // who are the first customers — names/segments
+  proof: string           // numbers, quotes, press, signed deals
   promptsUsed: string[]
   audience: string
   goal: string
@@ -22,6 +25,11 @@ interface FormData {
   founderRole: string
   domain: string
   frameworkId?: string
+  // Uploaded assets — data URLs, embedded directly in the deck
+  logoData?:    string
+  heroData?:    string    // homepage screenshot or hero image
+  productData?: string    // product UI screenshot — drives skeleton demo
+  founderPhoto?: string
 }
 
 const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']
@@ -37,7 +45,7 @@ const PROMPTS = ['What broke?', 'Who is hurting?', 'Why are you the one?', 'What
 
 const empty: FormData = {
   company: '', oneLiner: '', industry: '', stage: 'Pre-seed',
-  realStory: '', promptsUsed: [],
+  realStory: '', customers: '', proof: '', promptsUsed: [],
   audience: 'Seed VC', goal: 'Raise',
   websiteUrl: '',
   accentColor: '#0F1115', bgColor: '#ffffff', isDark: false,
@@ -120,15 +128,23 @@ export default function Home() {
     if (!frameworkId) setStep('building')
     setError('')
     try {
+      // Concat all collected story content so Sonnet sees it all in one block.
+      const enrichedStory = [
+        form.realStory,
+        form.customers && `Customers: ${form.customers}`,
+        form.proof     && `Proof: ${form.proof}`,
+      ].filter(Boolean).join('\n\n')
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           frameworkId,
+          realStory: enrichedStory,
           // realStory maps to the generate API's structured fields
-          problem: form.realStory,
-          solution: '', howItWorks: '', traction: '', market: '',
+          problem: enrichedStory,
+          solution: '', howItWorks: '', traction: form.proof, market: '',
           businessModel: '', competition: '', team: '', ask: '',
           demoUrl: '', demoDescription: '',
           fontHeading: 'Inter', fontBody: 'Inter',
@@ -142,7 +158,7 @@ export default function Home() {
       return data
     } catch (e: any) {
       setError(e.message)
-      if (!frameworkId) setStep('brand')
+      if (!frameworkId) setStep('assets')
       throw e
     }
   }
@@ -198,8 +214,8 @@ export default function Home() {
     )
   }
 
-  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4 } as any)[step] || 1
-  const total = 4
+  const stepNum = ({ basics: 1, story: 2, purpose: 3, brand: 4, assets: 5 } as any)[step] || 1
+  const total = 5
 
   const NavRow = ({ onBack, onNext, nextLabel = 'Continue', canNext = true, isFirst = false }: any) => (
     <div className="mt-8 flex items-center justify-between">
@@ -315,10 +331,28 @@ export default function Home() {
                 })}
               </div>
               <div className="mt-5">
-                <textarea rows={9} value={form.realStory} onChange={e => set('realStory', e.target.value)}
-                  placeholder="Tell us the raw truth — what's broken, why you're fixing it, what traction you have, your team, and how much you're raising..."
+                <textarea rows={7} value={form.realStory} onChange={e => set('realStory', e.target.value)}
+                  placeholder="Tell us the raw truth — what's broken, why you're fixing it, what made you start this..."
                   className="w-full paper hairline rounded-xl p-3 focus-ring text-sm"
                   style={{ resize: 'vertical', lineHeight: 1.6 }} />
+              </div>
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>
+                  Customers <span className="text-[11px]">(who hurts most — names, segments, archetypes)</span>
+                </div>
+                <textarea rows={3} value={form.customers} onChange={e => set('customers', e.target.value)}
+                  placeholder="e.g. Solo accountants at small firms, 5-50 clients each. They reconcile by hand every month."
+                  className="w-full paper hairline rounded-xl p-3 focus-ring text-sm"
+                  style={{ resize: 'vertical', lineHeight: 1.55 }} />
+              </div>
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>
+                  Proof <span className="text-[11px]">(numbers, named customers, press, signed deals — anything real)</span>
+                </div>
+                <textarea rows={3} value={form.proof} onChange={e => set('proof', e.target.value)}
+                  placeholder="e.g. 3 paying customers ($12k MRR), 6 LOIs, featured in Fintech Weekly. Don't make anything up."
+                  className="w-full paper hairline rounded-xl p-3 focus-ring text-sm"
+                  style={{ resize: 'vertical', lineHeight: 1.55 }} />
               </div>
               <NavRow onBack={() => setStep('basics')} onNext={() => setStep('purpose')} />
             </>}
@@ -457,12 +491,89 @@ export default function Home() {
                 </div>
               </div>
 
-              <NavRow onBack={() => setStep('purpose')} onNext={() => generate()} nextLabel="Build the deck →" />
+              <NavRow onBack={() => setStep('purpose')} onNext={() => setStep('assets')} />
+            </>}
+
+            {/* ── Step 5: Assets ─────────────────────────────────────── */}
+            {step === 'assets' && <>
+              <h1 className="text-[28px] font-semibold tracking-tight">Drop your visuals</h1>
+              <p className="mt-2 text-sm" style={{ color: 'var(--ink-muted)' }}>
+                The more we have, the more the deck looks like you, not a template.
+                All optional — but every upload sharpens the result.
+              </p>
+
+              <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                <AssetSlot label="Logo" hint="PNG or SVG, transparent if possible"
+                  value={form.logoData} onChange={v => set('logoData', v)} />
+                <AssetSlot label="Hero / homepage screenshot" hint="What people see first on your site"
+                  value={form.heroData} onChange={v => set('heroData', v)} />
+                <AssetSlot label="Product screenshot" hint="A real screen — we'll style it into the deck"
+                  value={form.productData} onChange={v => set('productData', v)} />
+                <AssetSlot label="Founder photo" hint="Optional. Goes on the team slide."
+                  value={form.founderPhoto} onChange={v => set('founderPhoto', v)} />
+              </div>
+
+              {error && <div className="mt-4 sd-error">{error}</div>}
+
+              <NavRow onBack={() => setStep('brand')} onNext={() => generate()} nextLabel="Build the deck →" />
             </>}
 
           </div>
         </div>
       </main>
+    </div>
+  )
+}
+
+/* ── Asset upload slot ─────────────────────────────────────────────── */
+
+function AssetSlot({ label, hint, value, onChange }:
+  { label: string; hint: string; value?: string; onChange: (v: string|undefined) => void }) {
+  const [busy, setBusy] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (file: File) => {
+    setBusy(true)
+    try {
+      const img = await compressToDataUrl(file)
+      onChange(img.dataUrl)
+    } catch (e) {
+      console.error('Image compress failed', e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="paper hairline rounded-xl p-4">
+      <div className="text-[13px] font-medium">{label}</div>
+      <div className="text-[11px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>{hint}</div>
+
+      {value ? (
+        <div className="mt-3 relative">
+          <img src={value} alt={label}
+            className="w-full h-24 object-cover rounded-lg hairline"
+            style={{ background: '#f4f4f5' }} />
+          <button onClick={() => onChange(undefined)}
+            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white text-[12px] hover:bg-black/80">
+            ×
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="mt-3 w-full h-24 rounded-lg text-[12px] focus-ring transition-all"
+          style={{
+            border: '1.5px dashed var(--line)',
+            color: 'var(--ink-muted)',
+            background: busy ? 'var(--surface)' : 'transparent',
+          }}>
+          {busy ? 'Compressing…' : '+ Drop or click to upload'}
+        </button>
+      )}
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
     </div>
   )
 }
