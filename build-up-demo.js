@@ -20,18 +20,17 @@ const out = {
 };
 fs.writeFileSync('./public/demo-up.json', JSON.stringify(out, null, 2));
 const c = data.brandWorld.colour;
+console.log('=== FINAL PALETTE (post-critic) ===');
 console.log('background:', c.background);
 console.log('surface:   ', c.surface);
 console.log('primary:   ', c.primary);
 console.log('accent:    ', c.accent);
 console.log('text:      ', c.text);
 console.log('textMuted: ', c.textMuted);
-console.log('heading:   ', data.brandWorld.typography.heading);
-console.log('body:      ', data.brandWorld.typography.body);
-console.log('mode:      ', data.brandWorld.deckMode);
-console.log('radius:    ', data.brandWorld.radius);
-console.log('cardStyle: ', data.brandWorld.cardStyle);
-console.log('btnStyle:  ', data.brandWorld.buttonStyle);
-console.log('motifs:    ', data.brandWorld.motifs);
-console.log('\nvisualDirection:\n', data.brandWorld.visualDirection);
-console.log('\nwhyThisWorks:\n', data.brandWorld.whyThisWorks);
+console.log('\n=== DESIGN CRITIC ===');
+if (data.designCritique) {
+  console.log('failures:  ', JSON.stringify(data.designCritique.failures, null, 2));
+  console.log('reasoning: ', data.designCritique.reasoning || '(none — no fixes needed)');
+} else {
+  console.log('(no designCritique field returned)');
+}
