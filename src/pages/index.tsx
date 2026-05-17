@@ -250,7 +250,7 @@ export default function Home() {
             Building {form.company}
           </div>
           <div style={{ fontSize: 13, color: 'var(--ink-muted)', lineHeight: 1.6 }}>
-            Claude is reading your story and composing slides
+            Reading your story and composing slides
           </div>
         </div>
       </div>
@@ -466,7 +466,7 @@ export default function Home() {
               <div className="mt-6">
                 <div className="text-[13px] mb-1" style={{ color: 'var(--ink-muted)' }}>Narrative framework <span className="text-[11px]">(optional)</span></div>
                 <div className="text-[12px] mb-2" style={{ color: 'var(--ink-muted)' }}>
-                  How the story connects between slides. Auto lets Claude pick.
+                  How the story connects between slides. Auto lets the system pick.
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => set('frameworkId', undefined as any)}

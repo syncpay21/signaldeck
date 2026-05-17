@@ -557,12 +557,12 @@ export default function Workspace({
           </Card>
 
           <Card className="p-6">
-            <div className="font-semibold tracking-tight mb-1">AI workbench</div>
-            <div className="text-[12px] ink-muted mb-5">Model split powering this deck</div>
+            <div className="font-semibold tracking-tight mb-1">Generation pipeline</div>
+            <div className="text-[12px] ink-muted mb-5">Stages that built this deck</div>
             <div className="space-y-3">
-              <TipCard tip={{ icon:'C', severity:'info', title:'Claude Sonnet 4.6 — strategy', body:'Story parsing, VC lens, structure, critique, and objection simulation.' }} />
-              <TipCard tip={{ icon:'G', severity:'good', title:'GPT-4o — writing layer',       body:'Slide copy, speaker notes, follow-up messages, tone variations.' }} />
-              <TipCard tip={{ icon:'JS', severity:'warn', title:'Deterministic renderer',       body:'AI returns structured JSON; the app renders safe templates into real HTML.' }} />
+              <TipCard tip={{ icon:'S', severity:'info', title:'Strategy engine',       body:'Story parsing, VC lens, structure, critique, and objection simulation.' }} />
+              <TipCard tip={{ icon:'W', severity:'good', title:'Writing layer',         body:'Slide copy, speaker notes, follow-up messages, tone variations.' }} />
+              <TipCard tip={{ icon:'JS', severity:'warn', title:'Deterministic renderer', body:'Generation returns structured JSON; the app renders safe templates into real HTML.' }} />
             </div>
           </Card>
         </div>
@@ -572,7 +572,7 @@ export default function Workspace({
           <Card className="p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="font-semibold tracking-tight">Run GPT-4o pitch coach</div>
+                <div className="font-semibold tracking-tight">Run pitch coach</div>
                 <div className="text-[13px] ink-muted mt-1 leading-relaxed">Rebuilds headlines to 2–5 words, sharpens bullets, removes buzzwords.</div>
               </div>
               {isRefining
@@ -595,10 +595,10 @@ export default function Workspace({
       websiteUrl && { type:'Brand',   title: websiteUrl.replace(/^https?:\/\//,''), value:'Brand colours and fonts extracted',     status:'Ready',           confidence:'High',   tag:'good', body:'Website fetched, theme colours and fonts pulled in to drive the deck theme.' },
       realStory  && { type:'Story',   title:'Founder story',              value: realStory.slice(0,80)+(realStory.length>80?'…':''),status:'Used in deck',    confidence:'High',   tag:'good', body:realStory },
                     { type:'Voice',   title:'Voice profile',              value:'Extracted tone from your story input',              status:'Used in audit',  confidence:'Medium', tag:'info', body:'Voice match used for follow-up email generation and speaker notes tone.' },
-                    { type:'Deck',    title:'Claude Sonnet 4.6 output',   value:`Generated ${realSlides.length}-slide deck`,        status:'Used in deck',    confidence:'High',   tag:'good', body:'Structured slide JSON returned by Claude, rendered through the deterministic template.' },
-      isRefined && { type:'Deck',    title:'GPT-4o pitch coach',          value:'Refined all copy — headlines, bullets, lede',       status:'Applied',         confidence:'High',   tag:'good', body:'Pitch coach pass rewrote headlines to 2–5 words and sharpened proof claims.' },
+                    { type:'Deck',    title:'Generated deck',              value:`Generated ${realSlides.length}-slide deck`,        status:'Used in deck',    confidence:'High',   tag:'good', body:'Structured slide JSON returned by the strategy engine, rendered through the deterministic template.' },
+      isRefined && { type:'Deck',    title:'Pitch coach pass',            value:'Refined all copy — headlines, bullets, lede',       status:'Applied',         confidence:'High',   tag:'good', body:'Pitch coach pass rewrote headlines to 2–5 words and sharpened proof claims.' },
       // Inspo links from this session
-      ...inspoLinks.map(l => ({ type:'Inspo', title: l.title || l.url, value: l.url, status:'Reference', confidence:'Medium', tag:'info', body:`Inspiration link — Claude will pull tone + structure from this.` })),
+      ...inspoLinks.map(l => ({ type:'Inspo', title: l.title || l.url, value: l.url, status:'Reference', confidence:'Medium', tag:'info', body:`Inspiration link — tone + structure pulled from this.` })),
       // Inspo images uploaded this session
       ...inspoImages.map((_, i) => ({ type:'Inspo', title:`Inspiration image ${i+1}`, value:'(uploaded)', status:'Reference', confidence:'Medium', tag:'info', body:'Uploaded image. Used as a visual reference for layout and feel.' })),
     ].filter(Boolean)
@@ -1033,11 +1033,11 @@ export default function Workspace({
         {/* Per-slide AI chat */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold tracking-tight">Ask Claude to change this slide</div>
+            <div className="font-semibold tracking-tight">Edit this slide with AI</div>
             <Pill tone="soft">{cur?.kind || cur?.key}</Pill>
           </div>
           <div className="text-[12px] ink-muted mb-3 leading-relaxed">
-            Tell Claude what to change in plain English. The headline, the bullets, the tone — anything. Edits apply to slide {activeSlide+1} only.
+            Tell us what to change in plain English. The headline, the bullets, the tone — anything. Edits apply to slide {activeSlide+1} only.
           </div>
 
           {/* Chat log for this slide */}
@@ -1047,7 +1047,7 @@ export default function Workspace({
                 <div key={i} className="text-[12px] grid grid-cols-[60px_1fr] gap-2 p-2 rounded-lg" style={{ background:'var(--surface)' }}>
                   <span className="ink-muted">You</span>
                   <span>"{entry.instruction}"</span>
-                  <span className="ink-muted" style={{ color: liveAccent }}>Claude</span>
+                  <span className="ink-muted" style={{ color: liveAccent }}>AI</span>
                   <span className="ink-muted">{entry.changeNote}</span>
                 </div>
               ))}

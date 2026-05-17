@@ -299,7 +299,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try { parsed = JSON.parse(jsonStr) }
     catch {
       const m = jsonStr.match(/\{[\s\S]*\}/)
-      if (!m) return res.status(500).json({ error: 'Claude returned unparseable JSON' })
+      if (!m) return res.status(500).json({ error: 'Generator returned unparseable response' })
       parsed = JSON.parse(m[0])
     }
 
