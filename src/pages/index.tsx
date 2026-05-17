@@ -886,9 +886,11 @@ export default function Home() {
 function AssetSlot({ label, hint, value, onChange }:
   { label: string; hint: string; value?: string; onChange: (v: string|undefined) => void }) {
   const [busy, setBusy] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) return
     setBusy(true)
     try {
       const img = await compressToDataUrl(file)
@@ -900,8 +902,40 @@ function AssetSlot({ label, hint, value, onChange }:
     }
   }
 
+  // Drag & drop handlers — accept the first image file from the drop.
+  // Also catches paste events (Cmd/Ctrl+V) when the slot is the drop target.
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    if (!dragOver) setDragOver(true)
+  }
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+  }
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'))
+    if (file) handleFile(file)
+  }
+  const onPaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find(i => i.type.startsWith('image/'))
+    const file = item?.getAsFile()
+    if (file) { e.preventDefault(); handleFile(file) }
+  }
+
   return (
-    <div className="paper hairline rounded-xl p-4">
+    <div
+      className="paper hairline rounded-xl p-4 transition-colors"
+      style={dragOver ? { borderColor: 'var(--ink)', background: 'var(--surface)' } : undefined}
+      onDragOver={onDragOver}
+      onDragEnter={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onPaste={onPaste}
+      tabIndex={-1}
+    >
       <div className="text-[13px] font-medium">{label}</div>
       <div className="text-[11px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>{hint}</div>
 
@@ -921,11 +955,11 @@ function AssetSlot({ label, hint, value, onChange }:
           disabled={busy}
           className="mt-3 w-full h-24 rounded-lg text-[12px] focus-ring transition-all"
           style={{
-            border: '1.5px dashed var(--line)',
-            color: 'var(--ink-muted)',
-            background: busy ? 'var(--surface)' : 'transparent',
+            border: dragOver ? '1.5px dashed var(--ink)' : '1.5px dashed var(--line)',
+            color: dragOver ? 'var(--ink)' : 'var(--ink-muted)',
+            background: dragOver ? 'rgba(0,0,0,0.03)' : (busy ? 'var(--surface)' : 'transparent'),
           }}>
-          {busy ? 'Compressing…' : '+ Drop or click to upload'}
+          {busy ? 'Compressing…' : (dragOver ? 'Drop image here' : '+ Drop, paste, or click to upload')}
         </button>
       )}
       <input ref={inputRef} type="file" accept="image/*" className="hidden"
