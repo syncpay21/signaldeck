@@ -19,6 +19,7 @@ interface FormData {
   audience: string
   goal: string
   websiteUrl: string
+  competitors: string     // free-text — comparable companies the founder lists (URLs or names, one per line). Andreas gap-fills.
   accentColor: string
   bgColor: string
   isDark: boolean
@@ -49,6 +50,7 @@ const empty: FormData = {
   realStory: '', customers: '', proof: '', promptsUsed: [],
   audience: 'Seed VC', goal: 'Raise',
   websiteUrl: '',
+  competitors: '',
   accentColor: '#0F1115', bgColor: '#ffffff', isDark: false,
   founderName: '', founderRole: '', domain: '',
 }
@@ -529,6 +531,17 @@ export default function Home() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Competitors — Andreas reads what you list + gap-fills with 2-3 more */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Competitors <span className="text-[11px] opacity-60">(optional — Andreas will research more if you skip)</span></div>
+                <textarea value={form.competitors}
+                  onChange={e => set('competitors', e.target.value)}
+                  placeholder={'stripe.com\nbrex.com\nMercury'}
+                  rows={3}
+                  className="w-full paper hairline rounded-xl px-3 py-2 focus-ring text-sm resize-y" />
+                <div className="text-[11px] mt-1.5 opacity-60">URLs or names, one per line. Andreas scrapes each and uses positioning to ground your Competition + Market slides.</div>
               </div>
 
               {/* Manual colour picker */}

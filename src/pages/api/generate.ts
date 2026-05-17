@@ -10,6 +10,7 @@ import { resolveIndustry, getIndustryGuide } from '../../lib/industry-guide'
 import { validateNarrative, shouldApplySuggestion } from '../../lib/pipeline/haiku-validator'
 import { pickStrategicNarrative, shouldApplyStrategistPick } from '../../lib/pipeline/strategist'
 import { critiqueAndRevise, shouldApplyRevisions } from '../../lib/pipeline/critic'
+import { runResearch, formatResearchForPrompt } from '../../lib/pipeline/researcher'
 import { NARRATIVE_CONFIGS } from '../../lib/narrative-engine'
 import { polishDeck } from '../../lib/pipeline/gpt4o-polish'
 import { extractBrand } from '../../lib/pipeline/brand-extractor'
@@ -97,7 +98,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       region,
       teamSize,
     })
+    /* ─── STAGE A0.5 — Andreas the researcher (best-effort) ──────────
+       Sonnet identifies 2-3 likely competitors (gap-filling whatever
+       the founder named), then scrapes each for positioning. Result
+       is injected into the writing prompt so the Competition + Market
+       slides land grounded in real comparables, not vague generalities.
+       Failure is non-blocking. Gated by ENABLE_RESEARCHER=false. */
+    let researchResult: any = null
+    if (process.env.ENABLE_RESEARCHER !== 'false') {
+      researchResult = await runResearch(anthropic, {
+        company:     input.company,
+        industry,
+        oneLiner:    input.oneLiner,
+        realStory:   input.realStory,
+        competitors: input.competitors,
+      }).catch(() => null)
+    }
+    const researchBlock = formatResearchForPrompt(researchResult)
     const userPrompt = buildGenerationPrompt({ ...input, audience, goal, stage, industry }, narrative, originalSlideIds)
+      + (researchBlock ? `\n\n${researchBlock}` : '')
 
     /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand HTML) + STAGE B0.5 (Vision)
        — all run in parallel. Vision only fires when the user uploaded
@@ -262,6 +281,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       qualityReport,
       metadata: {
         /* Track A — content */
+        stage_a0_5: { researcher: researchResult },
         stage_a1:   { narrative: narrative.id, slideOrder: originalSlideIds },
         stage_a1_5: { strategist: strategistResult, applied: strategistApplied },
         stage_a2:   { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
