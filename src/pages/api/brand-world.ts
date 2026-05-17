@@ -285,18 +285,26 @@ function parseDataUrl(dataUrl: string): { mediaType: string; data: string } | nu
   return { mediaType: m[1], data: m[2] }
 }
 
-/** Fetch a remote image (e.g. og:image) and inline it as a base64 data URL. */
+/** Fetch a remote image (e.g. og:image) and inline it as a base64 data URL.
+ *  Anthropic vision only accepts jpeg / png / gif / webp — SVG and other
+ *  formats are rejected with HTTP 400, so we filter them here. */
 async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SignalDeck/1.0; +https://signaldeck.app)' },
     signal: AbortSignal.timeout(8000),
   })
   if (!res.ok) return null
-  const contentType = res.headers.get('content-type') || 'image/jpeg'
-  if (!contentType.startsWith('image/')) return null
+  const rawType = (res.headers.get('content-type') || 'image/jpeg').split(';')[0].trim().toLowerCase()
+  const VISION_OK = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'])
+  // Some servers mislabel — also fall back to URL extension when content-type
+  // is generic like application/octet-stream.
+  const extMatch = url.toLowerCase().match(/\.(jpe?g|png|gif|webp|svg|ico)(\?|$)/)
+  const extType = extMatch ? `image/${extMatch[1] === 'jpg' ? 'jpeg' : extMatch[1]}` : null
+  const finalType = VISION_OK.has(rawType) ? rawType : (extType && VISION_OK.has(extType) ? extType : null)
+  if (!finalType) return null
   const buf = Buffer.from(await res.arrayBuffer())
   if (buf.length > 4_500_000) return null  // Anthropic vision cap is ~5MB; bail before sending
-  return `data:${contentType};base64,${buf.toString('base64')}`
+  return `data:${finalType};base64,${buf.toString('base64')}`
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
