@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { getTemplate, VC_PROFILES, personalize, extractWedge, type Template, type PersonalCtx } from '@/lib/templates'
 import { brandWorldToCssVars, type BrandWorld } from '@/lib/brand-world'
 import { getIconSet } from '@/lib/icons'
+import { brandWorldMotifBackground } from '@/lib/motifs'
 import { FRAMEWORKS } from '@/lib/frameworks/library'
 import { DARK_FRAMEWORKS } from '@/lib/frameworks/dark'
 import { rankFrameworks, recommendCompanions } from '@/lib/frameworks/scoring'
@@ -473,7 +474,7 @@ export default function Workspace({
           <div className="relative grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
             <div>
               <MiniLabel>Project command centre</MiniLabel>
-              <h1 className="text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight mt-2">
+              <h1 className="display-heading text-[28px] sm:text-[34px] font-semibold tracking-tight leading-tight mt-2">
                 From rough founder notes to a live <span style={{ color: liveAccent }}>investor deck</span>
               </h1>
               <p className="ink-muted mt-3 text-[14px] leading-relaxed max-w-lg">
@@ -1845,7 +1846,7 @@ export default function Workspace({
           <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
             <div>
               <MiniLabel>Presentation mode</MiniLabel>
-              <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
+              <h1 className="display-heading text-[24px] sm:text-[28px] font-semibold tracking-tight leading-tight mt-2">
                 Turn the deck into a <span style={{ color: liveAccent }}>talk track</span>
               </h1>
               <p className="ink-muted mt-2 text-[14px] leading-relaxed max-w-lg">
@@ -2316,12 +2317,39 @@ export default function Workspace({
   // `var(--border)`, `var(--paper)`, `var(--accent)`, `var(--ink)`, etc.
   // automatically picks up the generated visual world. Aliases mean the
   // legacy class system (paper, hairline, ink-muted) keeps working.
+
+  // Showcase screens get the brand-world's motif background + an optional
+  // soft gradient for editorial/gallery layouts. Information-dense screens
+  // (audit, claims, signals, sources) stay flat so density isn't disturbed.
+  const SHOWCASE_SCREENS = new Set(['overview', 'theme', 'style', 'present'])
+  const isShowcase = !!brandWorld && SHOWCASE_SCREENS.has(active)
+  const motifLayer = isShowcase ? brandWorldMotifBackground(brandWorld!.motifs, brandWorld!.colour.primary).css : ''
+  const wantsGradient = isShowcase && (brandWorld!.layoutStyle === 'editorial-spacious' || brandWorld!.layoutStyle === 'gallery-expressive')
+  const gradientLayer = wantsGradient ? 'radial-gradient(at 20% 0%, var(--primary-soft), transparent 50%)' : ''
+  const layered = [gradientLayer, motifLayer].filter(Boolean).join(', ')
+
   const worldStyle: any = brandWorld
-    ? { ...brandWorldToCssVars(brandWorld), background: 'var(--bg)', color: 'var(--text)' }
+    ? {
+        ...brandWorldToCssVars(brandWorld),
+        background: 'var(--bg)',
+        color: 'var(--text)',
+        ...(layered ? { backgroundImage: layered, backgroundRepeat: 'no-repeat, repeat', backgroundSize: 'auto, auto' } : {}),
+      }
     : { background: 'var(--bg)', color: 'var(--ink)' }
 
   return (
     <div className="flex h-screen overflow-hidden" style={worldStyle}>
+      {brandWorld && (
+        <style>{`
+          .display-heading {
+            font-family: var(--font-heading), system-ui, sans-serif !important;
+            font-weight: var(--heading-weight) !important;
+            letter-spacing: var(--heading-tracking) !important;
+            font-size: clamp(36px, 5vw, 64px) !important;
+            line-height: 1.05 !important;
+          }
+        `}</style>
+      )}
       <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--line)] bg-[var(--paper)]">
         <SidebarContent />
       </aside>
