@@ -275,20 +275,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const productImage = typeof input.productData === 'string' && input.productData.startsWith('data:image') ? input.productData : null
 
     // If the user gave a websiteUrl but didn't upload screenshots, fetch the
-    // site's og:image + brand colours so Sonnet doesn't infer blind.
+    // site's og:image + extracted logo + brand colours so Sonnet doesn't infer
+    // blind. Logo is fetched even when transparent — PNG alpha is preserved in
+    // the base64 round-trip; Sonnet can read the mark on any background.
     let extracted: ExtractedBrand | null = null
     let ogImageDataUrl: string | null = null
+    let extractedLogoDataUrl: string | null = null
     if (input.websiteUrl && !heroImage) {
       extracted = await extractBrand(input.websiteUrl).catch(() => null)
       if (extracted?.ogImage) {
         ogImageDataUrl = await fetchImageAsDataUrl(extracted.ogImage).catch(() => null)
+      }
+      // Only fetch from the URL if the user didn't already upload a logo
+      if (extracted?.logoUrl && !logoImage) {
+        extractedLogoDataUrl = await fetchImageAsDataUrl(extracted.logoUrl).catch(() => null)
       }
     }
 
     const userTextPrompt = buildUserPrompt(input, extracted)
     const userContent: any[] = []
     // Attach images first so the model sees them before reading text.
-    for (const img of [heroImage, ogImageDataUrl, logoImage, productImage].filter(Boolean) as string[]) {
+    // Order matters: user-uploaded hero/logo first, then extracted og/logo.
+    const allImages = [heroImage, ogImageDataUrl, logoImage, extractedLogoDataUrl, productImage]
+    for (const img of allImages.filter(Boolean) as string[]) {
       const parsed = parseDataUrl(img)
       if (parsed) {
         userContent.push({ type: 'image', source: { type: 'base64', media_type: parsed.mediaType as any, data: parsed.data } })

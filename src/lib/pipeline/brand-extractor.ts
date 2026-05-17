@@ -178,7 +178,11 @@ function normalizeHex(hex: string): string | null {
   return hex
 }
 
-/** Split logo (small mark) from og:image (large hero) — they have different uses. */
+/** Split logo (small mark) from og:image (large hero) — they have different uses.
+ *  Prefers: og:logo (rare but explicit) → apple-touch-icon (high-res, supports
+ *  transparency) → <img> tagged as logo → favicon → /favicon.ico fallback.
+ *  Inline SVG logos are NOT returned here (no URL) — the og:image and apple-
+ *  touch-icon still cover the visual signal for Sonnet's vision pass. */
 function extractLogoAndOg(html: string, base: string): { logo: string | null; og: string | null } {
   const resolve = (rel: string) => {
     try { return new URL(rel, base).href } catch { return null }
@@ -188,14 +192,33 @@ function extractLogoAndOg(html: string, base: string): { logo: string | null; og
               || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
   const og = ogMatch?.[1] ? resolve(ogMatch[1]) : null
 
-  // Prefer apple-touch-icon (high-res) → icon → /favicon.ico
+  // 1. Explicit og:logo (Schema.org / OpenGraph extension — most authoritative)
+  const ogLogo = html.match(/<meta[^>]+property=["']og:logo["'][^>]+content=["']([^"']+)["']/i)
+             || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:logo["']/i)
+  if (ogLogo?.[1]) return { logo: resolve(ogLogo[1]), og }
+
+  // 2. Apple touch icon — 180×180 PNG, usually with brand colour + supports
+  // transparency. Best non-explicit signal.
   const apple = html.match(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)["']/i)
              || html.match(/<link[^>]+href=["']([^"']+)["'][^>]+rel=["']apple-touch-icon["']/i)
   if (apple?.[1]) return { logo: resolve(apple[1]), og }
 
+  // 3. <img> tags whose src/alt/class look like a logo. Catches transparent
+  // PNGs embedded in the header (Up Bank's case — yellow mark on transparent bg).
+  const imgRe = /<img\b[^>]*>/gi
+  let im: RegExpExecArray | null
+  while ((im = imgRe.exec(html)) !== null) {
+    const tag = im[0]
+    if (!/logo|brand|wordmark/i.test(tag)) continue
+    const srcMatch = tag.match(/\bsrc=["']([^"']+)["']/i)
+    if (srcMatch?.[1]) return { logo: resolve(srcMatch[1]), og }
+  }
+
+  // 4. Standard icon link
   const fav = html.match(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)["']/i)
   if (fav?.[1]) return { logo: resolve(fav[1]), og }
 
+  // 5. /favicon.ico last-resort
   try { return { logo: new URL('/favicon.ico', base).href, og } } catch { return { logo: null, og } }
 }
 
