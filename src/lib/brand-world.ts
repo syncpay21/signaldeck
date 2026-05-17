@@ -66,6 +66,16 @@ export type DataVizStyle =
   | 'sparkline'             // dev / api dashboards
   | 'editorial-chart'       // hand-curated chart
 
+/* Overall visual ambition of the rendered chrome. Drives whether the workspace
+   feels "premium dark with glow + watermark + mono labels" or "minimal flat
+   surfaces". Maps from brand personality / category. Restrained brands stay
+   simple; bold data-led brands get the full vc_aware-style polish. */
+export type VisualRichness =
+  | 'restrained'            // legal / luxury / healthcare / climate — minimal
+  | 'balanced'              // most B2B / SaaS — clean, one accent
+  | 'rich'                  // consumer / creative / sports — vibrant, motifs visible
+  | 'maximal'               // fintech-data-led / dev-tools / command — full polish
+
 export interface BrandWorld {
   /* ─── Read of the company ──────────────────────────────────── */
   industry:           string                  // canonical key — fintech / sports / legal / climate / ...
@@ -113,6 +123,17 @@ export interface BrandWorld {
   backgroundSystem: string                    // 1-sentence: "subtle 64px grid, no gradient blobs"
   radius:           number                    // px — corner radius for cards
   density:          'tight' | 'normal' | 'spacious'
+
+  /* ─── Visual richness — drives optional polish layers ─────── */
+  visualRichness:   VisualRichness
+  effects: {
+    gridOverlay:    boolean                    // subtle 64px grid behind content
+    radialAmbient:  boolean                    // soft radial color washes in bg
+    heroWatermark:  boolean                    // giant condensed word behind hero
+    monoLabels:     boolean                    // MiniLabels in mono + uppercase tracking
+    glow:           boolean                    // primary buttons + status dots get colored shadow
+    grainOverlay:   boolean                    // subtle SVG noise overlay (premium dark)
+  }
 
   /* ─── Deck-specific ────────────────────────────────────────── */
   deckTheme:        string                    // 1-sentence vibe for the rendered HTML deck
@@ -209,6 +230,16 @@ export const NEUTRAL_WORLD: BrandWorld = {
   backgroundSystem: 'plain white, no patterns',
   radius:           14,
   density:          'normal',
+
+  visualRichness:   'balanced',
+  effects: {
+    gridOverlay:    false,
+    radialAmbient:  false,
+    heroWatermark:  false,
+    monoLabels:     false,
+    glow:           false,
+    grainOverlay:   false,
+  },
 
   deckTheme:        'Neutral starting deck — overridden once the world generates.',
   deckMode:         'light',

@@ -68,6 +68,15 @@
     "backgroundSystem": "Warm off-white #F3F2EF page fill, white surface cards with 1px rgba border and subtle 8px drop shadow, no gradient blobs or texture",
     "radius":           8,
     "density":          "normal",
+    "visualRichness":   "balanced",
+    "effects": {
+      "gridOverlay":    false,
+      "radialAmbient":  true,
+      "heroWatermark":  false,
+      "monoLabels":     false,
+      "glow":           false,
+      "grainOverlay":   false
+    },
     "deckTheme":        "A polished LinkedIn feed and profile deck — white cards on warm off-white, #0A66C2 primary actions, Source Sans 3 throughout, career-data motifs, no decoration that doesn't earn its place",
     "deckMode":         "light",
     "origin": {

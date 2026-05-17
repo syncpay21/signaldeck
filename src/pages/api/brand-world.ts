@@ -137,6 +137,15 @@ OUTPUT — return EXACTLY this JSON, no markdown fences. Every field is required
   "backgroundSystem": "<1-sentence description — 'subtle 64px grid, no gradient blobs'>",
   "radius": <number — 4 for sharp, 14 for clean, 22 for friendly>,
   "density": "<tight | normal | spacious>",
+  "visualRichness": "<restrained | balanced | rich | maximal>",
+  "effects": {
+    "gridOverlay":   <true | false>,
+    "radialAmbient": <true | false>,
+    "heroWatermark": <true | false>,
+    "monoLabels":    <true | false>,
+    "glow":          <true | false>,
+    "grainOverlay":  <true | false>
+  },
   "deckTheme": "<1-sentence vibe for the rendered HTML deck>",
   "deckMode":  "<light | dark>",
   "origin": {
@@ -144,6 +153,49 @@ OUTPUT — return EXACTLY this JSON, no markdown fences. Every field is required
     "fontsFrom":   "<detected | industry-default | override>"
   }
 }
+
+VISUAL RICHNESS — how much polish does the chrome get?
+  Match the brand's actual identity. Do not give every brand the same level of
+  visual ambition. A serious legal firm and a fintech-bold trading platform
+  must NOT render with the same density of effects.
+
+  - "restrained" → minimal embellishment. All effects false.
+    Use for: legal, healthcare, climate, luxury hospitality, professional
+    services, government, education (early-childhood).
+    Visual: hairline borders, calm typography, plenty of whitespace, no glow,
+    no watermarks, no grid overlay. Trust comes from clarity, not flair.
+
+  - "balanced" → clean with one accent. radialAmbient may be true; the rest
+    usually false. Default for most brands you can't pin to another category.
+    Use for: B2B SaaS, productivity tools, mainstream consumer (Notion-style),
+    most "modern professional" brands. LinkedIn is balanced.
+
+  - "rich" → vibrant, motifs visible. heroWatermark + monoLabels + radialAmbient
+    typically true; gridOverlay + glow depend on brand.
+    Use for: consumer event apps (Luma), creative agencies, lifestyle/fashion,
+    sports/fitness, media. Brands that want to feel "alive".
+
+  - "maximal" → full polish. All effects typically true (plus grainOverlay when
+    deckMode is "dark"). Glow especially.
+    Use for: fintech-data-led-bold (Stripe, SyncPay-style trading/payments),
+    developer tools / API platforms (Vercel-style), command-ops / cyber, AI
+    research labs with a serious dark aesthetic. Brands where the chrome
+    itself is part of the credibility signal.
+
+EFFECT INDIVIDUAL GUIDANCE (when in doubt):
+  - gridOverlay: true for command/dev-tools/fintech-data and any "engineered"
+    feel. false for warm consumer / luxury / healthcare.
+  - radialAmbient: true when colours are vibrant enough to support it (any
+    brand with a real primary colour). false for pure-neutral palettes.
+  - heroWatermark: true for bold-condensed displays (Barlow, Oswald) where the
+    typeface itself reads as a graphic. false for editorial serif / humanist.
+  - monoLabels: true for technical / data / fintech / dev brands.
+    false for consumer / luxury / warm brands (clashes with their voice).
+  - glow: true for dark-mode brands with a saturated primary. false for light-
+    mode or pastel brands.
+  - grainOverlay: true ONLY for premium dark-mode brands (fintech-dark,
+    creative-agency-dark, luxury-night). false otherwise — would muddy light
+    surfaces.
 
 Before returning, ASK YOURSELF:
 - Would this same design fit 50 unrelated startups? If yes, revise.
@@ -296,6 +348,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       backgroundSystem: String(parsed.backgroundSystem || 'plain background, no patterns'),
       radius:           typeof parsed.radius === 'number' ? parsed.radius : 14,
       density:          parsed.density          || 'normal',
+
+      visualRichness:   (['restrained','balanced','rich','maximal'] as const).includes(parsed.visualRichness) ? parsed.visualRichness : 'balanced',
+      effects: {
+        gridOverlay:    Boolean(parsed.effects?.gridOverlay),
+        radialAmbient:  Boolean(parsed.effects?.radialAmbient),
+        heroWatermark:  Boolean(parsed.effects?.heroWatermark),
+        monoLabels:     Boolean(parsed.effects?.monoLabels),
+        glow:           Boolean(parsed.effects?.glow),
+        grainOverlay:   Boolean(parsed.effects?.grainOverlay),
+      },
 
       deckTheme:        String(parsed.deckTheme || ''),
       deckMode:         parsed.deckMode === 'dark' ? 'dark' : 'light',
