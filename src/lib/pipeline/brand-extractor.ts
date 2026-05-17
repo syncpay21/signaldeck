@@ -30,12 +30,17 @@ export interface ExtractedBrand {
   colors:         ExtractedColor[]
   logoUrl:        string | null  // small mark (favicon / apple-touch-icon)
   ogImage:        string | null  // social card / hero (much bigger, better for cover bg)
+  /** Additional photos / screenshots scraped from the page — hero <img>s,
+   *  twitter:image, og:image:secondary, big background-image URLs. Already
+   *  filtered to plausibly-brand-relevant images (skip tiny icons, tracking
+   *  pixels, sprite sheets). Up to ~6 URLs. */
+  extraImages:    string[]
   detectedFonts:  string[]
   domain:         string
   fetchedAt:      number  // ms epoch
 }
 
-const EMPTY: ExtractedBrand = { colors: [], logoUrl: null, ogImage: null, detectedFonts: [], domain: '', fetchedAt: 0 }
+const EMPTY: ExtractedBrand = { colors: [], logoUrl: null, ogImage: null, extraImages: [], detectedFonts: [], domain: '', fetchedAt: 0 }
 
 export async function extractBrand(websiteUrl?: string): Promise<ExtractedBrand> {
   if (!websiteUrl) return EMPTY
@@ -54,10 +59,71 @@ export async function extractBrand(websiteUrl?: string): Promise<ExtractedBrand>
     colors:        extractColors(html),
     logoUrl:       logo,
     ogImage:       og,
+    extraImages:   extractExtraImages(html, base, { skip: [logo, og] }),
     detectedFonts: extractFonts(html),
     domain:        base,
     fetchedAt:     Date.now(),
   }
+}
+
+/** Pull additional brand-relevant images from the page: twitter:image,
+ *  og:image:secondary, hero <img> tags with reasonable dimensions, and
+ *  CSS background-image URLs. Filtered to skip favicons, sprite sheets,
+ *  tracking pixels, and the already-returned logo/og. */
+function extractExtraImages(
+  html: string,
+  base: string,
+  opts: { skip: (string | null)[] },
+): string[] {
+  const resolve = (rel: string) => { try { return new URL(rel, base).href } catch { return null } }
+  const skipSet = new Set(opts.skip.filter(Boolean) as string[])
+  const seen = new Set<string>(skipSet)
+  const out: string[] = []
+  const push = (raw: string | null) => {
+    if (!raw) return
+    if (/\.(svg|ico)(\?|$)/i.test(raw)) return       // skip vector icons / favicons
+    if (/sprite|tracking|pixel|analytics|1x1|spacer/i.test(raw)) return
+    if (seen.has(raw)) return
+    seen.add(raw); out.push(raw)
+  }
+
+  // 1. twitter:image — separate from og:image, often a different shot
+  const twitter = html.match(/<meta[^>]+name=["']twitter:image[^"']*["'][^>]+content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image[^"']*["']/i)
+  if (twitter?.[1]) push(resolve(twitter[1]))
+
+  // 2. og:image:secondary / multiple og:image declarations
+  const ogAllRe = /<meta[^>]+property=["']og:image(?::secure_url|:url)?["'][^>]+content=["']([^"']+)["']/gi
+  let m: RegExpExecArray | null
+  while ((m = ogAllRe.exec(html)) !== null) push(resolve(m[1]))
+
+  // 3. <img src="..."> tags with width/height hints or in hero-ish containers
+  const imgRe = /<img\b[^>]*>/gi
+  while ((m = imgRe.exec(html)) !== null) {
+    const tag = m[0]
+    if (/loading=["']lazy/i.test(tag) && !/hero|banner|cover|feature/i.test(tag)) {
+      // lazy-loaded non-hero images are usually below the fold — skip
+      continue
+    }
+    const src = tag.match(/\bsrc=["']([^"']+)["']/i)?.[1]
+      || tag.match(/\bdata-src=["']([^"']+)["']/i)?.[1]
+    if (!src) continue
+    // Skip tiny pixel-perfect dimensions (icons / tracking)
+    const w = parseInt(tag.match(/\bwidth=["']?(\d+)/i)?.[1] || '0', 10)
+    const h = parseInt(tag.match(/\bheight=["']?(\d+)/i)?.[1] || '0', 10)
+    if ((w && w < 80) || (h && h < 80)) continue
+    push(resolve(src))
+    if (out.length >= 6) break
+  }
+
+  // 4. CSS background-image: url(...) from inline styles
+  const bgRe = /background(?:-image)?\s*:[^;"}]*url\(["']?([^"')]+)["']?\)/gi
+  while ((m = bgRe.exec(html)) !== null) {
+    push(resolve(m[1]))
+    if (out.length >= 6) break
+  }
+
+  return out.slice(0, 6)
 }
 
 async function fetchHtml(url: string): Promise<string> {

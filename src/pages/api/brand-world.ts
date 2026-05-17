@@ -281,22 +281,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let extracted: ExtractedBrand | null = null
     let ogImageDataUrl: string | null = null
     let extractedLogoDataUrl: string | null = null
+    let extraImageDataUrls: string[] = []
     if (input.websiteUrl && !heroImage) {
       extracted = await extractBrand(input.websiteUrl).catch(() => null)
       if (extracted?.ogImage) {
         ogImageDataUrl = await fetchImageAsDataUrl(extracted.ogImage).catch(() => null)
       }
-      // Only fetch from the URL if the user didn't already upload a logo
       if (extracted?.logoUrl && !logoImage) {
         extractedLogoDataUrl = await fetchImageAsDataUrl(extracted.logoUrl).catch(() => null)
+      }
+      // Additional photos / screenshots — fetch up to 4 in parallel. Anthropic
+      // vision accepts ~20 images per message but we cap aggressively to keep
+      // latency + cost predictable; the og:image + logo are usually enough,
+      // these are bonus context for cases like Up Bank where the hero illustrates
+      // the brand more than the OG card does.
+      if (extracted?.extraImages?.length) {
+        const fetched = await Promise.all(
+          extracted.extraImages.slice(0, 4).map(u => fetchImageAsDataUrl(u).catch(() => null)),
+        )
+        extraImageDataUrls = fetched.filter((x): x is string => Boolean(x))
       }
     }
 
     const userTextPrompt = buildUserPrompt(input, extracted)
     const userContent: any[] = []
     // Attach images first so the model sees them before reading text.
-    // Order matters: user-uploaded hero/logo first, then extracted og/logo.
-    const allImages = [heroImage, ogImageDataUrl, logoImage, extractedLogoDataUrl, productImage]
+    // Order matters: user-uploaded hero/logo first, then extracted og/logo,
+    // then extra page photos.
+    const allImages = [heroImage, ogImageDataUrl, logoImage, extractedLogoDataUrl, productImage, ...extraImageDataUrls]
     for (const img of allImages.filter(Boolean) as string[]) {
       const parsed = parseDataUrl(img)
       if (parsed) {
