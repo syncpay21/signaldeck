@@ -2320,7 +2320,7 @@ export default function Workspace({
                 <button key={item.id} onClick={() => { setActive(item.id); setSidebarOpen(false) }}
                   title={iconOnlySidebar ? item.label : undefined}
                   className={`w-full text-left h-9 ${iconOnlySidebar ? 'px-0 justify-center' : 'px-3'} rounded-xl flex items-center gap-2.5 text-[13px] font-medium transition-all`}
-                  style={isActive ? { background: liveAccent, color:'#fff' } : { color:'var(--ink)' }}>
+                  style={isActive ? { background: 'var(--primary-fill)', color:'#fff' } : { color:'var(--ink)' }}>
                   {Ico && <Ico className="w-4 h-4 flex-shrink-0"/>}
                   {!iconOnlySidebar && <span style={navLabelStyle}>{item.label}</span>}
                 </button>
