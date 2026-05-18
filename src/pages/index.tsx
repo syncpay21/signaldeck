@@ -248,6 +248,7 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error)
       setGeneratedHtml(data.html)
       setGeneratedContent(data.content)
+      if (typeof data.deckId === 'string') setDeckId(data.deckId)
       if (!frameworkId) setStep('canvas')
       return data
     } catch (e: any) {
