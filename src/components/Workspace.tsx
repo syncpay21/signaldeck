@@ -98,7 +98,7 @@ interface WorkspaceProps {
    WORKSPACE — per-industry adaptation via templates engine
 ═══════════════════════════════════════════════════════════════════ */
 export default function Workspace({
-  company, accentColor, generatedHtml, generatedContent, onRestart, onRegenerate,
+  company, accentColor, generatedHtml, generatedContent, deckId, onRestart, onRegenerate,
   logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry, brandWorld: propBrandWorld,
 }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
