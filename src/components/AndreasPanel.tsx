@@ -39,6 +39,7 @@ export interface AndreasPanelProps {
   auditData?:       any
   claimsData?:      any
   vcData?:          any
+  signalsData?:     any
   designCritique?:  any
 }
 
