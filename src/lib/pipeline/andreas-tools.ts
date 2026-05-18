@@ -21,8 +21,11 @@ import type { ConductorContext } from './conductor'
 export interface ToolSpec<TArgs = any, TResult = any> {
   name:        string
   description: string
-  /** A literal JSON-schema-ish string. Not parsed — just shown to the planner. */
+  /** A literal JSON-schema-ish string — kept for backward compat and debugging. */
   argsSchema:  string
+  /** Real JSON schema fed to Anthropic's tool_use API so the planner can't
+   *  emit malformed args or unknown keys. Type-checked at the API boundary. */
+  inputSchema: { type: 'object'; properties: Record<string, any>; required?: string[] }
   execute:     (args: TArgs, ctx: ConductorContext, origin: string) => Promise<TResult>
 }
 
@@ -43,8 +46,9 @@ async function fetchTool<T = any>(origin: string, path: string, body: any): Prom
 export const TOOL_CATALOG: ToolSpec[] = [
   {
     name: 'audit',
-    description: 'Score the current deck on clarity / momentum / evidence / conviction and return actionable tips. Use when the founder asks "how is my deck", "audit", "score me", "how investor-ready am I", or wants overall quality feedback.',
-    argsSchema: '{}',  // no args — pulls deckContent + company from context
+    description: 'Score the current deck on clarity / momentum / evidence / conviction and return actionable tips. Use when the founder asks "how is my deck", "audit", "score me", "how investor-ready am I". DO NOT call when an audit was already run — the result lives in planner context under "Audit already run".',
+    argsSchema:  '{}',
+    inputSchema: { type: 'object', properties: {} },
     execute: async (_args, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       return fetchTool(origin, '/api/audit', { content: ctx.deckContent, company: ctx.company || '' })
@@ -52,8 +56,9 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'claims',
-    description: 'Extract every factual or persuasive claim from the deck and classify each as supported / needs-source / risky / founder-thesis. Use when the founder asks "what claims do I have", "what needs proof", "what would an investor question", or wants due-diligence prep.',
-    argsSchema: '{}',
+    description: 'Extract every factual or persuasive claim from the deck and classify each as supported / needs-source / risky / founder-thesis. Use when the founder asks "what claims do I have", "what needs proof", "what would an investor question". DO NOT call when claims data is already in context.',
+    argsSchema:  '{}',
+    inputSchema: { type: 'object', properties: {} },
     execute: async (_args, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       return fetchTool(origin, '/api/claims', { content: ctx.deckContent, company: ctx.company || '' })
@@ -61,8 +66,17 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'edit_slide',
-    description: 'Surgically edit ONE specific field of ONE slide based on a plain-English instruction. SURGICAL — only the targeted field changes, nothing else. Use when the founder targets a specific element: "make the headline punchier", "shorten the lede on slide 3", "add a stat to the traction slide". The slide ID comes from activeSlideId (current slide) or from slideIds if the founder named a different slide. Include a targetField hint when the instruction clearly targets a specific field.',
-    argsSchema: '{ "slideId": "<id from slideIds e.g. s3_problem>", "instruction": "<the founder\'s targeted edit instruction>", "targetField": "<optional: headline|lede|bullets|stats|tag|notes>" }',
+    description: 'Surgically edit ONE specific field of ONE slide based on a plain-English instruction. SURGICAL — only the targeted field changes. The slideId MUST be a value present in context.slideIds; if the founder did not name a slide, default to activeSlideId. Include targetField when the instruction clearly targets one field (headline, lede, bullets, stats, tag, notes).',
+    argsSchema: '{ "slideId": "<id from slideIds e.g. s3_problem>", "instruction": "<the founder\'s targeted edit instruction>", "targetField": "<optional>" }',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        slideId:     { type: 'string', description: 'Slide id from context.slideIds. MUST match an existing slide.' },
+        instruction: { type: 'string', description: "The founder's edit instruction in plain English." },
+        targetField: { type: 'string', enum: ['headline','lede','bullets','stats','tag','notes','sub','cards','checks','steps','matrix'], description: 'Optional field hint for surgical edit.' },
+      },
+      required: ['slideId', 'instruction'],
+    },
     execute: async (args: { slideId: string; instruction: string; targetField?: string }, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       const currentContent = ctx.deckContent[args.slideId]
@@ -79,8 +93,15 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'vclens',
-    description: 'Read the deck through one of five investor personas: Seed VC, Series A, Angel, Strategic, Internal. Returns the partner\'s takeaways + objections. Use when the founder asks "what would a Series A partner say", "review through VC eyes", "what would [persona] think".',
+    description: 'Read the deck through one of five investor personas: Seed VC, Series A, Angel, Strategic, Internal. Returns the partner\'s takeaways + objections. Use when the founder asks "what would a Series A partner say", "review through VC eyes". DO NOT call when vcData is already in context for the SAME persona.',
     argsSchema: '{ "persona": "Seed VC | Series A | Angel | Strategic | Internal" }',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        persona: { type: 'string', enum: ['Seed VC','Series A','Angel','Strategic','Internal'], description: 'Investor persona to read the deck through.' },
+      },
+      required: ['persona'],
+    },
     execute: async (args: { persona?: string }, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       const persona = args.persona || ctx.audience || 'Seed VC'
@@ -93,8 +114,9 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'refine',
-    description: 'Pitch-coach polish across the WHOLE deck — tightens every headline (2-5 words), sharpens every bullet, removes buzzwords. Use when the founder asks to "polish", "tighten everything", "make it more investor-grade", "rewrite all the copy". Heavy operation — only call when the instruction is whole-deck scope, not single-slide.',
+    description: 'Pitch-coach polish across the WHOLE deck — tightens every headline, sharpens every bullet, removes buzzwords. Use when the founder asks to "polish", "tighten everything", "make it investor-grade", "rewrite all the copy". Heavy operation — only call for whole-deck scope, NOT single-slide (use edit_slide for one slide).',
     argsSchema: '{}',
+    inputSchema: { type: 'object', properties: {} },
     execute: async (_args, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       return fetchTool(origin, '/api/refine', {
@@ -109,8 +131,9 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'followup',
-    description: 'Draft the follow-up email the founder sends the morning after presenting to this investor. Written in the founder\'s voice. Use when the founder asks "write my follow-up", "draft a thank-you email", "email after the meeting".',
+    description: 'Draft the follow-up email the founder sends the morning after pitching this investor. Written in the founder\'s voice. Use when the founder asks "write my follow-up", "draft a thank-you email", "email after the meeting".',
     argsSchema: '{}',
+    inputSchema: { type: 'object', properties: {} },
     execute: async (_args, ctx, origin) => {
       if (!ctx.deckContent) throw new Error('No deck content in context')
       return fetchTool(origin, '/api/followup', {
@@ -123,8 +146,15 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'regenerate_brand_world',
-    description: 'Rebuild the visual brand world (colours, typography, layout, effects) for the workspace. Use when the founder asks for a brand-level change: "make it warmer / colder / more premium / less corporate", "shift to darker palette", "tone down the gradients", "match Stripe\'s aesthetic". Heavy operation — only call when the founder wants the WHOLE chrome rebuilt, not a single colour tweak.',
-    argsSchema: '{ "instruction": "<plain-English brand delta, e.g. \\"make it feel warmer\\"" }',
+    description: 'Rebuild the visual brand world (colours, typography, layout, effects). Use when the founder asks for a brand-LEVEL change: "make it warmer", "shift to darker palette", "match Stripe\'s aesthetic". Heavy. For tweaks (single colour, radius, density), suggest the Live Overrides panel instead of calling this.',
+    argsSchema: '{ "instruction": "<plain-English brand delta>" }',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        instruction: { type: 'string', description: 'Plain-English brand delta, e.g. "make it warmer" or "shift to darker, more premium palette".' },
+      },
+      required: ['instruction'],
+    },
     execute: async (args: { instruction?: string }, ctx, origin) => {
       return fetchTool(origin, '/api/brand-world', {
         company:    ctx.company || '',
@@ -139,8 +169,15 @@ export const TOOL_CATALOG: ToolSpec[] = [
   },
   {
     name: 'swap_framework',
-    description: 'Switch the deck\'s narrative framework (Jobs-to-be-Done, Value Prop Canvas, AARRR, Lean Canvas, etc.) and signal the workspace to regenerate. Use when the founder asks "rebuild this as Jobs framework", "try Value Prop", "what if Lean Canvas".',
-    argsSchema: '{ "frameworkId": "<id from frameworks catalog>" }',
+    description: 'Switch the deck\'s narrative framework (Jobs-to-be-Done, Value Prop Canvas, AARRR, Lean Canvas) and signal the workspace to regenerate. Use when the founder asks "rebuild as Jobs framework", "try Value Prop".',
+    argsSchema: '{ "frameworkId": "<id>" }',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        frameworkId: { type: 'string', enum: ['jobs-to-be-done','value-prop','aarrr','lean-canvas','startup-pitch','demo-day','narrative'], description: 'Framework id from the workspace catalog.' },
+      },
+      required: ['frameworkId'],
+    },
     execute: async (args: { frameworkId: string }, _ctx, _origin) => {
       if (!args.frameworkId) throw new Error('frameworkId required')
       return { frameworkId: args.frameworkId, directive: 'workspace_should_regenerate' }
@@ -149,7 +186,16 @@ export const TOOL_CATALOG: ToolSpec[] = [
   {
     name: 'update_demo',
     description: 'Change the Demo Layer between embed (live iframe), video (mp4), or screenshot. Use when the founder asks "switch to video demo", "use the product screenshot", "embed our staging URL".',
-    argsSchema: '{ "mode": "embed | video | screenshot", "url"?: "<url>", "caption"?: "<short caption>" }',
+    argsSchema: '{ "mode": "embed | video | screenshot", "url"?: "<url>", "caption"?: "<short>" }',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mode:    { type: 'string', enum: ['embed','video','screenshot'], description: 'Demo presentation mode.' },
+        url:     { type: 'string', description: 'URL for embed (staging URL) or video (mp4 source).' },
+        caption: { type: 'string', description: 'Short caption shown below the demo.' },
+      },
+      required: ['mode'],
+    },
     execute: async (args: { mode: string; url?: string; caption?: string }, _ctx, _origin) => {
       if (!['embed', 'video', 'screenshot'].includes(args.mode)) throw new Error('mode must be embed/video/screenshot')
       return { mode: args.mode, url: args.url || '', caption: args.caption || '', directive: 'workspace_should_update_demo' }

@@ -47,6 +47,10 @@ interface ChatMessage {
   role:        'founder' | 'andreas'
   text:        string
   toolsCalled?: { tool: string; why: string }[]
+  /** Per-tool result, including any failure reason. Used to colour the
+   *  tool chip red when a dispatch failed instead of silently showing it
+   *  as if it succeeded. */
+  rawResults?: Array<{ tool: string; result?: any; error?: string }>
   error?:      string
 }
 
@@ -107,6 +111,7 @@ export default function AndreasPanel(props: AndreasPanelProps) {
         role:        'andreas',
         text:        data.reply || '',
         toolsCalled: data.toolsCalled || [],
+        rawResults:  data.rawResults  || [],
       }])
     } catch (e: any) {
       setMessages(m => [...m, {
@@ -229,18 +234,24 @@ export default function AndreasPanel(props: AndreasPanelProps) {
             </div>
             {m.role === 'andreas' && m.toolsCalled && m.toolsCalled.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignSelf: 'flex-start' }}>
-                {m.toolsCalled.map((t, j) => (
-                  <span key={j} title={t.why}
-                    style={{
-                      fontSize: 10, fontFamily: 'var(--font-mono, ui-monospace, monospace)',
-                      padding: '2px 8px', borderRadius: 999,
-                      background: 'var(--primary-soft, rgba(0,0,0,0.06))',
-                      color: 'var(--primary, var(--text, #111))',
-                      letterSpacing: '0.04em',
-                    }}>
-                    {t.tool}
-                  </span>
-                ))}
+                {m.toolsCalled.map((t, j) => {
+                  // If a result with this tool failed, surface the failure as
+                  // a red chip rather than the default neutral chip.
+                  const result = m.rawResults?.find((r: any) => r.tool === t.tool)
+                  const failed = result && result.error
+                  return (
+                    <span key={j} title={failed ? `Failed: ${result.error}` : (t.why || t.tool)}
+                      style={{
+                        fontSize: 10, fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                        padding: '2px 8px', borderRadius: 999,
+                        background: failed ? 'rgba(176,50,43,0.12)' : 'var(--primary-soft, rgba(0,0,0,0.06))',
+                        color:      failed ? '#b0322b' : 'var(--primary, var(--text, #111))',
+                        letterSpacing: '0.04em',
+                      }}>
+                      {failed ? '⚠ ' : ''}{t.tool}
+                    </span>
+                  )
+                })}
               </div>
             )}
           </div>

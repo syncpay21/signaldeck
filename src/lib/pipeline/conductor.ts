@@ -67,35 +67,36 @@ export interface ToolResult {
 
 /* ─── Planner ─────────────────────────────────────────────────────── */
 
-function buildPlannerSystemPrompt(catalog: ToolSpec[]): string {
-  const toolList = catalog.map(t => (
-    `  - ${t.name}: ${t.description}\n    args schema: ${t.argsSchema}`
-  )).join('\n')
-
+function buildPlannerSystemPrompt(): string {
+  // Tool-use spec carries the per-tool descriptions and input_schema directly
+  // to the API, so the system prompt only needs to set the planner's job
+  // contract + the don't-re-dispatch-cached-tools rule.
   return `${ANDREAS_PERSONA}
 
 YOUR JOB HERE
-Plan the tool calls needed to answer the founder's instruction. You see the available tools and the current workspace context. Return JSON only — no prose around it.
+Plan the tool calls needed to answer the founder's instruction. Use the tool_use
+mechanism: call zero, one, or many tools.
 
-AVAILABLE TOOLS:
-${toolList}
+RULES (binding):
+- Empty plan is valid. If the founder asked something you can answer from
+  context alone (definitions, opinions, narrative explanations), call no tools.
+- ⚠ NEVER re-run a tool whose result is already in context. If "Audit already
+  run" appears, do NOT call audit — answer from that cache. Same for claims,
+  vclens, signals. Re-running is a UX failure and a cost waste.
+- Only re-run a cached tool when the founder explicitly says "re-audit",
+  "score again", "refresh", OR when the deck has clearly changed since
+  (they will say so).
+- For edit_slide, slideId MUST be a value from context.slideIds. If unsure,
+  default to activeSlideId. Never invent slide ids.
+- Don't dispatch audit + claims + vclens together unless the founder asked
+  for a "full review". Pick the single tool that answers what was asked.
+- For brand-level changes that are tweaks (single colour, radius, density,
+  one effect), DO NOT call regenerate_brand_world — tell the founder to use
+  the Live Overrides panel on Theme. Reserve regeneration for actual
+  whole-brand redirections.
 
-OUTPUT FORMAT:
-{
-  "steps": [
-    { "tool": "<tool name from catalog>", "args": { ... }, "why": "<one line>" }
-  ],
-  "reasoning": "<one line — your overall plan>"
-}
-
-RULES:
-- Empty steps array is valid. If the founder asked something you can answer from context alone (definitions, opinions, narrative explanations), return zero steps and let synthesis handle it.
-- ⚠ NEVER re-run a tool the workspace has already computed. If "Audit already run" appears in context, do NOT call the audit tool again — answer from those results. Same for claims, vclens. The founder can see the chip; running it twice is a UX failure.
-- Only re-run a tool if the founder explicitly asked you to refresh it ("re-audit", "score again") OR if the deck has clearly changed since the cached result (the founder will say so).
-- Never invent tool names. Only the catalog tools exist.
-- If the instruction mentions a specific slide, look at activeSlideId in context first; otherwise infer from slideIds.
-- Don't call audit + claims + vclens together unless the founder explicitly asked for a full review. Pick the single tool that answers what was actually asked.
-- args MUST match the schema for each tool — don't invent arg keys, don't omit required ones.`
+If you call no tools, you can also reply with text — the synthesiser will use
+your text as additional context for the final answer.`
 }
 
 function buildContextSummary(ctx: ConductorContext): string {
@@ -164,11 +165,21 @@ export async function planSteps(
   catalog: ToolSpec[],
   prior: PriorTurn[] = [],
 ): Promise<ConductorPlan | null> {
+  // Anthropic tool_use spec — the model can only emit valid tool calls with
+  // schema-conformant arguments. Eliminates malformed JSON and unknown tool
+  // names that the previous prose-only planner sometimes produced.
+  const tools = catalog.map(t => ({
+    name:        t.name,
+    description: t.description,
+    input_schema: t.inputSchema,
+  }))
+
   try {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 600,
-      system: buildPlannerSystemPrompt(catalog),
+      max_tokens: 800,
+      system: buildPlannerSystemPrompt(),
+      tools: tools as any,
       messages: [{
         role: 'user',
         content: `CONVERSATION SO FAR:
@@ -180,37 +191,44 @@ LATEST FOUNDER INSTRUCTION:
 WORKSPACE CONTEXT:
 ${buildContextSummary(ctx)}
 
-Plan tools based on the LATEST instruction. Use the conversation so far for context — if the founder is referring back to something you said earlier ("rewrite that slide", "the one you mentioned"), resolve the reference from history. Return the JSON plan.`,
+Plan tools based on the LATEST instruction. Use prior turns to resolve back-references ("rewrite that slide", "the one you mentioned"). Call zero or more tools, or just reply with text if no tool is needed.`,
       }],
     })
 
-    const raw = (message.content[0] as any).text?.trim() ?? ''
-    const jsonStr = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-    let parsed: any
-    try { parsed = JSON.parse(jsonStr) }
-    catch {
-      const m = jsonStr.match(/\{[\s\S]*\}/)
-      if (!m) return null
-      parsed = JSON.parse(m[0])
+    // Extract tool_use blocks AND any preamble text the model emitted.
+    const steps: ToolStep[] = []
+    let reasoningText = ''
+    for (const block of message.content as any[]) {
+      if (block.type === 'tool_use') {
+        steps.push({
+          tool: String(block.name),
+          args: block.input && typeof block.input === 'object' ? block.input : {},
+          why:  '',
+        })
+      } else if (block.type === 'text') {
+        reasoningText += (reasoningText ? '\n' : '') + String(block.text || '').trim()
+      }
     }
 
+    // Server-side arg validation: drop any step whose args fail the schema's
+    // required keys. The API normally enforces this, but defensive guards
+    // against partial responses and future-proof for tools we add later.
     const validNames = new Set(catalog.map(t => t.name))
-    const steps: ToolStep[] = Array.isArray(parsed.steps)
-      ? parsed.steps
-          .filter((s: any) => s && typeof s.tool === 'string' && validNames.has(s.tool))
-          .map((s: any) => ({
-            tool: s.tool,
-            args: s.args && typeof s.args === 'object' ? s.args : {},
-            why:  String(s.why || ''),
-          }))
-      : []
+    const schemaByName = new Map(catalog.map(t => [t.name, t.inputSchema] as const))
+    const validatedSteps = steps.filter(s => {
+      if (!validNames.has(s.tool)) return false
+      const schema = schemaByName.get(s.tool)
+      const required = schema?.required ?? []
+      for (const key of required) {
+        if (typeof s.args[key] === 'undefined' || s.args[key] === '') return false
+      }
+      return true
+    })
 
-    return {
-      steps,
-      reasoning: String(parsed.reasoning || ''),
-    }
-  } catch {
-    return null
+    return { steps: validatedSteps, reasoning: reasoningText }
+  } catch (e: any) {
+    // Surface the error in reasoning so the synthesiser can mention it
+    return { steps: [], reasoning: `(planner error: ${e?.message || 'unknown'})` }
   }
 }
 
@@ -226,14 +244,31 @@ You see:
 - The tool results (may be empty if no tools were needed)
 - Workspace context (current screen, deck content, brand world)
 
-RULES:
+⚠ ANTI-FABRICATION (binding):
+- NEVER invent specifics — slide scores, claim counts, dollar amounts,
+  customer names, persona quotes — that are not present in either the tool
+  results OR the workspace context (which already includes cached audit /
+  claims / vc / signals data).
+- If the founder asks about something you don't have data for: SAY SO.
+  "I haven't run the audit yet — want me to?" Do NOT make up scores.
+- If a tool failed (you'll see "FAILED: <reason>" in results), tell the
+  founder it failed and the reason in one sentence. Don't paper over.
+- Tools the workspace already ran are listed in context summary ("Audit
+  already run — overall 72/100..."). Use those numbers; don't invent new ones.
+
+VOICE RULES:
 - Don't recite raw JSON from tool results. Summarise what matters.
-- If a tool returned actionable items (audit tips, weak claims, weak slides), mention the top 1-3 with specifics — not all of them.
-- If edit_slide ran: state EXACTLY what one field changed and what it changed to ("Changed the headline to X"). Nothing else about that slide unless the founder asks. Do NOT offer opinions on the rest of the slide.
-- If the founder asked for the VC lens, lead with the partner's takeaway, then the specific objections.
-- Don't break character. No "I dispatched...", no "Based on the audit tool...", just your voice.
+- If a tool returned actionable items (audit tips, weak claims, weak slides),
+  mention the top 1-3 with specifics — not all of them.
+- If edit_slide ran: state EXACTLY what one field changed and what it changed
+  to ("Changed the headline to X"). Nothing else about that slide unless the
+  founder asks. Do NOT offer opinions on the rest.
+- If the founder asked for the VC lens, lead with the partner's takeaway,
+  then the specific objections.
+- Don't break character. No "I dispatched...", no "Based on the audit tool...",
+  just your voice.
 - Keep replies short — 2-4 sentences default. Founder can ask for more.
-- Plain prose only. No markdown headers, no bullet lists unless the instruction explicitly asked for a list.`
+- Plain prose only. No markdown headers, no bullet lists unless asked.`
 
 export async function synthesiseReply(
   client: Anthropic,
