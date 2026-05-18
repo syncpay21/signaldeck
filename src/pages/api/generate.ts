@@ -139,13 +139,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     addStat('Advisors / board',     input.advisorsOrBoard)
     addStat('Known competitors',    input.knownCompetitors)
     addStat('Why now',              input.whyNow)
+    // Extra evidence
+    addStat('Customer testimonials',input.customerTestimonials)
+    addStat('Signed deals',         input.signedDeals)
+    addStat('Partnerships',         input.partnerships)
+    addStat('Unit economics',       input.unitEconomics)
+    addStat('Revenue projection',   input.revenueProjection)
+    addStat('Cohort retention',     input.cohortRetention)
+    addStat('Past funding',         input.pastFunding)
+    addStat('Investor objections',  input.investorObjections)
+    addStat('Live product URL',     input.liveProductUrl)
+    addStat('Upcoming launches',    input.upcomingLaunches)
+    addStat('Industry stat',        input.industryStat)
+    addStat('Regulatory status',    input.regulatoryStatus)
+    addStat('IP / patents',         input.ipOrPatents)
+    addStat('Open roles',           input.openRoles)
+    addStat('Channel mix',          input.channelMix)
+    addStat('Geographic play',      input.geographicPlay)
+    addStat('Press quotes',         input.pressQuotes)
     const statlineBlock = statlines.length
       ? `\n\nFOUNDER-SUPPLIED STATLINES — use these EXACT numbers and names verbatim in the deck. Never invent or round.\n${statlines.join('\n')}`
+      : ''
+    const supportingCount = Array.isArray(input.supportingFiles) ? input.supportingFiles.length : 0
+    const attachmentNote = (input.previousDeckData || supportingCount > 0)
+      ? `\n\nATTACHED DOCUMENTS — read all of them as source-of-truth. Lift statlines, named customers, competitor names, team backgrounds, exact phrasings the founder is committed to. Never invent numbers that aren't in either the statlines above OR the attached documents. ${input.previousDeckData ? '1 previous pitch deck' : ''}${input.previousDeckData && supportingCount ? ' + ' : ''}${supportingCount ? `${supportingCount} supporting file${supportingCount === 1 ? '' : 's'}` : ''} attached.`
       : ''
     const userPrompt = buildGenerationPrompt({ ...input, audience, goal, stage, industry }, narrative, originalSlideIds)
       + (researchBlock ? `\n\n${researchBlock}` : '')
       + statlineBlock
-      + (input.previousDeckData ? `\n\nA PREVIOUS pitch deck is attached. Read it as source-of-truth for statlines, named customers, competitor names, team backgrounds, and any specific phrasing the founder is committed to. Lift exact numbers verbatim. Do NOT invent stats that aren't in either the statlines above or that attached deck.` : '')
+      + attachmentNote
 
     /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand HTML) + STAGE B0.5 (Vision)
        — all run in parallel. Vision only fires when the user uploaded
@@ -154,32 +176,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const productImage = typeof input.productData === 'string' && input.productData.startsWith('data:image') ? input.productData : null
     const visionSource = heroImage || productImage   // hero preferred for brand-feel; product as fallback
 
-    // Build the user message content. If the founder attached a previous deck,
-    // pass it as a content block (Anthropic supports PDF documents natively;
-    // images go as image blocks). Sonnet reads it for verbatim statlines.
-    const prevDeckBlocks: any[] = []
+    // Build the user message content. Previous deck + every supporting file
+    // becomes a Sonnet content block where the file type supports it. Sonnet
+    // reads them for verbatim statlines / customers / competitor names.
+    const attachmentBlocks: any[] = []
+    const pushDataUrlAsBlock = (dataUrl: string, _name?: string) => {
+      const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+      if (!m) return
+      const [, mime, b64] = m
+      if (mime === 'application/pdf') {
+        attachmentBlocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } })
+      } else if (mime.startsWith('image/') && ['image/jpeg','image/png','image/gif','image/webp'].includes(mime)) {
+        attachmentBlocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } })
+      } else if (mime === 'text/plain' || mime === 'text/csv') {
+        // Text-based files — decode and inline as a text block with a header
+        try {
+          const decoded = Buffer.from(b64, 'base64').toString('utf-8').slice(0, 60000)
+          attachmentBlocks.push({ type: 'text', text: `[Attached file: ${_name || 'document'}]\n${decoded}` })
+        } catch {/* skip */}
+      }
+      // .docx / .xlsx / .pptx — not natively supported. Founder PDF-exports.
+    }
+
     if (typeof input.previousDeckData === 'string') {
-      const dataUrlMatch = input.previousDeckData.match(/^data:([^;]+);base64,(.+)$/)
-      if (dataUrlMatch) {
-        const [, mime, b64] = dataUrlMatch
-        if (mime === 'application/pdf') {
-          prevDeckBlocks.push({
-            type: 'document',
-            source: { type: 'base64', media_type: 'application/pdf', data: b64 },
-          })
-        } else if (mime.startsWith('image/') && ['image/jpeg','image/png','image/gif','image/webp'].includes(mime)) {
-          prevDeckBlocks.push({
-            type: 'image',
-            source: { type: 'base64', media_type: mime, data: b64 },
-          })
-        }
-        // PPTX is not natively supported; founder will need to PDF-export.
-        // We silently skip rather than fail, and the statline block + intake
-        // text still carry the info.
+      pushDataUrlAsBlock(input.previousDeckData, input.previousDeckName || 'previous deck')
+    }
+    if (Array.isArray(input.supportingFiles)) {
+      for (const f of input.supportingFiles as Array<{ name: string; mime: string; data: string }>) {
+        pushDataUrlAsBlock(f.data, f.name)
       }
     }
-    const sonnetUserMessage: any = prevDeckBlocks.length
-      ? [...prevDeckBlocks, { type: 'text', text: userPrompt }]
+
+    const sonnetUserMessage: any = attachmentBlocks.length
+      ? [...attachmentBlocks, { type: 'text', text: userPrompt }]
       : userPrompt
 
     const [sonnetMessage, extractedBrand, visionResult] = await Promise.all([

@@ -41,6 +41,10 @@ interface FormData {
   previousDeckData?: string
   previousDeckName?: string
   previousDeckMime?: string
+  /** Unlimited supporting materials — financials, contracts, customer
+   *  research, screenshots, anything. Andreas references all of them when
+   *  writing slides. Cap at 30 files total to keep payload reasonable. */
+  supportingFiles?: Array<{ name: string; mime: string; data: string; size: number }>
 }
 
 const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']
@@ -511,6 +515,15 @@ export default function Home() {
                 />
               </div>
 
+              {/* Supporting materials — unlimited */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5">7. Supporting materials <span className="text-[11px] opacity-60">(optional — drop as many as you like)</span></div>
+                <SupportingFiles
+                  value={form.supportingFiles}
+                  onChange={next => set('supportingFiles', next)}
+                />
+              </div>
+
               {/* Edge tactics toggle */}
               <div className="mt-6 p-4 rounded-xl hairline" style={{ background: 'var(--surface)' }}>
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -836,6 +849,16 @@ export default function Home() {
                 />
               </div>
 
+              {/* Supporting materials — unlimited drops. Financial models,
+                  contracts, customer-research notes, screenshots, term sheets,
+                  transcripts. Andreas reads them all. */}
+              <div className="mt-4">
+                <SupportingFiles
+                  value={form.supportingFiles}
+                  onChange={next => set('supportingFiles', next)}
+                />
+              </div>
+
               {error && <div className="mt-4 sd-error">{error}</div>}
 
               <NavRow onBack={() => setStep('brand')} onNext={buildBrandWorld} nextLabel={worldLoading ? 'Reading your sources…' : 'Build my workspace →'} canNext={!worldLoading} />
@@ -1131,6 +1154,114 @@ function DeckSlot({ value, name, onChange }:
       )}
       <input ref={inputRef} type="file" accept={ACCEPT} className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
+    </div>
+  )
+}
+
+/* ── Supporting materials — unlimited multi-file uploader ──────────
+   Founder drops any number of PDFs, images, CSVs, docs. Andreas reads
+   them all when writing the deck. Cap is 30 files / 30MB total — past
+   that Anthropic's context starts to suffer. */
+function SupportingFiles({ value, onChange }:
+  { value?: Array<{ name: string; mime: string; data: string; size: number }>; onChange: (next: Array<{ name: string; mime: string; data: string; size: number }>) => void }) {
+  const [dragOver, setDragOver] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const files = value || []
+  const totalBytes = files.reduce((s, f) => s + (f.size || 0), 0)
+  const MAX_FILES = 30
+  const MAX_BYTES_PER_FILE = 8 * 1024 * 1024
+  const MAX_TOTAL_BYTES   = 30 * 1024 * 1024
+
+  const ACCEPT = 'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,image/*'
+
+  const ingest = async (incoming: File[]) => {
+    setBusy(true)
+    const next = [...files]
+    for (const f of incoming) {
+      if (next.length >= MAX_FILES) { alert(`Max ${MAX_FILES} files.`); break }
+      if (f.size > MAX_BYTES_PER_FILE) { alert(`"${f.name}" is too large (${(f.size / 1024 / 1024).toFixed(1)}MB). Max 8MB per file.`); continue }
+      if (totalBytes + f.size > MAX_TOTAL_BYTES) { alert(`Total exceeds ${MAX_TOTAL_BYTES / 1024 / 1024}MB.`); break }
+      try {
+        const data = await new Promise<string>((res, rej) => {
+          const r = new FileReader()
+          r.onload = () => res(String(r.result || ''))
+          r.onerror = () => rej(new Error('read failed'))
+          r.readAsDataURL(f)
+        })
+        next.push({ name: f.name, mime: f.type || 'application/octet-stream', data, size: f.size })
+      } catch {/* skip */}
+    }
+    onChange(next)
+    setBusy(false)
+  }
+
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (!dragOver) setDragOver(true) }
+  const onDragLeave = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false) }
+  const onDrop = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); ingest(Array.from(e.dataTransfer.files || [])) }
+
+  const remove = (idx: number) => { const next = files.slice(); next.splice(idx, 1); onChange(next) }
+  const ext = (name: string, mime: string) => {
+    const m = name.match(/\.([a-z0-9]+)$/i)?.[1]?.toUpperCase()
+    if (m) return m
+    if (mime === 'application/pdf') return 'PDF'
+    if (mime.startsWith('image/')) return 'IMG'
+    if (mime.includes('word')) return 'DOC'
+    if (mime.includes('spreadsheet') || mime === 'text/csv') return 'CSV'
+    if (mime === 'text/plain') return 'TXT'
+    return 'FILE'
+  }
+
+  return (
+    <div
+      className="paper hairline rounded-xl p-4 transition-colors"
+      style={dragOver ? { borderColor: 'var(--ink)', background: 'var(--surface)' } : undefined}
+      onDragOver={onDragOver}
+      onDragEnter={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      tabIndex={-1}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[13px] font-medium">Supporting materials <span className="ink-muted font-normal">— optional, unlimited</span></div>
+          <div className="text-[11px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+            Financial models, contracts, customer research, screenshots, term sheets, transcripts — drop anything. Andreas reads it all when generating slides.
+          </div>
+        </div>
+        {files.length > 0 && (
+          <div className="text-[11px] font-mono ink-muted whitespace-nowrap">
+            {files.length} / {MAX_FILES} · {(totalBytes / 1024 / 1024).toFixed(1)}MB
+          </div>
+        )}
+      </div>
+
+      {files.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {files.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 pl-3 pr-2 rounded-lg hairline" style={{ background: 'var(--surface)' }}>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background:'var(--ink)', color:'#fff', letterSpacing:'0.04em' }}>{ext(f.name, f.mime)}</span>
+              <span className="text-[12px] max-w-[200px] truncate">{f.name}</span>
+              <span className="text-[10px] font-mono ink-muted">{(f.size / 1024 / 1024).toFixed(1)}MB</span>
+              <button onClick={() => remove(i)} className="w-5 h-5 rounded-full bg-black/40 text-white text-[11px] hover:bg-black/70 flex items-center justify-center" aria-label="Remove">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={busy || files.length >= MAX_FILES}
+        className="mt-3 w-full h-16 rounded-lg text-[12px] focus-ring transition-all"
+        style={{
+          border: dragOver ? '1.5px dashed var(--ink)' : '1.5px dashed var(--line)',
+          color: dragOver ? 'var(--ink)' : 'var(--ink-muted)',
+          background: dragOver ? 'rgba(0,0,0,0.03)' : (busy ? 'var(--surface)' : 'transparent'),
+        }}>
+        {busy ? 'Reading…' : files.length >= MAX_FILES ? `Max ${MAX_FILES} files reached` : (dragOver ? 'Drop files here' : files.length ? '+ Add more files' : '+ Drop or click to add files (PDF, DOC, CSV, IMG, TXT)')}
+      </button>
+      <input ref={inputRef} type="file" accept={ACCEPT} multiple className="hidden"
+        onChange={e => { const fs = Array.from(e.target.files || []); if (fs.length) ingest(fs); e.target.value = '' }} />
     </div>
   )
 }

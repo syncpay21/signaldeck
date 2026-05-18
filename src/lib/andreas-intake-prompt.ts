@@ -61,6 +61,26 @@ export interface IntakeJsonShape {
   // Strategic
   knownCompetitors?:  string   // names the founder already tracks
   whyNow?:            string   // 1-line "why this is inevitable now"
+  /* ─── EXTRA EVIDENCE (all optional) ───
+     Even more structured fields so Andreas can lift verbatim instead of
+     researching. Founders skip every one they don't have. */
+  customerTestimonials?: string  // 1-3 verbatim quotes with attribution
+  signedDeals?:          string  // pipeline / signed enterprise deals
+  partnerships?:         string  // integration partners, channel partners
+  unitEconomics?:        string  // CAC, LTV, payback, margin, contribution
+  revenueProjection?:    string  // 1-3 forward-looking lines (e.g. "$5M ARR by EoY 25")
+  cohortRetention?:      string  // M1/M3/M6/M12 retention pattern
+  pastFunding?:          string  // round history: angels, pre-seed, accelerator
+  investorObjections?:   string  // pushback they've heard + how they answer
+  liveProductUrl?:       string  // demo URL — Andreas can iframe
+  upcomingLaunches?:     string  // shipping in next 30/60/90
+  industryStat?:         string  // a credible external stat that frames the market
+  regulatoryStatus?:     string  // licences, compliance achieved
+  ipOrPatents?:          string  // patents filed/granted, trade secrets
+  openRoles?:            string  // key hires this round funds
+  channelMix?:           string  // current acquisition channels + cost split
+  geographicPlay?:       string  // current geos + expansion plans
+  pressQuotes?:          string  // verbatim press / analyst pull-quotes
 }
 
 export const ANDREAS_INTAKE_PROMPT = `I'm using SignalDeck (signaldeck-two.vercel.app) to build my investor pitch deck. Their AI assistant is named Andreas. I want to skip the multi-step intake form and just give you the questions — you ask me what's needed in conversation, then output the structured JSON I can paste back.
@@ -118,6 +138,25 @@ ASK ME ABOUT:
 30. Region — us / eu / uk / asia / latam / global.
 31. Team size — solo / co-founder / small-team-2-5 / team-6-15 / larger.
 
+═══ EXTRA EVIDENCE (all optional — say "skip" if not applicable) ═══
+32. Customer testimonials — 1-3 verbatim quotes with name + role.
+33. Signed deals or pipeline — specific contracts signed or in legal.
+34. Partnerships — integration partners, channel partners, official accelerators.
+35. Unit economics — CAC, LTV, payback period, gross margin, contribution.
+36. Revenue projection — what you forecast hitting in 12 / 24 months (with caveats).
+37. Cohort retention — M1 / M3 / M6 / M12 retention curve.
+38. Past funding history — angels, pre-seed, accelerators, notable previous rounds.
+39. Investor objections — pushback you've heard most + your answer (1-3 pairs).
+40. Live product URL or demo link — Andreas can embed it.
+41. Upcoming launches — what ships in next 30 / 60 / 90 days.
+42. Industry stat — a credible external stat that frames why this market matters.
+43. Regulatory status — licences held, compliance achieved (e.g. SOC-2, ADI, HIPAA).
+44. IP or patents — patents filed / granted, key trade secrets.
+45. Open roles this round funds — key hires you'd make with the capital.
+46. Acquisition channel mix — current channels and rough cost split.
+47. Geographic play — current geos and expansion plans.
+48. Press / analyst pull-quotes — verbatim mentions, with source.
+
 OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped in a single \`\`\`json fence. Omit any field I skipped.
 
 \`\`\`json
@@ -154,7 +193,24 @@ OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped 
   "teamHighlights":     "notable backgrounds",
   "advisorsOrBoard":    "names",
   "knownCompetitors":   "comma-separated names",
-  "whyNow":             "1 line"
+  "whyNow":             "1 line",
+  "customerTestimonials": "1-3 verbatim quotes with attribution",
+  "signedDeals":          "specific signed deals or pipeline",
+  "partnerships":         "integration partners, channel partners",
+  "unitEconomics":        "CAC, LTV, payback, margin",
+  "revenueProjection":    "12-24mo forward forecast",
+  "cohortRetention":      "M1/M3/M6/M12 pattern",
+  "pastFunding":          "round history",
+  "investorObjections":   "pushback + your answer",
+  "liveProductUrl":       "URL",
+  "upcomingLaunches":     "30/60/90 day roadmap",
+  "industryStat":         "credible external stat",
+  "regulatoryStatus":     "licences, compliance",
+  "ipOrPatents":          "patents and IP",
+  "openRoles":            "key hires this round funds",
+  "channelMix":           "channels + cost split",
+  "geographicPlay":       "current + expansion",
+  "pressQuotes":          "verbatim press mentions"
 }
 \`\`\`
 
@@ -241,11 +297,16 @@ export function parseIntakeJson(raw: string): ParseResult {
   enumStr('region',         VALID.region,         false)
   enumStr('teamSize',       VALID.teamSize,       false)
 
-  // Statline block — all optional free-text fields
+  // Statline block + extra evidence — all optional free-text fields
   ;(['revenue','growthRate','burnAndRunway','customerCount','namedCustomers',
     'retentionOrNps','pressOrAwards','waitlistOrPipeline','raisingAmount',
     'valuationOrTerms','leadInvestor','useOfFunds','nextMilestones',
-    'teamHighlights','advisorsOrBoard','knownCompetitors','whyNow'] as Array<keyof IntakeJsonShape>)
+    'teamHighlights','advisorsOrBoard','knownCompetitors','whyNow',
+    'customerTestimonials','signedDeals','partnerships','unitEconomics',
+    'revenueProjection','cohortRetention','pastFunding','investorObjections',
+    'liveProductUrl','upcomingLaunches','industryStat','regulatoryStatus',
+    'ipOrPatents','openRoles','channelMix','geographicPlay','pressQuotes',
+    ] as Array<keyof IntakeJsonShape>)
     .forEach(k => str(k, false))
 
   return { ok: Object.keys(out).length > 0, data: out, warnings }
