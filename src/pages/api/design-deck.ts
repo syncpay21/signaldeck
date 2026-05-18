@@ -29,101 +29,37 @@ import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// Reference: the Up Bank handcrafted deck (compact version — Sonnet sees
-// the SHAPE of a cinematic deck, not 33KB of detail. Tells Sonnet what
-// "good" looks like as a scaffold to remix per brand.)
-const REFERENCE_DECK_SKETCH = `<!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>{COMPANY} · Pitch</title>
-<link href="https://fonts.googleapis.com/css2?family={FONT_HEADING}&family={FONT_BODY}&display=swap" rel="stylesheet"/>
-<style>
-:root{ --bg:{BG}; --surface:{SURFACE}; --accent:{ACCENT}; --fg:{TEXT}; --wire:rgba(255,255,255,.12);
-       --fh:'{FONT_HEADING}',sans-serif; --fb:'{FONT_BODY}',sans-serif; --fm:'JetBrains Mono',monospace; }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden} body{background:var(--bg);color:var(--fg);font-family:var(--fb)}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.28;mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E")}
-.cursor,.cursor-dot{position:fixed;top:0;left:0;pointer-events:none;z-index:9998;border-radius:50%;mix-blend-mode:difference}
-.cursor{width:28px;height:28px;border:1.5px solid var(--accent)} .cursor-dot{width:5px;height:5px;background:var(--accent)}
-.cursor.hov{width:64px;height:64px;background:color-mix(in srgb,var(--accent) 14%,transparent)}
-#hud{position:fixed;inset:0;pointer-events:none;z-index:1000}
-#bar{position:absolute;top:0;left:0;height:3px;background:var(--accent);box-shadow:0 0 14px var(--accent);transition:width .35s ease;width:0}
-#deck{height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;scroll-behavior:smooth;scrollbar-width:none}
-#deck::-webkit-scrollbar{display:none}
-.slide{position:relative;min-height:100vh;width:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;scroll-snap-align:start;scroll-snap-stop:always;padding:80px 56px}
-.slide-inner{max-width:1240px;margin:0 auto;width:100%;opacity:0;transform:translate3d(0,28px,0) scale(.985);filter:blur(6px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1),filter .9s cubic-bezier(.16,1,.3,1)}
-.slide.in-view .slide-inner{opacity:1;transform:none;filter:blur(0)}
-.tag{font-family:var(--fm);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:24px}
-.h1{font-family:var(--fh);font-weight:900;font-size:clamp(56px,8vw,128px);line-height:.88;letter-spacing:-.02em;text-transform:uppercase;margin-bottom:24px}
-.h1 .accent{color:var(--accent)}
-.sub{font-family:var(--fh);font-weight:800;font-size:clamp(22px,2.6vw,36px);text-transform:uppercase;margin-bottom:22px;max-width:880px;color:var(--accent)}
-.lede{font-size:clamp(15px,1.3vw,18px);line-height:1.6;max-width:780px;margin-bottom:28px;opacity:.85}
-/* + per-slide bespoke layouts (prob-grid, fix-row, how-flow, stats, comp matrix, ask split) */
-/* + marquee bands between sections */
-</style></head>
-<body>
-<div class="cursor"></div><div class="cursor-dot"></div>
-<div id="hud"><div id="bar"></div>{HUD_TOP}{DOT_NAV}{HUD_LABEL}</div>
-<div id="deck">
-  <section class="slide" data-idx="0"> ... INTRO ... </section>
-  <section class="slide" data-idx="1"> ... PROBLEM (3-card grid) ... </section>
-  <section class="marq" data-idx="2"> ... MARQUEE BAND ... </section>
-  <section class="slide" data-idx="3"> ... FIX (5 checks) ... </section>
-  <section class="slide" data-idx="4"> ... HOW (4 steps) ... </section>
-  <section class="slide" data-idx="5"> ... VALIDATION (4 stats) ... </section>
-  <section class="slide" data-idx="6"> ... CUSTOMERS (numbered list) ... </section>
-  <section class="marq" data-idx="7"> ... MARQUEE BAND ... </section>
-  <section class="slide" data-idx="8"> ... MARKET (stats) ... </section>
-  <section class="slide" data-idx="9"> ... COMPETITION (matrix) ... </section>
-  <section class="slide" data-idx="10"> ... ASK (split panel + CTA) ... </section>
-</div>
-<script>/* IntersectionObserver → in-view/out-above/out-below + dot nav + cursor + keys */</script>
-</body></html>`
-
 const SYSTEM_PROMPT = `${ANDREAS_PERSONA}
 
-YOUR JOB HERE
-Design + write a single self-contained HTML pitch deck. This is the
-"premium" path — you get to set the entire visual experience, not just the
-slide copy. Output ONE complete HTML document with inline CSS + JS.
+JOB: Design + write a single self-contained HTML pitch deck for THIS brand.
 
-QUALITY BAR — this deck must feel hand-designed for THIS brand:
-- Use the brand's colour palette as actual surfaces. If primary is yellow
-  on coral, USE that — don't soften. Cards in the brand's card colour
-  (often saturated or black, not always cream).
-- Use the brand's typography. The heading font is for displays at clamp
-  56-128px. Body for read-able 13-18px text.
-- Cinematic chrome: scroll-snap mandatory, per-slide in-view fade+scale+blur
-  entry, custom cursor (ring + dot, mix-blend:difference), SVG fractalNoise
-  overlay, HUD (progress bar + counter + dot nav + bottom label).
-- Story arc: each slide's lede or last bullet sets up the next slide's
-  headline. Marquee bands between major sections (after Problem, after
-  Customers) with brand-relevant scrolling text.
-- Per-slide bespoke layouts (NOT the same grid on every slide):
-    Problem      → 3-card grid with num + head + body + foot
-    Fix          → 5-check row with brand-coloured check badges
-    How          → 4 numbered steps with italic huge numerals
-    Validation   → 4 stat tiles, italic display numerals
-    Customers    → numbered card list with italic numerals as markers
-    Market       → 4-stat hero row
-    Competition  → matrix table (3 cols, 5-7 rows) with ✓/× cells
-    Ask          → split layout — use-of-funds panel + giant accent CTA
-- Intro slide: brand mark + tag + huge italic display headline + divider
-  + meta + signature + scroll cue.
+Output ONE complete HTML document, raw — no markdown, no commentary.
+
+QUALITY BAR:
+- Use the brand's palette as actual surfaces. Cards in the brand's card colour (often saturated or black, not always cream). Don't soften.
+- Use the brand's heading font for displays at clamp 56-128px. Body for 13-18px text.
+- Scroll-snap mandatory; per-slide opacity+transform entry on .in-view; SVG fractalNoise overlay at 28% mix-blend:overlay; HUD with progress bar + slide counter + dot nav + bottom label.
+- Story arc: each slide's lede sets up the next slide's headline. Marquee bands after Problem and after Customers with brand-relevant scrolling text.
+
+PER-SLIDE LAYOUTS (do NOT use one grid for everything):
+- Intro: brand mark + tag + huge italic display headline + divider + signature + scroll cue
+- Problem: 3-card grid (num + head + body + foot accent)
+- Fix: 5-check row with brand-coloured check badges
+- How: 4 numbered steps with italic huge numerals
+- Validation: 4 stat tiles, italic display numerals
+- Customers: numbered card list with italic numerals as list markers
+- Market: 4-stat hero row
+- Competition: matrix table (3 cols, 5-7 rows) with ✓ / ×
+- Ask: split — use-of-funds panel + giant accent CTA with cap-table summary
 
 RULES:
-- ONE HTML document. No external CSS or JS files (Google Fonts link is OK).
-- Use the supplied slide content as the WORDS — don't invent numbers, claims
-  or proof not present. Adapt the layout, not the facts.
-- Insert marquee bands AFTER the problem slide and AFTER the customers slide.
-  Pick brand-relevant scrolling text from the company's story.
-- Keep total HTML under 50KB. Trim CSS aggressively. No redundant rules.
-- Mobile fallbacks: cursor hidden, grid collapses to 1 or 2 cols.
-- Return raw HTML only. NO markdown fences, NO commentary, NO leading explanation.
-
-REFERENCE SCAFFOLD (the shape, not the content):
-${REFERENCE_DECK_SKETCH}`
+- ONE HTML doc, inline CSS + JS (Google Fonts <link> OK)
+- Use the supplied slide content as the WORDS — never invent numbers/claims/proof
+- Marquee bands AFTER problem and customers slides
+- Total HTML under 35KB, trim CSS aggressively, no redundant rules
+- Mobile: cursor hidden via @media(hover:none); grids collapse to 1 or 2 cols
+- IntersectionObserver wires .in-view / .out-above / .out-below
+- Raw HTML only`
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -186,9 +122,11 @@ ${slides}
 
 Write the complete HTML deck now. Raw HTML only, no fences, no commentary.`
 
+    // max_tokens capped to 10k — 35KB HTML target ≈ 9k output tokens. Caps the
+    // worst-case spend per run; Sonnet usually returns ~6-8k for a tight deck.
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 16000,
+      max_tokens: 10000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userMsg }],
     })
