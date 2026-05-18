@@ -2735,6 +2735,7 @@ export default function Workspace({
         auditData={auditData}
         claimsData={claimsData}
         vcData={vcData}
+        signalsData={signalsData}
       />
     </div>
   )
