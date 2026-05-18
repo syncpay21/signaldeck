@@ -117,8 +117,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }).catch(() => null)
     }
     const researchBlock = formatResearchForPrompt(researchResult)
+    // Statline block — surface the structured numbers the founder supplied
+    // in intake (revenue, named customers, growth rate, etc.) so Sonnet uses
+    // them verbatim instead of inventing.
+    const statlines: string[] = []
+    const addStat = (label: string, v?: string) => { if (v && String(v).trim()) statlines.push(`  ${label}: ${String(v).trim()}`) }
+    addStat('Revenue',              input.revenue)
+    addStat('Growth rate',          input.growthRate)
+    addStat('Burn / runway',        input.burnAndRunway)
+    addStat('Customer count',       input.customerCount)
+    addStat('Named customers',      input.namedCustomers)
+    addStat('Retention / NPS',      input.retentionOrNps)
+    addStat('Press / awards',       input.pressOrAwards)
+    addStat('Waitlist / pipeline',  input.waitlistOrPipeline)
+    addStat('Raising amount',       input.raisingAmount)
+    addStat('Valuation / terms',    input.valuationOrTerms)
+    addStat('Lead investor',        input.leadInvestor)
+    addStat('Use of funds',         input.useOfFunds)
+    addStat('Next milestones',      input.nextMilestones)
+    addStat('Team highlights',      input.teamHighlights)
+    addStat('Advisors / board',     input.advisorsOrBoard)
+    addStat('Known competitors',    input.knownCompetitors)
+    addStat('Why now',              input.whyNow)
+    const statlineBlock = statlines.length
+      ? `\n\nFOUNDER-SUPPLIED STATLINES — use these EXACT numbers and names verbatim in the deck. Never invent or round.\n${statlines.join('\n')}`
+      : ''
     const userPrompt = buildGenerationPrompt({ ...input, audience, goal, stage, industry }, narrative, originalSlideIds)
       + (researchBlock ? `\n\n${researchBlock}` : '')
+      + statlineBlock
+      + (input.previousDeckData ? `\n\nA PREVIOUS pitch deck is attached. Read it as source-of-truth for statlines, named customers, competitor names, team backgrounds, and any specific phrasing the founder is committed to. Lift exact numbers verbatim. Do NOT invent stats that aren't in either the statlines above or that attached deck.` : '')
 
     /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand HTML) + STAGE B0.5 (Vision)
        — all run in parallel. Vision only fires when the user uploaded
@@ -127,12 +154,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const productImage = typeof input.productData === 'string' && input.productData.startsWith('data:image') ? input.productData : null
     const visionSource = heroImage || productImage   // hero preferred for brand-feel; product as fallback
 
+    // Build the user message content. If the founder attached a previous deck,
+    // pass it as a content block (Anthropic supports PDF documents natively;
+    // images go as image blocks). Sonnet reads it for verbatim statlines.
+    const prevDeckBlocks: any[] = []
+    if (typeof input.previousDeckData === 'string') {
+      const dataUrlMatch = input.previousDeckData.match(/^data:([^;]+);base64,(.+)$/)
+      if (dataUrlMatch) {
+        const [, mime, b64] = dataUrlMatch
+        if (mime === 'application/pdf') {
+          prevDeckBlocks.push({
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: b64 },
+          })
+        } else if (mime.startsWith('image/') && ['image/jpeg','image/png','image/gif','image/webp'].includes(mime)) {
+          prevDeckBlocks.push({
+            type: 'image',
+            source: { type: 'base64', media_type: mime, data: b64 },
+          })
+        }
+        // PPTX is not natively supported; founder will need to PDF-export.
+        // We silently skip rather than fail, and the statline block + intake
+        // text still carry the info.
+      }
+    }
+    const sonnetUserMessage: any = prevDeckBlocks.length
+      ? [...prevDeckBlocks, { type: 'text', text: userPrompt }]
+      : userPrompt
+
     const [sonnetMessage, extractedBrand, visionResult] = await Promise.all([
       anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
         system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        messages: [{ role: 'user', content: sonnetUserMessage }],
       }),
       extractBrand(input.websiteUrl || input.domain).catch(() => null),
       visionSource

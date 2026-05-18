@@ -35,6 +35,12 @@ interface FormData {
   heroData?:    string    // homepage screenshot or hero image
   productData?: string    // product UI screenshot — drives skeleton demo
   founderPhoto?: string
+  // Previous deck (PDF/PPTX/image). Andreas reads it as source-of-truth for
+  // statlines / customers / competitor names so the founder doesn't have to
+  // re-type everything. Stored as base64 data URL.
+  previousDeckData?: string
+  previousDeckName?: string
+  previousDeckMime?: string
 }
 
 const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']
@@ -491,6 +497,20 @@ export default function Home() {
                   className="w-full paper hairline rounded-xl px-3 py-2 focus-ring text-sm resize-y" />
               </div>
 
+              {/* Previous deck upload — Andreas reads it for verbatim stats */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5">6. Previous pitch deck <span className="text-[11px] opacity-60">(optional)</span></div>
+                <DeckSlot
+                  value={form.previousDeckData}
+                  name={form.previousDeckName}
+                  onChange={(data, name, mime) => {
+                    set('previousDeckData', data)
+                    set('previousDeckName', name)
+                    set('previousDeckMime', mime)
+                  }}
+                />
+              </div>
+
               {/* Edge tactics toggle */}
               <div className="mt-6 p-4 rounded-xl hairline" style={{ background: 'var(--surface)' }}>
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -802,6 +822,20 @@ export default function Home() {
                   value={form.founderPhoto} onChange={v => set('founderPhoto', v)} />
               </div>
 
+              {/* Previous deck — Andreas reads it for statlines + named
+                  customers + competitor names so the founder doesn't re-type. */}
+              <div className="mt-4">
+                <DeckSlot
+                  value={form.previousDeckData}
+                  name={form.previousDeckName}
+                  onChange={(data, name, mime) => {
+                    set('previousDeckData', data)
+                    set('previousDeckName', name)
+                    set('previousDeckMime', mime)
+                  }}
+                />
+              </div>
+
               {error && <div className="mt-4 sd-error">{error}</div>}
 
               <NavRow onBack={() => setStep('brand')} onNext={buildBrandWorld} nextLabel={worldLoading ? 'Reading your sources…' : 'Build my workspace →'} canNext={!worldLoading} />
@@ -1001,6 +1035,101 @@ function AssetSlot({ label, hint, value, onChange }:
         </button>
       )}
       <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
+    </div>
+  )
+}
+
+/* ── Previous deck upload slot ───────────────────────────────────────
+   Accepts PDF, PPTX, image. Stored as a base64 data URL so it can be
+   passed to /api/generate as a vision/document content block. No
+   compression — preserves text layer in PDFs so Andreas can extract
+   statlines / customers / competitor names verbatim. */
+function DeckSlot({ value, name, onChange }:
+  { value?: string; name?: string; onChange: (data?: string, name?: string, mime?: string) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const ACCEPT = 'application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,image/*'
+  const MAX_BYTES = 8 * 1024 * 1024  // 8MB — Anthropic vision cap is higher but keep it polite
+
+  const handleFile = async (file: File) => {
+    if (file.size > MAX_BYTES) {
+      alert(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 8MB. Try compressing the PDF first.`)
+      return
+    }
+    setBusy(true)
+    try {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const data = String(reader.result || '')
+        onChange(data, file.name, file.type)
+        setBusy(false)
+      }
+      reader.onerror = () => { setBusy(false); alert("Couldn't read that file — try again.") }
+      reader.readAsDataURL(file)
+    } catch {
+      setBusy(false)
+    }
+  }
+
+  const onDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; if (!dragOver) setDragOver(true) }
+  const onDragLeave = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false) }
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false)
+    const file = Array.from(e.dataTransfer.files).find(f =>
+      f.type === 'application/pdf' ||
+      f.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+      f.type === 'application/vnd.ms-powerpoint' ||
+      f.type.startsWith('image/'))
+    if (file) handleFile(file)
+  }
+
+  return (
+    <div
+      className="paper hairline rounded-xl p-4 transition-colors"
+      style={dragOver ? { borderColor: 'var(--ink)', background: 'var(--surface)' } : undefined}
+      onDragOver={onDragOver}
+      onDragEnter={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      tabIndex={-1}
+    >
+      <div className="text-[13px] font-medium">Previous pitch deck <span className="ink-muted font-normal">— optional</span></div>
+      <div className="text-[11px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+        PDF, PPTX, or images. Andreas lifts statlines, customer names, and competitors directly so you don't have to retype them.
+      </div>
+
+      {value ? (
+        <div className="mt-3 flex items-center gap-3 p-3 rounded-lg hairline" style={{ background: 'var(--surface)' }}>
+          <div className="w-10 h-10 rounded-md flex items-center justify-center font-bold text-[11px] flex-shrink-0"
+            style={{ background: 'var(--accent, var(--ink))', color: '#fff' }}>
+            {name?.match(/\.pptx?$/i) ? 'PPT' : name?.match(/\.pdf$/i) ? 'PDF' : 'IMG'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium truncate">{name || 'Previous deck'}</div>
+            <div className="text-[11px] ink-muted">Andreas will read this when generating slides</div>
+          </div>
+          <button onClick={() => onChange(undefined, undefined, undefined)}
+            className="w-6 h-6 rounded-full bg-black/60 text-white text-[12px] hover:bg-black/80 flex-shrink-0">
+            ×
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className="mt-3 w-full h-20 rounded-lg text-[12px] focus-ring transition-all"
+          style={{
+            border: dragOver ? '1.5px dashed var(--ink)' : '1.5px dashed var(--line)',
+            color: dragOver ? 'var(--ink)' : 'var(--ink-muted)',
+            background: dragOver ? 'rgba(0,0,0,0.03)' : (busy ? 'var(--surface)' : 'transparent'),
+          }}>
+          {busy ? 'Reading…' : (dragOver ? 'Drop deck here' : '+ Drop or click to upload (PDF, PPTX, image · max 8MB)')}
+        </button>
+      )}
+      <input ref={inputRef} type="file" accept={ACCEPT} className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} />
     </div>
   )

@@ -34,32 +34,91 @@ export interface IntakeJsonShape {
   tractionStatus?:  string
   region?:          string
   teamSize?:        string
+  /* ─── EXPANDED STATLINE BLOCK ───
+     Structured fields so Andreas can use exact numbers in slides rather
+     than vague summaries. Every field is optional — founders skip what
+     they don't have. */
+  // Money
+  revenue?:           string   // e.g. "$840k ARR", "$2.1M GMV monthly"
+  growthRate?:        string   // e.g. "23% MoM for 6 months", "3x YoY"
+  burnAndRunway?:     string   // e.g. "$180k/mo burn, 14 months runway"
+  // Customers
+  customerCount?:     string   // e.g. "700K customers", "42 enterprise logos"
+  namedCustomers?:    string   // comma-separated, e.g. "Shopify, Notion, Vercel"
+  retentionOrNps?:    string   // e.g. "NPS 72", "118% net retention"
+  // Distribution
+  pressOrAwards?:     string   // e.g. "TechCrunch 2024, Y Combinator W23"
+  waitlistOrPipeline?:string   // e.g. "8,400 waitlist", "$2.3M in pipeline"
+  // Round
+  raisingAmount?:     string   // e.g. "$5M seed", "$25M Series A"
+  valuationOrTerms?:  string   // optional, e.g. "$25M pre-money cap"
+  leadInvestor?:      string   // e.g. "Sequoia (committed)"
+  useOfFunds?:        string   // 1-2 sentences on what the money does
+  nextMilestones?:    string   // 2-3 milestones the round funds
+  // Team
+  teamHighlights?:    string   // notable backgrounds e.g. "ex-Stripe / Notion / ML PhD"
+  advisorsOrBoard?:   string   // names of notable advisors
+  // Strategic
+  knownCompetitors?:  string   // names the founder already tracks
+  whyNow?:            string   // 1-line "why this is inevitable now"
 }
 
 export const ANDREAS_INTAKE_PROMPT = `I'm using SignalDeck (signaldeck-two.vercel.app) to build my investor pitch deck. Their AI assistant is named Andreas. I want to skip the multi-step intake form and just give you the questions — you ask me what's needed in conversation, then output the structured JSON I can paste back.
 
 Please ask me ONE question at a time, in plain English, in this order. Don't dump all the questions at once. After each answer, ask the next question. When you have everything, output the final JSON block at the end (and nothing else after it — no commentary).
 
+If I say "skip" or "I don't have that" for any question, just move on. Optional fields are clearly marked.
+
 ASK ME ABOUT:
 
+═══ BASICS ═══
 1. What's your company called?
 2. What does it do, in one sentence?
 3. What industry — pick from: Fintech, Climate, Health, AI, SaaS, Enterprise, Developer Tools, Consumer, Education, Other.
 4. What stage — pick from: Pre-seed, Seed, Series A, Series B+, Bootstrapped.
 5. What's your name?
-6. Your role (founder, co-founder, CEO, CTO, etc — optional, skip if obvious).
+6. Your role (optional — founder, co-founder, CEO, CTO, etc).
+
+═══ STORY ═══
 7. Tell me the real story — how did this company actually start? What did you see that others didn't? What broke? (3-6 sentences. The honest version, not the polished one.)
 8. Who hurts most from this problem? Specific segments or archetypes, named if possible.
-9. What proof do you have? Numbers, named customers, signed deals, press mentions, waitlist size — anything concrete.
-10. Who's the audience for this deck — pick from: Seed VC, Series A, Angel, Strategic, Internal.
-11. What's the goal — pick from: Raise (capital), Partner (strategic), Hire (key role), Sell (customer or board).
-12. Business model (optional) — pick from: b2b, b2c, b2b2c, marketplace, devtools-api, saas, transactional, none-yet.
-13. GTM motion (optional) — pick from: sales-led, plg, community, partner, hybrid.
-14. Traction status (optional) — pick from: pre-revenue, paying-users, revenue, no-traction.
-15. Region (optional) — pick from: us, eu, uk, asia, latam, global.
-16. Team size (optional) — pick from: solo, co-founder, small-team-2-5, team-6-15, larger.
+9. Why is now the right moment? What changed in the world that made this inevitable? (optional, 1 line)
 
-OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped in a single \`\`\`json fence:
+═══ CURRENT NUMBERS (statlines we'll cite verbatim) ═══
+10. Revenue (optional) — exact number with the unit you use. ARR / MRR / monthly GMV / GPV / transactions / etc. Skip if pre-revenue.
+11. Growth rate (optional) — e.g. "23% MoM for 6 months", "3x YoY", "tripled customers since Jan".
+12. Customer count (optional) — e.g. "700K consumers", "42 enterprise logos", "8 paid pilots".
+13. Named customers you're comfortable disclosing in the deck (optional) — comma-separated.
+14. Retention / NPS / engagement metric you cite (optional) — e.g. "NPS 72", "118% net retention", "DAU/MAU 0.55".
+15. Press, awards, accelerator badges you'd want on the deck (optional) — e.g. "Y Combinator W23, TechCrunch 2024".
+16. Waitlist or pipeline number (optional) — e.g. "8,400 waitlist", "$2.3M qualified pipeline".
+
+═══ THIS ROUND ═══
+17. How much are you raising this round (optional) — e.g. "$5M seed", "$25M Series A".
+18. Valuation or terms you want to share (optional, skip if not disclosing) — e.g. "$25M pre-money cap".
+19. Lead investor or commitments to date (optional) — e.g. "Sequoia leading", "60% committed".
+20. Use of funds (optional, 1-2 sentences) — what does the money do?
+21. Next milestones the round funds (optional) — 2-3 specific targets, e.g. "1.5M customers, $50M ARR, business banking launch".
+
+═══ TEAM ═══
+22. Notable team backgrounds (optional) — e.g. "ex-Stripe, ex-Notion, ML PhD Stanford".
+23. Advisors / board (optional) — names of people who'd matter on the deck.
+
+═══ MARKET ═══
+24. Known competitors (optional, comma-separated) — names you already track. Andreas will research them if you don't list any.
+
+═══ DECK GOAL ═══
+25. Who's the audience — pick from: Seed VC, Series A, Angel, Strategic, Internal.
+26. Goal — pick from: Raise, Partner, Hire, Sell.
+
+═══ ROUTING (all optional) ═══
+27. Business model — b2b / b2c / b2b2c / marketplace / devtools-api / saas / transactional / none-yet.
+28. GTM motion — sales-led / plg / community / partner / hybrid.
+29. Traction status — pre-revenue / paying-users / revenue / no-traction.
+30. Region — us / eu / uk / asia / latam / global.
+31. Team size — solo / co-founder / small-team-2-5 / team-6-15 / larger.
+
+OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped in a single \`\`\`json fence. Omit any field I skipped.
 
 \`\`\`json
 {
@@ -78,15 +137,32 @@ OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped 
   "gtmMotion":      "sales-led | plg | community | partner | hybrid",
   "tractionStatus": "pre-revenue | paying-users | revenue | no-traction",
   "region":         "us | eu | uk | asia | latam | global",
-  "teamSize":       "solo | co-founder | small-team-2-5 | team-6-15 | larger"
+  "teamSize":       "solo | co-founder | small-team-2-5 | team-6-15 | larger",
+  "revenue":            "exact number with unit",
+  "growthRate":         "exact phrasing the founder uses",
+  "burnAndRunway":      "monthly burn and months of runway",
+  "customerCount":      "exact count with descriptor",
+  "namedCustomers":     "comma-separated names",
+  "retentionOrNps":     "metric + value",
+  "pressOrAwards":      "comma-separated",
+  "waitlistOrPipeline": "exact number with descriptor",
+  "raisingAmount":      "round size",
+  "valuationOrTerms":   "valuation or cap if disclosed",
+  "leadInvestor":       "name plus status",
+  "useOfFunds":         "1-2 sentence breakdown",
+  "nextMilestones":     "specific targets the round funds",
+  "teamHighlights":     "notable backgrounds",
+  "advisorsOrBoard":    "names",
+  "knownCompetitors":   "comma-separated names",
+  "whyNow":             "1 line"
 }
 \`\`\`
 
 Rules:
 - Don't ask me to pick the dropdown options literally. Listen to what I say, then map it to the closest option yourself.
-- If I skip an optional field, omit it from the JSON.
+- If I skip an optional field, OMIT IT from the JSON. Don't write null or "skip".
 - Don't add fields the schema doesn't list.
-- Don't paraphrase me. The realStory / customers / proof fields should preserve my own words.
+- Don't paraphrase the realStory / customers / proof / revenue / growthRate / namedCustomers fields. Preserve my own words and exact numbers — these get cited verbatim in the deck.
 - The JSON is the last thing in your response. Nothing after.`
 
 const VALID = {
@@ -164,6 +240,13 @@ export function parseIntakeJson(raw: string): ParseResult {
   enumStr('tractionStatus', VALID.tractionStatus, false)
   enumStr('region',         VALID.region,         false)
   enumStr('teamSize',       VALID.teamSize,       false)
+
+  // Statline block — all optional free-text fields
+  ;(['revenue','growthRate','burnAndRunway','customerCount','namedCustomers',
+    'retentionOrNps','pressOrAwards','waitlistOrPipeline','raisingAmount',
+    'valuationOrTerms','leadInvestor','useOfFunds','nextMilestones',
+    'teamHighlights','advisorsOrBoard','knownCompetitors','whyNow'] as Array<keyof IntakeJsonShape>)
+    .forEach(k => str(k, false))
 
   return { ok: Object.keys(out).length > 0, data: out, warnings }
 }
