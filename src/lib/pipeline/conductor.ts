@@ -136,6 +136,15 @@ function buildContextSummary(ctx: ConductorContext): string {
   if (ctx.designCritique && Array.isArray(ctx.designCritique.failures) && ctx.designCritique.failures.length) {
     lines.push(`Design critic flagged ${ctx.designCritique.failures.length} contrast issues in brand palette`)
   }
+  if (ctx.signalsData) {
+    const s = ctx.signalsData
+    if (s.totalSessions > 0) {
+      const drop = s.dropOffSlide ? `; ${s.dropOffSlide.sessions} sessions dropped off at "${s.dropOffSlide.label}"` : ''
+      lines.push(`Viewership: ${s.totalSessions} sessions, ${s.reachedEnd || 0} reached end${drop}`)
+    } else {
+      lines.push('Viewership: deck published, no opens yet')
+    }
+  }
 
   return lines.join('\n')
 }
