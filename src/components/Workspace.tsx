@@ -326,6 +326,34 @@ export default function Workspace({
     finally { setVcLoading(false) }
   }
 
+  // ─── LIVE VIEWERSHIP SIGNALS ────────────────────────────────────────
+  // Polls /api/signals?deckId=... every 10s when the Signals tab is open
+  // OR a deck has been generated this session. Falls back to simulated
+  // mode when no deck id exists yet (intake just finished and the API
+  // call hasn't returned, OR the founder is on a /?demo route).
+  const [signalsData, setSignalsData] = useState<any>(null)
+  const [signalsLoading, setSignalsLoading] = useState(false)
+  useEffect(() => {
+    if (!deckId) return
+    let cancelled = false
+    async function poll() {
+      if (cancelled) return
+      try {
+        setSignalsLoading(true)
+        const r = await fetch(`/api/signals?deckId=${encodeURIComponent(deckId!)}`)
+        if (r.ok) {
+          const data = await r.json()
+          if (!cancelled) setSignalsData(data)
+        }
+      } catch {} finally {
+        if (!cancelled) setSignalsLoading(false)
+      }
+    }
+    poll()
+    const id = setInterval(poll, 10000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [deckId])
+
   // Design with Andreas — calls /api/design-deck, replaces the deck HTML with
   // the Sonnet-handwritten cinematic version. Opt-in because it burns ~15k
   // output tokens per run; never auto-fires.
