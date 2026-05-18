@@ -5,6 +5,7 @@ import type { SynthesisedTheme } from './pipeline/theme-synthesizer'
 import type { SlideVisual } from './pipeline/visual-mood'
 import type { BrandWorld } from './brand-world'
 import { brandWorldMotifBackground } from './motifs'
+import { pickAxes, axesToClasses } from './design-library/axes'
 
 // Transition durations (matched to design-reference.html demoTx timings)
 const TX_DUR: Record<string, number> = {
@@ -1257,6 +1258,11 @@ export function renderDeck(
   const fontData    = world?.typography.mono    || theme?.fontData   || guide?.data        || 'JetBrains Mono'
   const isDark      = world ? world.deckMode === 'dark' : (input.isDark !== false && (theme?.isDark ?? true))
 
+  // Style axes — derived deterministically from brand world + company name.
+  // Applied to the deck wrapper so all slides inherit. Cartesian: 675 combos.
+  const axes = pickAxes(world, input.company || '')
+  const axisClasses = axesToClasses(axes)
+
   return deckTemplate({
     company:     input.company,
     oneLiner:    input.oneLiner,
@@ -1274,5 +1280,6 @@ export function renderDeck(
     dotNav:      labels.map((l,i) => `<button data-idx="${i}" data-label="${l}" aria-label="${l}"></button>`).join('\n'),
     deckId:      opts?.deckId,
     trackUrl:    opts?.trackUrl,
+    axisClasses,
   })
 }

@@ -3,6 +3,7 @@ import { getTemplate, VC_PROFILES, personalize, extractWedge, type Template, typ
 import { brandWorldToCssVars, type BrandWorld } from '@/lib/brand-world'
 import { PALETTE_LIBRARY, suggestPalettes, type Palette } from '@/lib/design-library/palettes'
 import { TYPE_PAIRS, suggestTypePairs, googleFontsHref, type TypePair } from '@/lib/design-library/typography'
+import { pickAxes, axesToClasses, AXIS_OPTIONS, AXIS_COMBINATIONS, type StyleAxes } from '@/lib/design-library/axes'
 import { getIconSet } from '@/lib/icons'
 import { brandWorldMotifBackground } from '@/lib/motifs'
 import AndreasPanel from '@/components/AndreasPanel'
@@ -1271,6 +1272,57 @@ export default function Workspace({
             </div>
           </Card>
         )}
+
+        {/* Algorithmic variation — 5 independent style axes (675 combos per
+            layout × 48 layouts = 32,400 distinct visual outputs). Derived
+            deterministically from brand world + company name; any can be
+            overridden live without an API call. */}
+        {bw && (() => {
+          const computedAxes = pickAxes(bw, company || '')
+          const currentAxes  = { ...computedAxes, ...((bwOverrides as any)._axes || {}) }
+          const setAxis = (key: keyof StyleAxes, value: any) => {
+            setBwOverrides(o => ({ ...o, _axes: { ...(o as any)._axes, [key]: value } } as any))
+          }
+          return (
+            <Card className="p-5 mb-5 space-y-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <MiniLabel>Algorithmic variation</MiniLabel>
+                  <div className="font-semibold tracking-tight mt-1">5 style axes — {AXIS_COMBINATIONS.toLocaleString()} combinations</div>
+                  <div className="text-[12px] ink-muted mt-0.5">
+                    These compose multiplicatively on top of every layout. Auto-picked from your brand; click any value to override.
+                  </div>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                {(Object.keys(AXIS_OPTIONS) as Array<keyof StyleAxes>).map(axisKey => (
+                  <div key={axisKey} className="p-2.5 rounded-lg hairline">
+                    <MiniLabel>{axisKey.replace(/([A-Z])/g, ' $1').replace(/Fx$/, '').trim()}</MiniLabel>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {(AXIS_OPTIONS[axisKey] as readonly string[]).map(val => {
+                        const isActive = currentAxes[axisKey] === val
+                        return (
+                          <button key={val} onClick={() => setAxis(axisKey, val)}
+                            className="text-[10px] font-medium px-2 py-1 rounded-full transition-colors"
+                            style={{
+                              background: isActive ? liveAccent : 'var(--surface)',
+                              color: isActive ? '#fff' : 'var(--ink-muted)',
+                              letterSpacing: '0.02em',
+                            }}>
+                            {val.replace(/-/g, ' ')}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[11px] ink-muted font-mono pt-1">
+                {axesToClasses(currentAxes).split(' ').join(' · ')}
+              </div>
+            </Card>
+          )
+        })()}
 
         {/* Plain-theme toggle — reset the workspace to the default SignalDeck
             monochrome shell. Useful when the generated brand world is too noisy

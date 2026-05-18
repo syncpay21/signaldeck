@@ -22,6 +22,9 @@ export interface TemplateVars {
   deckId?: string
   /** Where to POST tracking beacons. Defaults to the SignalDeck app. */
   trackUrl?: string
+  /** Space-separated style-axis classes — applied to #deck so all slides
+   *  inherit. 5 axes × 3-5 values = 675 combinations per layout. */
+  axisClasses?: string
 }
 
 export function deckTemplate(v: TemplateVars): string {
@@ -511,6 +514,40 @@ export function deckTemplate(v: TemplateVars): string {
     '.risk-narr-card{background:var(--surface);border:1px solid var(--wire);border-left:3px solid var(--accent);border-radius:14px;padding:22px 26px}',
     '.risk-narr-q{font-family:var(--fh);font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:12px;font-style:italic}',
     '.risk-narr-a{font-size:14px;line-height:1.6;opacity:.85}',
+    /* ───── STYLE AXES — algorithmic visual variation system ─────
+       Each axis class on #deck cascades into every card/stat/num/bg.
+       The cartesian product gives 675 distinct visual combinations
+       per layout (×48 layouts = ~32k unique appearances). */
+    /* ─ Axis: card-finish (filled / outlined / minimal) ─ */
+    '#deck.axis-card-filled .prob-card,#deck.axis-card-filled .fix-check,#deck.axis-card-filled .how-step,#deck.axis-card-filled .stat,#deck.axis-card-filled .val-side-stat,#deck.axis-card-filled .cust-arch-card,#deck.axis-card-filled .team-card,#deck.axis-card-filled .ms-stop > div,#deck.axis-card-filled .fix-pillar,#deck.axis-card-filled .sit-triple-card,#deck.axis-card-filled .imp-cost-mult,#deck.axis-card-filled .risk-narr-card{background:var(--surface);border-color:var(--wire)}',
+    '#deck.axis-card-outlined .prob-card,#deck.axis-card-outlined .fix-check,#deck.axis-card-outlined .how-step,#deck.axis-card-outlined .stat,#deck.axis-card-outlined .val-side-stat,#deck.axis-card-outlined .cust-arch-card,#deck.axis-card-outlined .team-card,#deck.axis-card-outlined .fix-pillar,#deck.axis-card-outlined .sit-triple-card,#deck.axis-card-outlined .imp-cost-mult,#deck.axis-card-outlined .risk-narr-card{background:transparent;border:1.5px solid var(--accent);border-opacity:.4}',
+    '#deck.axis-card-minimal .prob-card,#deck.axis-card-minimal .fix-check,#deck.axis-card-minimal .how-step,#deck.axis-card-minimal .stat,#deck.axis-card-minimal .val-side-stat,#deck.axis-card-minimal .cust-arch-card,#deck.axis-card-minimal .team-card,#deck.axis-card-minimal .fix-pillar,#deck.axis-card-minimal .sit-triple-card,#deck.axis-card-minimal .imp-cost-mult,#deck.axis-card-minimal .risk-narr-card{background:transparent;border:none;border-top:1px solid var(--wire);border-radius:0;padding-left:0;padding-right:0}',
+    /* ─ Axis: accent-fx (where the accent stripe lives) ─ */
+    '#deck.axis-accent-bar-top .prob-card,#deck.axis-accent-bar-top .how-step,#deck.axis-accent-bar-top .cust-arch-card,#deck.axis-accent-bar-top .sit-triple-card,#deck.axis-accent-bar-top .fix-pillar{border-top:3px solid var(--accent);border-left:none}',
+    '#deck.axis-accent-bar-top .prob-card::before,#deck.axis-accent-bar-top .cust-arch-card::before{display:none}',
+    '#deck.axis-accent-bar-left .prob-card,#deck.axis-accent-bar-left .how-step,#deck.axis-accent-bar-left .cust-arch-card,#deck.axis-accent-bar-left .sit-triple-card,#deck.axis-accent-bar-left .fix-pillar{border-left:3px solid var(--accent)}',
+    '#deck.axis-accent-bar-left .prob-card::before{display:none}',
+    '#deck.axis-accent-underline .prob-head,#deck.axis-accent-underline .how-head,#deck.axis-accent-underline .cust-arch-name,#deck.axis-accent-underline .sit-triple-name,#deck.axis-accent-underline .fix-pillar-name{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:3px;text-underline-offset:6px}',
+    '#deck.axis-accent-glow .prob-card,#deck.axis-accent-glow .how-step,#deck.axis-accent-glow .stat,#deck.axis-accent-glow .cust-arch-card,#deck.axis-accent-glow .team-card,#deck.axis-accent-glow .sit-triple-card,#deck.axis-accent-glow .fix-pillar,#deck.axis-accent-glow .imp-cost-mult{box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 25%,transparent),0 12px 40px -8px color-mix(in srgb,var(--accent) 35%,transparent)}',
+    '#deck.axis-accent-none .prob-card::before,#deck.axis-accent-none .cust-arch-card::before{display:none}',
+    '#deck.axis-accent-none .prob-card,#deck.axis-accent-none .how-step,#deck.axis-accent-none .cust-arch-card,#deck.axis-accent-none .sit-triple-card,#deck.axis-accent-none .fix-pillar{border-left:1px solid var(--wire);border-top:1px solid var(--wire)}',
+    /* ─ Axis: num-fx (how slide numbers + ordinals render) ─ */
+    '#deck.axis-num-italic-display .prob-num,#deck.axis-num-italic-display .how-num,#deck.axis-num-italic-display .cust-arch-num,#deck.axis-num-italic-display .sit-triple-num,#deck.axis-num-italic-display .stat-val,#deck.axis-num-italic-display .val-hero-num,#deck.axis-num-italic-display .val-side-num,#deck.axis-num-italic-display .imp-cost-num,#deck.axis-num-italic-display .cap-val,#deck.axis-num-italic-display .mkt-vertical-size{font-style:italic;font-family:var(--fh)}',
+    '#deck.axis-num-mono-tabular .prob-num,#deck.axis-num-mono-tabular .how-num,#deck.axis-num-mono-tabular .cust-arch-num,#deck.axis-num-mono-tabular .sit-triple-num,#deck.axis-num-mono-tabular .stat-val,#deck.axis-num-mono-tabular .val-hero-num,#deck.axis-num-mono-tabular .val-side-num,#deck.axis-num-mono-tabular .imp-cost-num,#deck.axis-num-mono-tabular .cap-val,#deck.axis-num-mono-tabular .mkt-vertical-size{font-family:var(--fm);font-style:normal;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}',
+    '#deck.axis-num-circle-badge .prob-num,#deck.axis-num-circle-badge .how-num,#deck.axis-num-circle-badge .cust-arch-num,#deck.axis-num-circle-badge .sit-triple-num{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--bg);font-size:18px;font-style:normal;line-height:1}',
+    /* ─ Axis: bg-motif (slide background pattern) ─ */
+    '#deck.axis-bg-plain .slide-grid{display:none}',
+    '#deck.axis-bg-grid .slide-grid{background-image:linear-gradient(var(--wire) 1px,transparent 1px),linear-gradient(90deg,var(--wire) 1px,transparent 1px);background-size:64px 64px;opacity:.32}',
+    '#deck.axis-bg-noise .slide{background-image:url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n2\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'.8\' numOctaves=\'3\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n2)\' opacity=\'.05\'/%3E%3C/svg%3E");background-blend-mode:overlay}',
+    '#deck.axis-bg-gradient .slide-bg{background:radial-gradient(ellipse 90% 70% at var(--bgx,50%) var(--bgy,50%),color-mix(in srgb,var(--accent) 20%,transparent) 0%,transparent 65%),radial-gradient(ellipse 60% 50% at calc(100% - var(--bgx,50%)) calc(100% - var(--bgy,50%)),color-mix(in srgb,var(--accent) 12%,transparent) 0%,transparent 60%)}',
+    '#deck.axis-bg-dot-grid .slide-grid{background-image:radial-gradient(var(--wire) 1.5px,transparent 1.5px);background-size:28px 28px;background-position:0 0;opacity:.45}',
+    /* ─ Axis: density (spacing scale of inner content) ─ */
+    '#deck.axis-density-tight .slide-inner{padding:clamp(28px,5vw,72px)}',
+    '#deck.axis-density-tight .prob-grid,#deck.axis-density-tight .fix-row,#deck.axis-density-tight .how-flow,#deck.axis-density-tight .stats,#deck.axis-density-tight .cust-arch,#deck.axis-density-tight .team-grid,#deck.axis-density-tight .sit-triple,#deck.axis-density-tight .market-grid,#deck.axis-density-tight .fix-pillars{gap:12px}',
+    '#deck.axis-density-spacious .slide-inner{padding:clamp(56px,10vw,140px)}',
+    '#deck.axis-density-spacious .prob-grid,#deck.axis-density-spacious .fix-row,#deck.axis-density-spacious .how-flow,#deck.axis-density-spacious .stats,#deck.axis-density-spacious .cust-arch,#deck.axis-density-spacious .team-grid,#deck.axis-density-spacious .sit-triple,#deck.axis-density-spacious .market-grid,#deck.axis-density-spacious .fix-pillars{gap:32px}',
+    '#deck.axis-density-spacious .slide-title{margin-bottom:36px}',
+    '#deck.axis-density-spacious .slide-sub{margin-bottom:32px}',
   ].join('\n')
 
   const js = [
@@ -648,7 +685,7 @@ export function deckTemplate(v: TemplateVars): string {
     '  <nav id="dot-nav">' + v.dotNav + '</nav>\n' +
     '  <div id="hud-label"></div>\n' +
     '</div>\n' +
-    '<div id="deck">' + v.slidesHtml + '</div>\n' +
+    '<div id="deck" class="' + (v.axisClasses || '') + '">' + v.slidesHtml + '</div>\n' +
     '<script>\n' + js + '\n</script>\n' +
     '</body>\n' +
     '</html>'
