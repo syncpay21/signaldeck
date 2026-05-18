@@ -704,16 +704,25 @@ Return ONLY this JSON (no markdown):
 // present. Generic shell still works when they're missing.
 const SLIDE_SCHEMA: Record<SlideId, string> = {
   s1_intro:        `{"tag":"string","headline":"COMPANY NAME","sub":"hook line"}`,
-  s2_situation:    `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"string"}]}`,
-  // s3_problem renders as a 3-card grid — emit a CARDS array. Each card has
-  // num (e.g. "01"), head (short uppercase 2-4 words), body (1-2 sentences,
-  // concrete), and foot (one-line consequence, e.g. "→ no moat").
-  s3_problem:      `{"tag":"string","headline":"string","sub":"string","lede":"string","cards":[{"num":"01","head":"PAIN POINT","body":"specific, concrete pain in 1-2 sentences","foot":"→ one-line consequence"},{"num":"02","head":"...","body":"...","foot":"..."},{"num":"03","head":"...","body":"...","foot":"..."}]}`,
+  // s2_situation has 4 variants — pick ONE shape:
+  //   shifts: [{name,desc}]                  → why-now-triple (3 shifts default)
+  //   timeline: [{when,what,isNow?}]         → shift-timeline (key dates)
+  //   converging: [{name,desc}]              → convergence (3-4 trends meeting)
+  //   oldWorld + newWorld {title,items[]}    → before-after-world (pre vs post shift)
+  s2_situation:    `{"tag":"string","headline":"string","sub":"string","lede":"string","shifts":[{"name":"Shift name","desc":"1-line description"}],"timeline":[],"converging":[],"oldWorld":null,"newWorld":null}`,
+  // s3_problem has 4 variants — pick ONE shape:
+  //   cards[{num,head,body,foot}]            → 3-card grid (default, most common)
+  //   heroStat{value,label,subtext}+supporting → stat-overlay (huge number framing)
+  //   painQuotes[{text,author?}]             → quote-evidence (customer voice)
+  //   statusQuo{title,items} + wished{title,items} → before-state (today vs wished)
+  s3_problem:      `{"tag":"string","headline":"string","sub":"string","lede":"string","cards":[{"num":"01","head":"PAIN POINT","body":"1-2 sentence concrete pain","foot":"→ consequence"},{"num":"02","head":"...","body":"...","foot":"..."},{"num":"03","head":"...","body":"...","foot":"..."}],"heroStat":null,"painQuotes":[],"statusQuo":null,"wished":null}`,
   s4_implication:  `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"string"}]}`,
-  // s5_fix renders as a 5-check row — emit a CHECKS array of 4-6 short
-  // outcome statements (max 80 chars each). Treat them as "what changes
-  // when you have this", not feature names.
-  s5_fix:          `{"tag":"string","headline":"string","sub":"string","lede":"string","checks":["outcome statement, 80 chars max","outcome statement","outcome statement","outcome statement","outcome statement"]}`,
+  // s5_fix has 4 variants — pick ONE shape:
+  //   checks[] (default)                        → 5-check row of outcome statements
+  //   before{title,items} + after{title,items}  → before-after split (status quo → with us)
+  //   pillars[{icon,name,desc}] (exactly 3)     → three-pillar (clearest "3 things we do")
+  //   oneThing (string) + supporting[]          → one-big-thing (one bold statement)
+  s5_fix:          `{"tag":"string","headline":"string","sub":"string","lede":"string","checks":["outcome statement, 80 chars max","...","...","...","..."],"before":null,"after":null,"pillars":[],"oneThing":null,"supporting":[]}`,
   // s6_how renders as a 4-step flow — emit a STEPS array. Each step has
   // head (4-word phase title) and body (1-line explanation). Order matters
   // — step 1 is the foundation, step 4 the user-facing surface.
@@ -723,7 +732,12 @@ const SLIDE_SCHEMA: Record<SlideId, string> = {
   // If named customer logos: "customerLogos"[{name,url?}]. Otherwise emit stats[],
   // with stats[0] as the HERO number (largest, most defensible).
   s7_validation:   `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"700K+","label":"customers in 5yrs"},{"value":"70+","label":"NPS"},{"value":"100K","label":"shared accounts"},{"value":"$0","label":"paid acquisition"}],"quotes":[],"customerLogos":[]}`,
-  s8_market:       `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"TAM"},{"value":"string","label":"SAM"},{"value":"string","label":"SOM"}]}`,
+  // s8_market has 4 variants — pick ONE shape:
+  //   stats with TAM/SAM/SOM labels (default)   → concentric rings
+  //   stats with 3-4 descending labels          → waterfall-bars
+  //   verticals[{name,size,detail?}]            → verticals (segment-by-segment)
+  //   growthCurve[{year,value,label?}] (3+)     → growth-curve (historical + projected)
+  s8_market:       `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"$X","label":"TAM"},{"value":"$Y","label":"SAM"},{"value":"$Z","label":"SOM"}],"verticals":[],"growthCurve":[]}`,
   // s9_customers renders one of 4 variants. Default to bullets[] for "archetype-cards".
   // If you have real customer quotes, include "quotes". For a journey-style story,
   // include "journey"[{when,what,detail?}]. For many segments, "segments"[{name,icon?}].

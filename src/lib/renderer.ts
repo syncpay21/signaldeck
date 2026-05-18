@@ -192,43 +192,308 @@ function escapeHtml(s: any): string {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c] as string))
 }
 
+/* ─── PROBLEM (s3) — 4 variants ────────────────────────────────────────
+   3-card grid (default) / stat-overlay / quote-evidence / before-state */
+function pickProblemVariant(c: any): 'card-grid' | 'stat-overlay' | 'quote-evidence' | 'before-state' {
+  if (c.heroStat && typeof c.heroStat === 'object') return 'stat-overlay'
+  if (Array.isArray(c.painQuotes) && c.painQuotes.length) return 'quote-evidence'
+  if (c.statusQuo && c.wished) return 'before-state'
+  return 'card-grid'
+}
+
 function buildProblemSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
-  const cards = Array.isArray(c.cards) ? c.cards : (Array.isArray(c.bullets) ? c.bullets.map((b: string, i: number) => ({ num: `0${i+1}`, head: b, body: '' })) : [])
-  if (!cards.length) return ''
-  const cardsHtml = cards.slice(0, 6).map((card: any, i: number) => `<div class="prob-card" style="--i:${i}">
-    <div class="prob-num">${escapeHtml(card.num || `0${i+1}`)}</div>
-    <div class="prob-head">${escapeHtml(card.head || card.title || '')}</div>
-    ${card.body ? `<div class="prob-body">${escapeHtml(card.body)}</div>` : ''}
-    ${card.foot ? `<div class="prob-foot">${escapeHtml(card.foot)}</div>` : ''}
-  </div>`).join('')
-  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
-  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  const variant = pickProblemVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
   <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
   <div class="slide-inner">
     <div class="slide-tag">${escapeHtml(c.tag || 'the problem')}</div>
     <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
     ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
-    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}
-    <div class="prob-grid reveal-stagger tx-group">${cardsHtml}</div>
-  </div>
-</section>`
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'stat-overlay') {
+    const hero = c.heroStat || { value:'—', label:'', subtext:'' }
+    const supporting = Array.isArray(c.supporting) ? c.supporting.slice(0, 3) : (Array.isArray(c.bullets) ? c.bullets.slice(0, 3) : [])
+    return wrap(`<div class="prob-stat tx-group">
+      <div class="prob-stat-hero stagger" style="--i:0">
+        <div class="prob-stat-num">${escapeHtml(hero.value)}</div>
+        <div class="prob-stat-lbl">${escapeHtml(hero.label)}</div>
+        ${hero.subtext ? `<div class="prob-stat-sub">${escapeHtml(hero.subtext)}</div>` : ''}
+      </div>
+      <div class="prob-stat-side">
+        ${supporting.map((s: any, i: number) => `<div class="prob-stat-fact stagger" style="--i:${i+1}">${escapeHtml(typeof s === 'string' ? s : (s.text || s.label || ''))}</div>`).join('')}
+      </div>
+    </div>`)
+  }
+
+  if (variant === 'quote-evidence') {
+    const quotes = (c.painQuotes as any[]).slice(0, 3)
+    return wrap(`<div class="prob-quotes stagger tx-group">
+      ${quotes.map((q: any, i: number) => `<div class="prob-quote-card" style="--i:${i}">
+        <div class="prob-quote-mark">"</div>
+        <div class="prob-quote-text">${escapeHtml(q.text || q.quote || '')}</div>
+        <div class="prob-quote-author">— ${escapeHtml(q.author || q.role || 'A customer')}</div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'before-state') {
+    const sq = c.statusQuo  // {title, items[]}
+    const w  = c.wished    // {title, items[]}
+    return wrap(`<div class="prob-before tx-group">
+      <div class="prob-before-col prob-before-sq stagger" style="--i:0">
+        <div class="prob-before-lbl">${escapeHtml(sq.title || 'Today')}</div>
+        <ul>${(sq.items || []).slice(0, 5).map((it: string) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+      </div>
+      <div class="prob-before-arrow">→</div>
+      <div class="prob-before-col prob-before-wish stagger" style="--i:1">
+        <div class="prob-before-lbl">${escapeHtml(w.title || 'What they want')}</div>
+        <ul>${(w.items || []).slice(0, 5).map((it: string) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+      </div>
+    </div>`)
+  }
+
+  // CARD-GRID — default 3-card layout
+  const cards = Array.isArray(c.cards) ? c.cards : (Array.isArray(c.bullets) ? c.bullets.map((b: string, i: number) => ({ num: `0${i+1}`, head: b, body: '' })) : [])
+  if (!cards.length) return ''
+  return wrap(`<div class="prob-grid reveal-stagger tx-group">
+    ${cards.slice(0, 6).map((card: any, i: number) => `<div class="prob-card" style="--i:${i}">
+      <div class="prob-num">${escapeHtml(card.num || `0${i+1}`)}</div>
+      <div class="prob-head">${escapeHtml(card.head || card.title || '')}</div>
+      ${card.body ? `<div class="prob-body">${escapeHtml(card.body)}</div>` : ''}
+      ${card.foot ? `<div class="prob-foot">${escapeHtml(card.foot)}</div>` : ''}
+    </div>`).join('')}
+  </div>`)
+}
+
+/* ─── FIX (s5) — 4 variants ────────────────────────────────────────────
+   checks-row (default) / before-after / three-pillar / one-big-thing */
+function pickFixVariant(c: any): 'checks-row' | 'before-after' | 'three-pillar' | 'one-big-thing' {
+  if (c.before && c.after) return 'before-after'
+  if (Array.isArray(c.pillars) && c.pillars.length === 3) return 'three-pillar'
+  if (c.oneThing && typeof c.oneThing === 'string') return 'one-big-thing'
+  return 'checks-row'
 }
 
 function buildFixSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
-  const checks = Array.isArray(c.checks) ? c.checks : (Array.isArray(c.bullets) ? c.bullets : [])
-  if (!checks.length) return ''
-  const checksHtml = checks.slice(0, 5).map((chk: any, i: number) => `<div class="fix-check" style="--i:${i}">${escapeHtml(typeof chk === 'string' ? chk : chk.text || chk.label || '')}</div>`).join('')
-  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
-  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  const variant = pickFixVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
   <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
   <div class="slide-inner">
     <div class="slide-tag">${escapeHtml(c.tag || 'the fix')}</div>
     <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
     ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
-    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}
-    <div class="fix-checks reveal-stagger tx-group">${checksHtml}</div>
-  </div>
-</section>`
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'before-after') {
+    const before = c.before || { title:'Before', items:[] }
+    const after  = c.after  || { title:'After',  items:[] }
+    return wrap(`<div class="fix-ba tx-group">
+      <div class="fix-ba-col fix-ba-before stagger" style="--i:0">
+        <div class="fix-ba-lbl">${escapeHtml(before.title || 'Before')}</div>
+        <ul>${(before.items || []).slice(0, 5).map((it: string) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+      </div>
+      <div class="fix-ba-arrow">→</div>
+      <div class="fix-ba-col fix-ba-after stagger" style="--i:1">
+        <div class="fix-ba-lbl">${escapeHtml(after.title || 'After')}</div>
+        <ul>${(after.items || []).slice(0, 5).map((it: string) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+      </div>
+    </div>`)
+  }
+
+  if (variant === 'three-pillar') {
+    const pillars = (c.pillars as any[]).slice(0, 3)
+    return wrap(`<div class="fix-pillars stagger tx-group">
+      ${pillars.map((p: any, i: number) => `<div class="fix-pillar" style="--i:${i}">
+        <div class="fix-pillar-icon">${escapeHtml(p.icon || (i + 1))}</div>
+        <div class="fix-pillar-name">${escapeHtml(p.name || p.title || '')}</div>
+        <div class="fix-pillar-desc">${escapeHtml(p.desc || p.body || '')}</div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'one-big-thing') {
+    const sup = Array.isArray(c.supporting) ? c.supporting.slice(0, 2) : []
+    return wrap(`<div class="fix-onething tx-group">
+      <div class="fix-onething-statement reveal-up d3">${escapeHtml(c.oneThing)}</div>
+      ${sup.length ? `<div class="fix-onething-sup stagger">
+        ${sup.map((s: any, i: number) => `<div class="fix-onething-line" style="--i:${i}">${escapeHtml(typeof s === 'string' ? s : (s.text || ''))}</div>`).join('')}
+      </div>` : ''}
+    </div>`)
+  }
+
+  // CHECKS-ROW — default
+  const checks = Array.isArray(c.checks) ? c.checks : (Array.isArray(c.bullets) ? c.bullets : [])
+  if (!checks.length) return ''
+  return wrap(`<div class="fix-checks reveal-stagger tx-group">
+    ${checks.slice(0, 5).map((chk: any, i: number) => `<div class="fix-check" style="--i:${i}">${escapeHtml(typeof chk === 'string' ? chk : chk.text || chk.label || '')}</div>`).join('')}
+  </div>`)
+}
+
+/* ─── SITUATION (s2) — 4 variants ──────────────────────────────────────
+   why-now-triple (3 shifts) / shift-timeline / convergence / before-after-world */
+function pickSituationVariant(c: any): 'why-now-triple' | 'shift-timeline' | 'convergence' | 'before-after-world' {
+  if (Array.isArray(c.timeline) && c.timeline.length >= 3) return 'shift-timeline'
+  if (Array.isArray(c.converging) && c.converging.length >= 2) return 'convergence'
+  if (c.oldWorld && c.newWorld) return 'before-after-world'
+  return 'why-now-triple'
+}
+
+function buildSituationSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const variant = pickSituationVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'why now')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'shift-timeline') {
+    const stones = (c.timeline as any[]).slice(0, 5)
+    return wrap(`<div class="sit-timeline tx-group">
+      <div class="sit-timeline-line"></div>
+      ${stones.map((m: any, i: number) => `<div class="sit-timeline-stop stagger" style="--i:${i}">
+        <div class="sit-timeline-dot${m.isNow ? ' sit-timeline-dot-now' : ''}"></div>
+        <div class="sit-timeline-when">${escapeHtml(m.when || m.year || '')}</div>
+        <div class="sit-timeline-what">${escapeHtml(m.what || m.label || '')}</div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'convergence') {
+    const trends = (c.converging as any[]).slice(0, 4)
+    return wrap(`<div class="sit-conv tx-group">
+      <div class="sit-conv-lines">
+        ${trends.map((_, i: number) => `<div class="sit-conv-line" style="--i:${i};--total:${trends.length}"></div>`).join('')}
+        <div class="sit-conv-point"></div>
+      </div>
+      <div class="sit-conv-labels stagger">
+        ${trends.map((t: any, i: number) => `<div class="sit-conv-trend" style="--i:${i}">
+          <div class="sit-conv-name">${escapeHtml(t.name || t.title || '')}</div>
+          <div class="sit-conv-desc">${escapeHtml(t.desc || t.body || '')}</div>
+        </div>`).join('')}
+      </div>
+    </div>`)
+  }
+
+  if (variant === 'before-after-world') {
+    const o = c.oldWorld || { title:'Old world', items:[] }
+    const n = c.newWorld || { title:'New world', items:[] }
+    return wrap(`<div class="sit-world tx-group">
+      <div class="sit-world-col sit-world-old stagger" style="--i:0">
+        <div class="sit-world-lbl">${escapeHtml(o.title || 'Old world')}</div>
+        <ul>${(o.items || []).slice(0, 5).map((it: string) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+      </div>
+      <div class="sit-world-divider"><span>NOW</span></div>
+      <div class="sit-world-col sit-world-new stagger" style="--i:1">
+        <div class="sit-world-lbl">${escapeHtml(n.title || 'New world')}</div>
+        <ul>${(n.items || []).slice(0, 5).map((it: string) => `<li>${escapeHtml(it)}</li>`).join('')}</ul>
+      </div>
+    </div>`)
+  }
+
+  // WHY-NOW-TRIPLE — three shifts in big cards
+  const shifts = Array.isArray(c.shifts) ? c.shifts.slice(0, 3) : (Array.isArray(c.bullets) ? c.bullets.slice(0, 3).map((b: string) => ({ name: b, desc: '' })) : [])
+  return wrap(`<div class="sit-triple stagger tx-group">
+    ${shifts.map((s: any, i: number) => `<div class="sit-triple-card" style="--i:${i}">
+      <div class="sit-triple-num">${String(i + 1).padStart(2, '0')}</div>
+      <div class="sit-triple-name">${escapeHtml(typeof s === 'string' ? s : (s.name || s.title || ''))}</div>
+      ${typeof s === 'object' && s.desc ? `<div class="sit-triple-desc">${escapeHtml(s.desc)}</div>` : ''}
+    </div>`).join('')}
+  </div>`)
+}
+
+/* ─── MARKET (s8) — 4 variants ─────────────────────────────────────────
+   tam-sam-som (concentric rings) / waterfall-bars / verticals / growth-curve */
+function pickMarketVariant(c: any): 'tam-sam-som' | 'waterfall-bars' | 'verticals' | 'growth-curve' {
+  if (Array.isArray(c.growthCurve) && c.growthCurve.length >= 3) return 'growth-curve'
+  if (Array.isArray(c.verticals) && c.verticals.length >= 3) return 'verticals'
+  if (Array.isArray(c.stats) && c.stats.length === 3 && /tam|sam|som/i.test(c.stats[0]?.label || '')) return 'tam-sam-som'
+  if (Array.isArray(c.stats) && c.stats.length >= 3) return 'waterfall-bars'
+  return 'tam-sam-som'
+}
+
+function buildMarketSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const variant = pickMarketVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'market')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'tam-sam-som') {
+    const stats = (Array.isArray(c.stats) ? c.stats : []).slice(0, 3)
+    return wrap(`<div class="mkt-rings tx-group">
+      <div class="mkt-rings-svg">
+        <div class="mkt-ring mkt-ring-1 stagger" style="--i:0"><span>${escapeHtml(stats[0]?.value || 'TAM')}</span></div>
+        <div class="mkt-ring mkt-ring-2 stagger" style="--i:1"><span>${escapeHtml(stats[1]?.value || 'SAM')}</span></div>
+        <div class="mkt-ring mkt-ring-3 stagger" style="--i:2"><span>${escapeHtml(stats[2]?.value || 'SOM')}</span></div>
+      </div>
+      <div class="mkt-rings-legend stagger">
+        ${stats.map((s: any, i: number) => `<div class="mkt-rings-row" style="--i:${i+3}">
+          <span class="mkt-rings-dot mkt-rings-dot-${i+1}"></span>
+          <div><div class="mkt-rings-lbl">${escapeHtml(s.label)}</div><div class="mkt-rings-val">${escapeHtml(s.value)}</div></div>
+        </div>`).join('')}
+      </div>
+    </div>`)
+  }
+
+  if (variant === 'waterfall-bars') {
+    const stats = (Array.isArray(c.stats) ? c.stats : []).slice(0, 4)
+    return wrap(`<div class="mkt-water stagger tx-group">
+      ${stats.map((s: any, i: number) => `<div class="mkt-water-row" style="--i:${i};--w:${100 - i * 22}%">
+        <div class="mkt-water-lbl">${escapeHtml(s.label)}</div>
+        <div class="mkt-water-bar"><div class="mkt-water-bar-fill"></div><div class="mkt-water-bar-val">${escapeHtml(s.value)}</div></div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'verticals') {
+    const verts = (c.verticals as any[]).slice(0, 6)
+    return wrap(`<div class="mkt-verticals stagger tx-group">
+      ${verts.map((v: any, i: number) => `<div class="mkt-vertical-card" style="--i:${i}">
+        <div class="mkt-vertical-name">${escapeHtml(v.name || v.label || '')}</div>
+        <div class="mkt-vertical-size">${escapeHtml(v.size || v.value || '')}</div>
+        ${v.detail ? `<div class="mkt-vertical-detail">${escapeHtml(v.detail)}</div>` : ''}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  // GROWTH-CURVE
+  const points = c.growthCurve as Array<{year: string|number; value: number; label?: string}>
+  const max = Math.max(...points.map(p => p.value || 0), 1)
+  const w = 600, h = 200
+  const xStep = w / (points.length - 1)
+  const path = points.map((p, i) => `${i * xStep},${h - (p.value / max) * (h - 20)}`).join(' ')
+  return wrap(`<div class="mkt-growth tx-group">
+    <svg class="mkt-growth-svg" viewBox="0 0 ${w} ${h + 40}" preserveAspectRatio="none">
+      <defs><linearGradient id="mg${idx}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+      </linearGradient></defs>
+      <polygon points="0,${h} ${path} ${w},${h}" fill="url(#mg${idx})"/>
+      <polyline points="${path}" fill="none" stroke="var(--accent)" stroke-width="3"/>
+      ${points.map((p, i) => {
+        const x = i * xStep, y = h - (p.value / max) * (h - 20)
+        return `<circle cx="${x}" cy="${y}" r="4" fill="var(--accent)"/>
+          <text x="${x}" y="${h + 22}" fill="var(--snow)" font-family="var(--fm)" font-size="11" text-anchor="middle" opacity="0.55">${escapeHtml(String(p.year))}</text>`
+      }).join('')}
+    </svg>
+    <div class="mkt-growth-legend stagger">
+      ${points.map((p, i) => p.label ? `<div class="mkt-growth-callout" style="--i:${i}">${escapeHtml(p.label)}</div>` : '').join('')}
+    </div>
+  </div>`)
 }
 
 function buildHowSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
@@ -737,10 +1002,12 @@ export function renderDeck(
     // Bespoke layout dispatch — falls through to the generic slide() shell
     // when the slide's content doesn't carry the layout-specific fields.
     let html = ''
-    if (id === 's3_problem')           html = buildProblemSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    if (id === 's2_situation')         html = buildSituationSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's3_problem')      html = buildProblemSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's5_fix')          html = buildFixSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's6_how')          html = buildHowSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's7_validation')   html = buildValidationSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
+    else if (id === 's8_market')       html = buildMarketSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's9_customers')    html = buildCustomersSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
     else if (id === 's10_competition') html = buildCompetitionSlideVariants(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
     else if (id === 's12_team_ask')    html = buildTeamAskSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
