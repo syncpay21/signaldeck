@@ -539,7 +539,9 @@ export async function synthesiseReply(
     ? '(no tools dispatched — answer from context and your own expertise)'
     : results.map(r => {
         if (r.error) return `[${r.tool}] FAILED: ${r.error}`
-        return `[${r.tool}]\n${smartTruncate(JSON.stringify(r.result, null, 2), 5000)}`
+        // Pre-summarised tool digest — only the fields that influence the
+        // reply, not the raw JSON. Saves 60-80% of synth input tokens.
+        return `[${r.tool}]\n${digestToolResult(r.tool, r.result)}`
       }).join('\n\n')
 
   // Adaptive budgets — derived from intent classifier (chit-chat = 400 tok,
