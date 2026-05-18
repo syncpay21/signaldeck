@@ -496,25 +496,235 @@ function buildMarketSlide(htmlId: string, idx: number, label: string, tx: string
   </div>`)
 }
 
+/* ─── HOW (s6) — 4 variants ────────────────────────────────────────────
+   step-flow (default) / arch-stack / sequence-arrows / inputs-outputs */
+function pickHowVariant(c: any): 'step-flow' | 'arch-stack' | 'sequence-arrows' | 'inputs-outputs' {
+  if (Array.isArray(c.layers) && c.layers.length >= 2) return 'arch-stack'
+  if (Array.isArray(c.sequence) && c.sequence.length >= 2) return 'sequence-arrows'
+  if (c.inputs && c.outputs) return 'inputs-outputs'
+  return 'step-flow'
+}
+
 function buildHowSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
-  const steps = Array.isArray(c.steps) ? c.steps : (Array.isArray(c.bullets) ? c.bullets.map((b: string, i: number) => ({ head: b, body: '' })) : [])
-  if (!steps.length) return ''
-  const stepsHtml = steps.slice(0, 4).map((s: any, i: number) => `<div class="how-step" style="--i:${i}">
-    <div class="how-num">${String(i + 1).padStart(2,'0')}</div>
-    <div class="how-head">${escapeHtml(s.head || s.title || (typeof s === 'string' ? s : ''))}</div>
-    ${s.body ? `<div class="how-body">${escapeHtml(s.body)}</div>` : ''}
-  </div>`).join('')
-  return `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="${label}" data-tx="${tx}">
-  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+  const variant = pickHowVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
   <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
   <div class="slide-inner">
     <div class="slide-tag">${escapeHtml(c.tag || 'how it works')}</div>
     <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
     ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
-    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}
-    <div class="how-flow reveal-stagger tx-group">${stepsHtml}</div>
-  </div>
-</section>`
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'arch-stack') {
+    const layers = (c.layers as any[]).slice(0, 5).reverse()  // top-down render, bottom layer = foundation
+    return wrap(`<div class="how-arch tx-group">
+      ${layers.map((l: any, i: number) => `<div class="how-arch-layer stagger" style="--i:${i}">
+        <div class="how-arch-lbl">${escapeHtml(l.label || `Layer ${layers.length - i}`)}</div>
+        <div class="how-arch-name">${escapeHtml(l.name || l.title || '')}</div>
+        ${l.body ? `<div class="how-arch-body">${escapeHtml(l.body)}</div>` : ''}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'sequence-arrows') {
+    const seq = (c.sequence as any[]).slice(0, 5)
+    return wrap(`<div class="how-seq tx-group">
+      ${seq.map((s: any, i: number) => `<div class="how-seq-step stagger" style="--i:${i}">
+        <div class="how-seq-name">${escapeHtml(s.name || s.title || '')}</div>
+        ${s.body ? `<div class="how-seq-body">${escapeHtml(s.body)}</div>` : ''}
+        ${i < seq.length - 1 ? '<div class="how-seq-arrow">→</div>' : ''}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'inputs-outputs') {
+    const inputs  = (c.inputs as any[]).slice(0, 4)
+    const outputs = (c.outputs as any[]).slice(0, 4)
+    return wrap(`<div class="how-io tx-group">
+      <div class="how-io-col stagger" style="--i:0">
+        <div class="how-io-lbl">Inputs</div>
+        <ul>${inputs.map((i: any) => `<li>${escapeHtml(typeof i === 'string' ? i : (i.label || i.name || ''))}</li>`).join('')}</ul>
+      </div>
+      <div class="how-io-engine stagger" style="--i:1">
+        <div class="how-io-engine-glyph">↻</div>
+        <div class="how-io-engine-name">${escapeHtml(c.engineName || 'Engine')}</div>
+        ${c.engineBody ? `<div class="how-io-engine-body">${escapeHtml(c.engineBody)}</div>` : ''}
+      </div>
+      <div class="how-io-col stagger" style="--i:2">
+        <div class="how-io-lbl">Outputs</div>
+        <ul>${outputs.map((o: any) => `<li>${escapeHtml(typeof o === 'string' ? o : (o.label || o.name || ''))}</li>`).join('')}</ul>
+      </div>
+    </div>`)
+  }
+
+  // STEP-FLOW — default 4-step horizontal flow
+  const steps = Array.isArray(c.steps) ? c.steps : (Array.isArray(c.bullets) ? c.bullets.map((b: string) => ({ head: b, body: '' })) : [])
+  if (!steps.length) return ''
+  return wrap(`<div class="how-flow reveal-stagger tx-group">
+    ${steps.slice(0, 4).map((s: any, i: number) => `<div class="how-step" style="--i:${i}">
+      <div class="how-num">${String(i + 1).padStart(2, '0')}</div>
+      <div class="how-head">${escapeHtml(s.head || s.title || (typeof s === 'string' ? s : ''))}</div>
+      ${s.body ? `<div class="how-body">${escapeHtml(s.body)}</div>` : ''}
+    </div>`).join('')}
+  </div>`)
+}
+
+/* ─── IMPLICATION (s4) — 4 variants ────────────────────────────────────
+   cost-counter / risk-fan / loss-frame / status-quo-failure */
+function pickImplicationVariant(c: any): 'cost-counter' | 'risk-fan' | 'loss-frame' | 'status-quo-failure' {
+  if (Array.isArray(c.cascading) && c.cascading.length >= 3) return 'risk-fan'
+  if (c.lossFrame && Array.isArray(c.lossFrame) && c.lossFrame.length >= 2) return 'loss-frame'
+  if (c.failureTable && Array.isArray(c.failureTable.rows)) return 'status-quo-failure'
+  return 'cost-counter'
+}
+
+function buildImplicationSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const variant = pickImplicationVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'the implication')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'cost-counter') {
+    const cost = c.cost || (Array.isArray(c.stats) && c.stats[0]) || { value: '—', label: 'lost annually' }
+    const multipliers = Array.isArray(c.multipliers) ? c.multipliers.slice(0, 3) : []
+    return wrap(`<div class="imp-cost tx-group">
+      <div class="imp-cost-hero stagger" style="--i:0">
+        <div class="imp-cost-frame">Every year that passes:</div>
+        <div class="imp-cost-num">${escapeHtml(cost.value)}</div>
+        <div class="imp-cost-unit">${escapeHtml(cost.label)}</div>
+      </div>
+      ${multipliers.length ? `<div class="imp-cost-mults stagger">
+        ${multipliers.map((m: any, i: number) => `<div class="imp-cost-mult" style="--i:${i+1}">
+          <div class="imp-cost-mult-num">${escapeHtml(m.value || m.factor || '')}</div>
+          <div class="imp-cost-mult-lbl">${escapeHtml(m.label || m.text || '')}</div>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`)
+  }
+
+  if (variant === 'risk-fan') {
+    const items = (c.cascading as any[]).slice(0, 5)
+    return wrap(`<div class="imp-fan stagger tx-group">
+      ${items.map((it: any, i: number) => `<div class="imp-fan-item" style="--i:${i};--n:${items.length}">
+        <div class="imp-fan-step">${String(i + 1).padStart(2, '0')}</div>
+        <div class="imp-fan-text">${escapeHtml(typeof it === 'string' ? it : (it.text || it.label || ''))}</div>
+        ${i < items.length - 1 ? '<div class="imp-fan-tail">↓</div>' : '<div class="imp-fan-end">collapse</div>'}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'loss-frame') {
+    const items = (c.lossFrame as any[]).slice(0, 4)
+    return wrap(`<div class="imp-loss stagger tx-group">
+      <div class="imp-loss-intro reveal-up d3">If this continues…</div>
+      ${items.map((it: any, i: number) => `<div class="imp-loss-step" style="--i:${i}">
+        <div class="imp-loss-when">${escapeHtml(it.when || `Year ${i + 1}`)}</div>
+        <div class="imp-loss-what">${escapeHtml(it.what || it.text || it.label || '')}</div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  // STATUS-QUO-FAILURE — table of what's broken today
+  const tbl = c.failureTable
+  return wrap(`<div class="imp-fail tx-group">
+    <div class="imp-fail-row imp-fail-head">
+      <div>${escapeHtml(tbl.colA || 'Today')}</div>
+      <div>${escapeHtml(tbl.colB || 'The cost')}</div>
+    </div>
+    ${(tbl.rows as any[]).slice(0, 5).map((r: any, i: number) => `<div class="imp-fail-row stagger" style="--i:${i}">
+      <div>${escapeHtml(r.today || r.left || '')}</div>
+      <div class="imp-fail-cost">${escapeHtml(r.cost || r.right || '')}</div>
+    </div>`).join('')}
+  </div>`)
+}
+
+/* ─── RISKS (s11) — 4 variants ─────────────────────────────────────────
+   mitigation-pairs / risk-radar / risk-narrative / risk-timeline */
+function pickRiskVariant(c: any): 'mitigation-pairs' | 'risk-radar' | 'risk-narrative' | 'risk-timeline' {
+  if (c.riskRadar && Array.isArray(c.riskRadar.risks)) return 'risk-radar'
+  if (Array.isArray(c.riskTimeline) && c.riskTimeline.length >= 3) return 'risk-timeline'
+  if (c.riskNarrative && Array.isArray(c.riskNarrative)) return 'risk-narrative'
+  return 'mitigation-pairs'
+}
+
+function buildRisksSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
+  const variant = pickRiskVariant(c)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'risks')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'risk-radar') {
+    // SVG radar: severity (0-100) × probability (0-100), each risk a labeled dot
+    const risks = (c.riskRadar.risks as any[]).slice(0, 6)
+    return wrap(`<div class="risk-radar tx-group">
+      <div class="risk-radar-grid">
+        <div class="risk-radar-axes">
+          <div class="risk-radar-x-label">PROBABILITY →</div>
+          <div class="risk-radar-y-label">SEVERITY →</div>
+          ${risks.map((r: any, i: number) => `<div class="risk-radar-dot stagger" style="left:${Math.max(2, Math.min(95, r.probability || 50))}%;top:${Math.max(2, Math.min(95, 100 - (r.severity || 50)))}%;--i:${i}">
+            <div class="risk-radar-dot-name">${escapeHtml(r.name || r.label || '')}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      ${c.mitigation ? `<div class="risk-radar-mit reveal-up d4">${escapeHtml(c.mitigation)}</div>` : ''}
+    </div>`)
+  }
+
+  if (variant === 'risk-timeline') {
+    const stones = (c.riskTimeline as any[]).slice(0, 5)
+    return wrap(`<div class="risk-timeline tx-group">
+      <div class="risk-timeline-line"></div>
+      ${stones.map((m: any, i: number) => `<div class="risk-timeline-stop stagger" style="--i:${i};--peak:${(m.peak || 50)}%">
+        <div class="risk-timeline-when">${escapeHtml(m.when || `T${i + 1}`)}</div>
+        <div class="risk-timeline-bar"></div>
+        <div class="risk-timeline-name">${escapeHtml(m.name || m.label || '')}</div>
+        ${m.mitigation ? `<div class="risk-timeline-mit">${escapeHtml(m.mitigation)}</div>` : ''}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'risk-narrative') {
+    const items = (c.riskNarrative as any[]).slice(0, 3)
+    return wrap(`<div class="risk-narr stagger tx-group">
+      ${items.map((it: any, i: number) => `<div class="risk-narr-card" style="--i:${i}">
+        <div class="risk-narr-q">"${escapeHtml(it.question || it.q || 'What if…')}"</div>
+        <div class="risk-narr-a">${escapeHtml(it.answer || it.a || '')}</div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  // MITIGATION-PAIRS — Risk | Mitigation rows
+  const pairs = Array.isArray(c.pairs) ? c.pairs : (Array.isArray(c.bullets) ? c.bullets.map((b: string) => {
+    const m = String(b).match(/^Risk:\s*(.*?)→\s*Mitigation:\s*(.*)$/i)
+    return m ? { risk: m[1].trim(), mitigation: m[2].trim() } : { risk: b, mitigation: '' }
+  }) : [])
+  return wrap(`<div class="risk-pairs stagger tx-group">
+    ${pairs.slice(0, 4).map((p: any, i: number) => `<div class="risk-pair-row" style="--i:${i}">
+      <div class="risk-pair-risk">
+        <div class="risk-pair-lbl">Risk</div>
+        <div class="risk-pair-text">${escapeHtml(p.risk || '')}</div>
+      </div>
+      <div class="risk-pair-arrow">→</div>
+      <div class="risk-pair-mit">
+        <div class="risk-pair-lbl risk-pair-lbl-mit">Mitigation</div>
+        <div class="risk-pair-text">${escapeHtml(p.mitigation || '')}</div>
+      </div>
+    </div>`).join('')}
+  </div>`)
 }
 
 function buildCompetitionSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string): string {
@@ -1004,12 +1214,14 @@ export function renderDeck(
     let html = ''
     if (id === 's2_situation')         html = buildSituationSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's3_problem')      html = buildProblemSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's4_implication')  html = buildImplicationSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's5_fix')          html = buildFixSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's6_how')          html = buildHowSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's7_validation')   html = buildValidationSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
     else if (id === 's8_market')       html = buildMarketSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's9_customers')    html = buildCustomersSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
     else if (id === 's10_competition') html = buildCompetitionSlideVariants(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
+    else if (id === 's11_risks')       html = buildRisksSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     else if (id === 's12_team_ask')    html = buildTeamAskSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
     if (!html) html = slide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     slideHtmlList.push(html)

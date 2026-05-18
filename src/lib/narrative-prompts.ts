@@ -716,17 +716,24 @@ const SLIDE_SCHEMA: Record<SlideId, string> = {
   //   painQuotes[{text,author?}]             → quote-evidence (customer voice)
   //   statusQuo{title,items} + wished{title,items} → before-state (today vs wished)
   s3_problem:      `{"tag":"string","headline":"string","sub":"string","lede":"string","cards":[{"num":"01","head":"PAIN POINT","body":"1-2 sentence concrete pain","foot":"→ consequence"},{"num":"02","head":"...","body":"...","foot":"..."},{"num":"03","head":"...","body":"...","foot":"..."}],"heroStat":null,"painQuotes":[],"statusQuo":null,"wished":null}`,
-  s4_implication:  `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"string"}]}`,
+  // s4_implication has 4 variants — pick ONE shape:
+  //   cost{value,label} + multipliers[{value,label}]      → cost-counter (default)
+  //   cascading[strings] (5 escalating consequences)       → risk-fan
+  //   lossFrame[{when,what}]                               → loss-frame (year-by-year)
+  //   failureTable{colA,colB,rows[{today,cost}]}           → status-quo-failure
+  s4_implication:  `{"tag":"string","headline":"string","sub":"string","lede":"string","cost":{"value":"$X","label":"lost annually"},"multipliers":[{"value":"3×","label":"multiplier"}],"cascading":[],"lossFrame":[],"failureTable":null}`,
   // s5_fix has 4 variants — pick ONE shape:
   //   checks[] (default)                        → 5-check row of outcome statements
   //   before{title,items} + after{title,items}  → before-after split (status quo → with us)
   //   pillars[{icon,name,desc}] (exactly 3)     → three-pillar (clearest "3 things we do")
   //   oneThing (string) + supporting[]          → one-big-thing (one bold statement)
   s5_fix:          `{"tag":"string","headline":"string","sub":"string","lede":"string","checks":["outcome statement, 80 chars max","...","...","...","..."],"before":null,"after":null,"pillars":[],"oneThing":null,"supporting":[]}`,
-  // s6_how renders as a 4-step flow — emit a STEPS array. Each step has
-  // head (4-word phase title) and body (1-line explanation). Order matters
-  // — step 1 is the foundation, step 4 the user-facing surface.
-  s6_how:          `{"tag":"string","headline":"string","sub":"string","lede":"string","steps":[{"head":"FOUNDATION","body":"1-sentence explanation"},{"head":"...","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."}]}`,
+  // s6_how has 4 variants — pick ONE shape:
+  //   steps[{head,body}] (4 steps)              → step-flow (default horizontal)
+  //   layers[{label,name,body}] (foundation→surface) → arch-stack (vertical layers)
+  //   sequence[{name,body}]                     → sequence-arrows (left-to-right flow)
+  //   inputs[] + outputs[] + engineName + engineBody → inputs-outputs (3-col with engine)
+  s6_how:          `{"tag":"string","headline":"string","sub":"string","lede":"string","steps":[{"head":"FOUNDATION","body":"explanation"},{"head":"...","body":"..."}],"layers":[],"sequence":[],"inputs":[],"outputs":[],"engineName":null,"engineBody":null}`,
   // s7_validation renders one of 4 variants. Pick the right shape based on what the
   // founder's proof actually is. If quotes exist: include "quotes"[{text,author,role}].
   // If named customer logos: "customerLogos"[{name,url?}]. Otherwise emit stats[],
@@ -749,7 +756,12 @@ const SLIDE_SCHEMA: Record<SlideId, string> = {
   //   radar:            when you compete on 5-6 dimensions and beat competitors on some
   //   antiPositioning:  when the story is what you DON'T do (Peloton-style framing)
   s10_competition: `{"tag":"string","headline":"string","sub":"string","matrix":{"columns":["You","Competitor A","Competitor B"],"rows":[{"label":"Capability","cells":[true,false,true]}]},"quadrant":{"xAxis":"AXIS LABEL","yAxis":"AXIS LABEL","points":[{"label":"Us","x":85,"y":80,"isUs":true},{"label":"Competitor A","x":40,"y":60}]},"radar":{"youLabel":"Us","themLabel":"Average competitor","axes":[{"label":"Speed","you":85,"them":40},{"label":"Trust","you":92,"them":70}]},"antiPositioning":[{"are":"What we are","areNot":"What we are not"}]}`,
-  s11_risks:       `{"tag":"string","headline":"string","lede":"string","bullets":["Risk: X → Mitigation: Y","Risk: X → Mitigation: Y","Risk: X → Mitigation: Y"]}`,
+  // s11_risks has 4 variants — pick ONE shape:
+  //   pairs[{risk,mitigation}]                                  → mitigation-pairs (default)
+  //   riskRadar{risks:[{name,severity:0-100,probability:0-100}]} → risk-radar (2D scatter)
+  //   riskNarrative[{question,answer}]                          → risk-narrative (q&a)
+  //   riskTimeline[{when,name,mitigation?,peak?}]               → risk-timeline (when each peaks)
+  s11_risks:       `{"tag":"string","headline":"string","sub":"string","lede":"string","pairs":[{"risk":"Risk description","mitigation":"How we mitigate"}],"riskRadar":null,"riskNarrative":[],"riskTimeline":[]}`,
   // s12_team_ask renders one of 4 variants. Pick the strongest framing:
   //   split-cta:      raising X for milestone Y + use-of-funds bullets (default)
   //   team-grid:      include "team"[{name, role, cred?, photo?}] when founders + credentials matter
