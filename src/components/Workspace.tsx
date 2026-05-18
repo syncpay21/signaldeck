@@ -1108,8 +1108,44 @@ export default function Workspace({
   /* ── DECK BUILD ──────────────────────────────────────────────── */
   const ScreenDeck = () => {
     const cur = realSlides[activeSlide]
+    const livePreviewHtml = refinedHtml || generatedHtml
+    const openInTab = () => {
+      if (!livePreviewHtml) return
+      try {
+        const blob = new Blob([livePreviewHtml], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank', 'noopener,noreferrer')
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+      } catch {}
+    }
     return (
       <div className="p-4 lg:p-6 space-y-5">
+        {/* Live deck preview — the actual rendered HTML, not just slide
+            tile metadata. This is what the investor sees. */}
+        {livePreviewHtml && livePreviewHtml.length > 1000 && (
+          <Card className="p-0 overflow-hidden">
+            <div className="flex items-center justify-between gap-3 p-4 pb-3">
+              <div>
+                <div className="font-semibold tracking-tight">Live deck preview</div>
+                <div className="text-[12px] ink-muted mt-0.5">The actual rendered HTML — what investors will see.</div>
+              </div>
+              <button onClick={openInTab}
+                className="h-9 px-4 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-2"
+                style={{ background: liveAccent }}>
+                Open full-screen ↗
+              </button>
+            </div>
+            <div className="relative" style={{ height: 'min(720px, 70vh)', background: '#000' }}>
+              <iframe
+                srcDoc={livePreviewHtml}
+                title="Deck preview"
+                sandbox="allow-scripts allow-same-origin"
+                style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+              />
+            </div>
+          </Card>
+        )}
+
         {/* Design with Andreas — opt-in. Calls /api/design-deck which asks
             Sonnet to write the whole HTML deck cinematically. */}
         {brandWorld && liveContent && Object.keys(liveContent).length > 0 && (
@@ -2227,8 +2263,42 @@ export default function Workspace({
   const ScreenPresent = () => {
     const cur  = realSlides[presentSlide]
     const next = realSlides[presentSlide + 1]
+    const livePreviewHtml = refinedHtml || generatedHtml
+    const openInTab = () => {
+      if (!livePreviewHtml) return
+      try {
+        const blob = new Blob([livePreviewHtml], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank', 'noopener,noreferrer')
+        setTimeout(() => URL.revokeObjectURL(url), 60000)
+      } catch {}
+    }
     return (
       <div className="p-4 lg:p-6 space-y-5">
+        {/* Full-screen preview of the actual rendered deck — what investors see */}
+        {livePreviewHtml && livePreviewHtml.length > 1000 && (
+          <Card className="p-0 overflow-hidden">
+            <div className="flex items-center justify-between gap-3 p-4 pb-3">
+              <div>
+                <div className="font-semibold tracking-tight">Deck preview</div>
+                <div className="text-[12px] ink-muted mt-0.5">Live rendered HTML — scroll-snap, transitions, motion. Open in a tab for full-screen.</div>
+              </div>
+              <button onClick={openInTab}
+                className="h-9 px-4 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-2"
+                style={{ background: liveAccent }}>
+                Open full-screen ↗
+              </button>
+            </div>
+            <div className="relative" style={{ height: 'min(820px, 78vh)', background: '#000' }}>
+              <iframe
+                srcDoc={livePreviewHtml}
+                title="Deck preview"
+                sandbox="allow-scripts allow-same-origin"
+                style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+              />
+            </div>
+          </Card>
+        )}
         {/* Hero */}
         <Card className="p-6 relative overflow-hidden">
           <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-6">
