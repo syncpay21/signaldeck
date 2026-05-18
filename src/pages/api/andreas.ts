@@ -56,9 +56,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const origin = resolveOrigin(req)
 
+  // Per-request telemetry — tracks each pipeline stage's latency so we can
+  // tune budgets later. Not persisted; logged on completion.
+  const t0 = Date.now()
+  const timings: Record<string, number> = {}
+
   try {
     /* ─── STAGE 1: PLANNER ──────────────────────────────────────── */
+    const tPlan = Date.now()
     const plan = await planSteps(anthropic, instruction, ctx, TOOL_CATALOG, priorTurns)
+    timings.planner = Date.now() - tPlan
     const steps = plan?.steps ?? []
 
     /* ─── STAGE 2: DISPATCH (staged + retried) ──────────────────── */
@@ -66,10 +73,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // sequentially by stage so stage-1 tools see stage-0 results. Inside
     // a stage, tools still run in parallel. Single retry on transient
     // network errors with 400ms backoff.
+    const tDispatch = Date.now()
     const results = await dispatchStaged(steps, ctx, origin)
+    timings.dispatch = Date.now() - tDispatch
 
     /* ─── STAGE 3: SYNTHESISER ──────────────────────────────────── */
+    const tSynth = Date.now()
     const synth = await synthesiseReply(anthropic, instruction, results, ctx, priorTurns, plan?.intent)
+    timings.synth = Date.now() - tSynth
+    timings.total = Date.now() - t0
+
+    console.log(`[andreas] intent=${plan?.intent?.intent || '?'} tools=${steps.map(s => s.tool).join(',') || '-'} conf=${synth.confidence.toFixed(2)} timing=${JSON.stringify(timings)}`)
 
     return res.status(200).json({
       reply: synth.text,
@@ -81,9 +95,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         reasoning: plan?.reasoning ?? '',
         intent:    plan?.intent ?? null,
       },
+      timings,
     })
   } catch (err: any) {
-    console.error('andreas error:', err)
+    console.error('andreas error:', err, timings)
     return res.status(500).json({ error: err?.message || 'Andreas failed' })
   }
 }
