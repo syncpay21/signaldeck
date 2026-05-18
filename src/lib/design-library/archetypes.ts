@@ -56,7 +56,7 @@ export const ARCHETYPES: Archetype[] = [
     paletteTags: ['light', 'restrained', 'wellness', 'organic'],
     typeTags: ['humanist', 'playful', 'serif'],
     layoutBias: ['minimal-centered', 'archetype-cards', 'one-big-thing'],
-    exemplarBrands: ['Dove', 'Coca-Cola', 'McDonald's', 'Volkswagen'],
+    exemplarBrands: ['Dove', 'Coca-Cola', "McDonald's", 'Volkswagen'],
   },
   {
     id: 'sage',
