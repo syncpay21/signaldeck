@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { getTemplate, VC_PROFILES, personalize, extractWedge, type Template, type PersonalCtx } from '@/lib/templates'
 import { brandWorldToCssVars, type BrandWorld } from '@/lib/brand-world'
+import { PALETTE_LIBRARY, suggestPalettes, type Palette } from '@/lib/design-library/palettes'
+import { TYPE_PAIRS, suggestTypePairs, googleFontsHref, type TypePair } from '@/lib/design-library/typography'
 import { getIconSet } from '@/lib/icons'
 import { brandWorldMotifBackground } from '@/lib/motifs'
 import AndreasPanel from '@/components/AndreasPanel'
@@ -1095,6 +1097,93 @@ export default function Workspace({
                 })}
               </div>
             )}
+          </Card>
+        )}
+
+        {/* Curated palettes — instant swap, zero API cost. Pulls from the
+            50-strong PALETTE_LIBRARY. Suggestions match the founder's industry. */}
+        {bw && (
+          <Card className="p-5 mb-5">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <MiniLabel>Curated palettes</MiniLabel>
+                <div className="font-semibold tracking-tight mt-1">Drop a tested brand palette</div>
+                <div className="text-[12px] ink-muted mt-0.5">{PALETTE_LIBRARY.length} proven palettes from real brands — Stripe, Up, Notion, Anthropic, Patagonia. Click to apply instantly.</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {(suggestPalettes([productType, stageType, investor].filter(Boolean), 12).length
+                ? suggestPalettes([productType, stageType, investor].filter(Boolean), 12)
+                : PALETTE_LIBRARY.slice(0, 12)
+              ).map((pal: Palette) => (
+                <button key={pal.id}
+                  onClick={() => setBwOverrides(o => ({ ...o, colour: pal.colour as any, deckMode: pal.deckMode }))}
+                  className="text-left rounded-xl hairline overflow-hidden hover:scale-[1.02] transition-transform">
+                  <div className="h-14 flex" style={{ background: pal.colour.background }}>
+                    <div className="flex-1" style={{ background: pal.colour.surface }} />
+                    <div className="w-1/3 flex flex-col">
+                      <div className="flex-1" style={{ background: pal.colour.primary }} />
+                      <div className="flex-1" style={{ background: pal.colour.accent }} />
+                    </div>
+                  </div>
+                  <div className="p-2.5">
+                    <div className="text-[12px] font-semibold leading-tight">{pal.name}</div>
+                    <div className="text-[10px] ink-muted mt-0.5 line-clamp-2">{pal.vibe}</div>
+                    {pal.inspiredBy && (
+                      <div className="text-[9px] font-mono mt-1 ink-muted" style={{ letterSpacing: '0.04em' }}>{pal.inspiredBy.toUpperCase()}</div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Typography pairings — Google Fonts that auto-load. */}
+        {bw && (
+          <Card className="p-5 mb-5">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <MiniLabel>Typography pairings</MiniLabel>
+                <div className="font-semibold tracking-tight mt-1">Swap fonts in one click</div>
+                <div className="text-[12px] ink-muted mt-0.5">{TYPE_PAIRS.length} curated Google Font pairs by personality. Auto-loads on apply.</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {(suggestTypePairs([productType, stageType, investor].filter(Boolean), 9).length
+                ? suggestTypePairs([productType, stageType, investor].filter(Boolean), 9)
+                : TYPE_PAIRS.slice(0, 9)
+              ).map((pair: TypePair) => (
+                <button key={pair.id}
+                  onClick={() => {
+                    // Inject the Google Fonts <link> for the new pair, then apply.
+                    if (typeof document !== 'undefined') {
+                      const id = `gf-${pair.id}`
+                      if (!document.getElementById(id)) {
+                        const link = document.createElement('link')
+                        link.id = id; link.rel = 'stylesheet'; link.href = googleFontsHref(pair)
+                        document.head.appendChild(link)
+                      }
+                    }
+                    setBwOverrides(o => ({
+                      ...o,
+                      typography: {
+                        ...(bw.typography),
+                        heading: pair.heading, body: pair.body, mono: pair.mono,
+                        style: pair.style, headingWeight: pair.headingWeight,
+                        bodyWeight: pair.bodyWeight, tracking: pair.tracking,
+                      } as any,
+                    }))
+                  }}
+                  className="text-left rounded-xl hairline p-3 hover:bg-[var(--surface)] transition-colors">
+                  <div className="font-semibold text-[14px]" style={{ fontFamily: `'${pair.heading}', sans-serif` }}>{pair.name}</div>
+                  <div className="text-[11px] mt-1 ink-muted" style={{ fontFamily: `'${pair.body}', sans-serif` }}>{pair.vibe}</div>
+                  <div className="text-[10px] font-mono mt-2 ink-muted" style={{ letterSpacing: '0.04em' }}>
+                    {pair.heading.toUpperCase()} · {pair.body.toUpperCase()}
+                  </div>
+                </button>
+              ))}
+            </div>
           </Card>
         )}
 
