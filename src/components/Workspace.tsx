@@ -81,6 +81,8 @@ interface WorkspaceProps {
   accentColor: string
   generatedHtml: string
   generatedContent: any
+  /** Unique deck id from /api/generate — keys live viewership signals. */
+  deckId?: string
   onRestart: () => void
   logoUrl?: string
   audience?: string
