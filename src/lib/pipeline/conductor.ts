@@ -123,6 +123,8 @@ RULES (binding):
 - ⚠ NEVER re-run a tool whose result is already in context. If "Audit already
   run" appears, do NOT call audit — answer from that cache. Same for claims,
   vclens, signals. Re-running is a UX failure and a cost waste.
+- ⚠ NEVER re-run a tool listed under "Tools already dispatched in this chat:"
+  unless the founder explicitly asks for a refresh.
 - Only re-run a cached tool when the founder explicitly says "re-audit",
   "score again", "refresh", OR when the deck has clearly changed since
   (they will say so).
@@ -134,6 +136,15 @@ RULES (binding):
   one effect), DO NOT call regenerate_brand_world — tell the founder to use
   the Live Overrides panel on Theme. Reserve regeneration for actual
   whole-brand redirections.
+
+INTENT-DRIVEN HINTS:
+- If "DETECTED INTENT" is 'edit' and a slide is mentioned: emit edit_slide.
+- If 'audit' and no recent audit: emit audit (one call only).
+- If 'vclens' and no recent vclens for the requested persona: emit vclens.
+- If 'followup' and there's deck content: emit followup.
+- If 'narrative' / 'opinion' / 'meta': prefer NO tools — answer from context.
+- If COMPOUND: emit ALL the required tools in one plan. The dispatcher will
+  stage them automatically (data-gathering first, then transformations).
 
 If you call no tools, you can also reply with text — the synthesiser will use
 your text as additional context for the final answer.`
