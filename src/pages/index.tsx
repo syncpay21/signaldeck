@@ -69,6 +69,9 @@ export default function Home() {
   const [form, setForm] = useState<FormData>(empty)
   const [generatedHtml, setGeneratedHtml] = useState('')
   const [generatedContent, setGeneratedContent] = useState<any>(null)
+  // Per-generation deck id — flows from /api/generate response to the workspace
+  // so the Signals tab can poll /api/signals?deckId=... for live viewership.
+  const [deckId, setDeckId] = useState<string>('')
   const [error, setError] = useState('')
   const [detecting, setDetecting] = useState(false)
   const [detectedColors, setDetectedColors] = useState<string[]>([])
