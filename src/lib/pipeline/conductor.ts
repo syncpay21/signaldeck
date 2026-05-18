@@ -25,6 +25,7 @@ import type { BrandWorld } from '../brand-world'
 import type { ToolSpec } from './andreas-tools'
 import { classifyIntent, domainAddendum, type IntentResult } from './intent-classifier'
 import { critiqueReply, extractContextNumbers } from './reply-critic'
+import { resolveBackReference } from './back-reference'
 
 export interface ConductorContext {
   company?:       string
