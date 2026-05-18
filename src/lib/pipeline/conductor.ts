@@ -421,6 +421,17 @@ Plan tools based on the LATEST instruction. The back-reference resolver has alre
       }
     }
 
+    // Prepend back-reference rationale so it appears in the plan reasoning
+    // shown to the founder.
+    if (backref.rationale) {
+      reasoningText = reasoningText
+        ? `${backref.rationale}\n\n${reasoningText}`
+        : backref.rationale
+    }
+    if (backref.ambiguous) {
+      reasoningText = `[AMBIGUOUS REFERENCE — synth should ask which slide]\n${reasoningText}`
+    }
+
     // Populate `why` from the planner's reasoning text. If the model wrote
     // N sentences and there are N tools, try to match one sentence per tool;
     // otherwise use the first sentence for all (better than empty).
