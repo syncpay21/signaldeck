@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Anthropic from '@anthropic-ai/sdk'
+import { guardRequest } from '../../lib/api-guard'
 import OpenAI from 'openai'
 import { renderDeck } from '../../lib/renderer'
 import { selectNarrative, getSlideSet } from '../../lib/narrative-engine'
@@ -38,11 +39,46 @@ const HAIKU_CONFIDENCE_THRESHOLD = 70
    ENABLE_GPT_POLISH=false (env).
 ═══════════════════════════════════════════════════════════════════ */
 
+// Max files + per-file size enforced server-side (client caps are advisory only).
+const SERVER_MAX_FILES       = 120
+const SERVER_MAX_FILE_BYTES  = 40 * 1024 * 1024   // 40MB
+const SERVER_MAX_TOTAL_BYTES = 200 * 1024 * 1024  // 200MB
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  const guard = guardRequest(req)
+  if (guard) return res.status(guard.status).json({ error: guard.error })
   try {
     const input = req.body
     if (!input.company) return res.status(400).json({ error: 'company required' })
+
+    // ── Server-side file validation ──────────────────────────────────────
+    // Client-side caps are advisory. Validate here to prevent DoS and
+    // $10k+ accidental Sonnet calls from oversized payloads.
+    if (Array.isArray(input.supportingFiles)) {
+      if (input.supportingFiles.length > SERVER_MAX_FILES) {
+        return res.status(400).json({ error: `Max ${SERVER_MAX_FILES} supporting files.` })
+      }
+      let totalBytes = 0
+      for (const f of input.supportingFiles as Array<{ name?: string; mime?: string; data?: string; size?: number }>) {
+        const approxBytes = f.size || (typeof f.data === 'string' ? Math.ceil(f.data.length * 0.75) : 0)
+        if (approxBytes > SERVER_MAX_FILE_BYTES) {
+          return res.status(400).json({ error: `File "${f.name || '?'}" exceeds 40MB limit.` })
+        }
+        totalBytes += approxBytes
+        if (totalBytes > SERVER_MAX_TOTAL_BYTES) {
+          return res.status(400).json({ error: 'Total file payload exceeds 200MB.' })
+        }
+        // Validate MIME type is in the allowed set (not user-controlled binary types)
+        const mime = (f.mime || '').toLowerCase()
+        const allowed = mime.startsWith('image/') || mime.startsWith('video/') ||
+          mime === 'application/pdf' || mime === 'text/plain' || mime === 'text/csv' ||
+          mime.includes('word') || mime.includes('spreadsheet') || mime.includes('excel')
+        if (!allowed) {
+          return res.status(400).json({ error: `File type "${mime}" is not supported.` })
+        }
+      }
+    }
 
     /* ─── STAGE 1 — Predetermined route ──────────────────────────────── */
     const audience          = (input.audience          || 'seed-vc')  as AudienceType
@@ -245,8 +281,25 @@ WRITE FOR THIS READER: open Why-Now with a wedge into their stated focus areas; 
     // ─── Cost-shift: when the founder's external AI drafted the deck,
     // skip the heavy writer Sonnet call. Run ONLY a lightweight Haiku
     // fact-check + rephrase pass instead (~75% cost reduction).
-    const draftedDeck = input.draftedDeck && typeof input.draftedDeck === 'object'
-      ? input.draftedDeck
+    //
+    // Security: validate draftedDeck against a whitelist of known slide keys.
+    // An attacker could inject prompt instructions via arbitrary object keys
+    // (e.g. { "__inject__": "Ignore previous instructions..." }). We strip
+    // any key that isn't a recognised slide id before passing to the model.
+    const VALID_SLIDE_KEYS = new Set([
+      's1_intro','s2_situation','s3_problem','s4_implication','s5_fix','s6_how',
+      's7_validation','s8_market','s9_customers','s10_competition','s11_risks',
+      's12_team_ask','s13_traction','s14_team','s15_technology','s16_clinical',
+      's17_regulatory','s18_manufacturing','s19_gtm','s20_financials',
+      // Legacy / alternate keys the prompt may still produce
+      'intro','situation','problem','implication','fix','how','validation',
+      'market','customers','competition','risks','team_ask','traction','team',
+    ])
+    const rawDraft = input.draftedDeck && typeof input.draftedDeck === 'object' && !Array.isArray(input.draftedDeck)
+      ? input.draftedDeck as Record<string, unknown>
+      : null
+    const draftedDeck = rawDraft
+      ? Object.fromEntries(Object.entries(rawDraft).filter(([k]) => VALID_SLIDE_KEYS.has(k)))
       : null
     const useLightweightPath = !!draftedDeck && Object.keys(draftedDeck).length >= 3
 
@@ -333,9 +386,20 @@ Return the corrected slides as JSON.`
           ? analyzeBrand(anthropic, visionSource, { company: input.company, industry }).catch(() => null)
           : Promise.resolve(null),
       ])
-      const sonnetRaw = (sonnetMessage.content[0] as any).text.trim()
+      const sonnetRaw = (sonnetMessage.content[0] as any).text?.trim() ?? ''
       const sonnetJson = sonnetRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-      sonnetContent = JSON.parse(sonnetJson)
+      try {
+        sonnetContent = JSON.parse(sonnetJson)
+      } catch {
+        // Sonnet returned unparseable JSON — try regex extraction before giving up
+        const m = sonnetJson.match(/\{[\s\S]*\}/)
+        if (m) {
+          try { sonnetContent = JSON.parse(m[0]) } catch { /* fall through */ }
+        }
+        if (!sonnetContent || typeof sonnetContent !== 'object') {
+          throw new Error('Deck writer returned malformed JSON. Please retry.')
+        }
+      }
       stage2TokensUsed = (sonnetMessage.usage?.input_tokens || 0) + (sonnetMessage.usage?.output_tokens || 0)
       extractedBrand = eb
       visionResult = vr
@@ -515,7 +579,11 @@ Return the corrected slides as JSON.`
       },
     })
   } catch (err: any) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    // Log full error server-side; never echo internal details to the client.
+    console.error('[generate] error:', err?.message || err)
+    const safeMessage = typeof err?.message === 'string' && err.message.length < 200
+      ? err.message.replace(/sk-[a-zA-Z0-9_-]{10,}/g, '[REDACTED]')  // strip any leaked API key
+      : 'Deck generation failed. Please retry.'
+    res.status(500).json({ error: safeMessage })
   }
 }

@@ -805,9 +805,15 @@ export default function Home() {
               <div className="mt-5">
                 <div className="text-[13px] mb-1.5" style={{ color: 'var(--ink-muted)' }}>Brand colour</div>
                 <div className="flex items-center gap-3">
-                  <input type="color" value={form.accentColor} onChange={e => set('accentColor', e.target.value)}
+                  <input type="color" value={/^#[0-9A-Fa-f]{6}$/.test(form.accentColor) ? form.accentColor : '#0F1115'}
+                    onChange={e => set('accentColor', e.target.value)}
                     style={{ width: 40, height: 40, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 0 }} />
-                  <input value={form.accentColor} onChange={e => set('accentColor', e.target.value)}
+                  <input value={form.accentColor}
+                    onChange={e => {
+                      const v = e.target.value
+                      // Only accept valid 3 or 6-digit hex colours — prevents CSS/XSS injection
+                      if (/^#([0-9A-Fa-f]{3}){1,2}$/.test(v) || v === '#' || v === '') set('accentColor', v)
+                    }}
                     placeholder="#0F1115"
                     className="flex-1 h-10 paper hairline rounded-xl px-3 focus-ring text-sm" />
                 </div>

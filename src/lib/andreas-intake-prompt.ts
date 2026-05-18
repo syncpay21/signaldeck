@@ -149,33 +149,78 @@ full pitch deck content yourself. SignalDeck's Andreas will then fact-check
 your draft against the statlines and supporting docs, rephrase any weak
 stats, and design the visual layout — but YOU do the writing.
 
-For each of the 12 slides below, write punchy copy in MY voice. Use the
-exact statlines and named customers I gave you. Do NOT invent numbers or
-customer names. If a stat is weak ("we have some users"), say what's
-specifically known.
+IMPORTANT: Slide count is driven entirely by what the founder has. Use
+your judgment:
 
-Slide structure:
+  Seed / angel / pre-revenue    →  6-9 slides   (lean, conviction-first)
+  Series A / B, SaaS / consumer → 10-13 slides  (traction + team + market)
+  Series B+ / C, complex product → 13-18 slides  (full story: tech, reg,
+    unit economics, go-to-market, use of funds broken out, clinical data,
+    hardware roadmap — whatever the round demands)
+  Hardware / medtech / deep tech → can go up to 18 slides because investors
+    need to understand the device, the regulatory pathway, the clinical
+    validation, the manufacturing plan, AND the commercial model.
+
+Never add a slide just to hit a number. Never omit a slide that's
+genuinely needed. The deck length is the right length.
+
+ALWAYS include (every deck regardless of stage):
   s1_intro       — company name + one-line hook
-  s2_situation   — why now, what shifted
-  s3_problem     — 3 concrete pain points with consequences
-  s4_implication — what it costs to leave unsolved
-  s5_fix         — the solution, 4-5 outcomes
-  s6_how         — 4-step mechanism (foundation → user surface)
-  s7_validation  — proof points (stats / customers / NPS)
-  s9_customers   — 3 named archetypes with use cases
-  s8_market      — TAM / SAM / SOM with real numbers if known
-  s10_competition— matrix or positioning vs 2 competitors
-  s11_risks      — 2-3 risk + mitigation pairs
-  s12_team_ask   — round size + use of funds + 2-3 milestones
+  s3_problem     — the core pain with real consequences
+  s5_fix         — the solution and key outcomes
+  s12_team_ask   — round size + use of funds + milestones
+
+ADD ONLY IF the founder gave you real content:
+  s2_situation   — why now / macro shift that makes this inevitable
+  s4_implication — cost of doing nothing ($ or time lost)
+  s6_how         — how the product works, step by step
+  s7_validation  — traction: stats, named customers, retention, NPS
+  s8_market      — TAM / SAM / SOM (only with real numbers or credible source)
+  s9_customers   — named segments / archetypes with use cases
+  s10_competition— competitive matrix vs named competitors
+  s11_risks      — risk + mitigation (required for regulated / hardware / Series A+)
+  s13_traction   — standalone growth slide when numbers are genuinely strong
+  s14_team       — full team slide when credentials are a selling point
+  s15_technology — proprietary tech, IP, architecture (deep tech / hardware only)
+  s16_clinical   — clinical data, trials, FDA pathway (medtech / neurology only)
+  s17_regulatory — regulatory status, licences, compliance (health / fintech / defence)
+  s18_manufacturing — production plan, COGS, supply chain (hardware only)
+  s19_gtm        — go-to-market motion, channel breakdown, sales cycle
+  s20_financials — revenue model, unit economics, projections (Series B+ / C)
+
+Available slide schemas:
+  s1_intro:        { tag, headline, sub, lede, stats[] }
+  s2_situation:    { tag, headline, sub, lede, shifts[{name,desc}] }
+  s3_problem:      { tag, headline, sub, lede, cards[{num,head,body,foot}] }
+  s4_implication:  { tag, headline, sub, lede, cost:{value,label}, multipliers[{value,label}] }
+  s5_fix:          { tag, headline, sub, lede, checks[] }
+  s6_how:          { tag, headline, sub, lede, steps[{head,body}] }
+  s7_validation:   { tag, headline, sub, lede, stats[{value,label}] }
+  s8_market:       { tag, headline, sub, lede, stats[{value,label}] }
+  s9_customers:    { tag, headline, sub, lede, bullets[] }
+  s10_competition: { tag, headline, sub, matrix:{columns[],rows[{label,cells[]}]} }
+  s11_risks:       { tag, headline, sub, lede, pairs[{risk,mitigation}] }
+  s12_team_ask:    { tag, headline, sub, lede, stats[{value,label}], bullets[] }
+  s13_traction:    { tag, headline, sub, lede, stats[{value,label}] }
+  s14_team:        { tag, headline, sub, lede, bullets[] }
+  s15_technology:  { tag, headline, sub, lede, bullets[] }
+  s16_clinical:    { tag, headline, sub, lede, stats[{value,label}], bullets[] }
+  s17_regulatory:  { tag, headline, sub, lede, checks[] }
+  s18_manufacturing:{ tag, headline, sub, lede, steps[{head,body}] }
+  s19_gtm:         { tag, headline, sub, lede, steps[{head,body}] }
+  s20_financials:  { tag, headline, sub, lede, stats[{value,label}], bullets[] }
 
 Writing rules:
   - Headlines: 2-6 words, punchy, no buzzwords
   - Bullets: outcome-led, never feature-led
-  - Stats: lift founder's exact numbers; mark "[needs founder data]" if missing
+  - Stats: lift founder's exact numbers verbatim; mark "[needs founder data]" if missing
   - Tone: match the founder's voice from realStory
-  - Never invent customer names, dollar amounts, or growth rates
+  - Never invent customer names, dollar amounts, growth rates, or clinical claims
+  - For medtech / neurology / hardware: be precise about what is proven vs projected
+  - Never add a slide just to fill space — every slide must earn its place
 
 Output the drafted content as a "draftedDeck" object inside the JSON.
+Only include the slide keys you actually wrote.
 
 ═══ EXTRA EVIDENCE (all optional — say "skip" if not applicable) ═══
 32. Customer testimonials — 1-3 verbatim quotes with name + role.
@@ -251,18 +296,10 @@ OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped 
   "geographicPlay":       "current + expansion",
   "pressQuotes":          "verbatim press mentions",
   "draftedDeck": {
-    "s1_intro":        { "tag":"intro",         "headline":"...",  "sub":"...",  "lede":"...",  "stats":[] },
-    "s2_situation":    { "tag":"why now",       "headline":"...",  "sub":"...",  "lede":"...",  "shifts":[{"name":"...","desc":"..."}] },
-    "s3_problem":      { "tag":"the problem",   "headline":"...",  "sub":"...",  "lede":"...",  "cards":[{"num":"01","head":"...","body":"...","foot":"..."},{"num":"02","head":"...","body":"...","foot":"..."},{"num":"03","head":"...","body":"...","foot":"..."}] },
-    "s4_implication":  { "tag":"cost of doing nothing", "headline":"...", "sub":"...", "lede":"...", "cost":{"value":"$X","label":"lost annually"}, "multipliers":[{"value":"3x","label":"compounding"}] },
-    "s5_fix":          { "tag":"the fix",       "headline":"...",  "sub":"...",  "lede":"...",  "checks":["...","...","...","...","..."] },
-    "s6_how":          { "tag":"how it works",  "headline":"...",  "sub":"...",  "lede":"...",  "steps":[{"head":"FOUNDATION","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."}] },
-    "s7_validation":   { "tag":"validation",    "headline":"...",  "sub":"...",  "lede":"...",  "stats":[{"value":"...","label":"..."},{"value":"...","label":"..."},{"value":"...","label":"..."}] },
-    "s9_customers":    { "tag":"customers",     "headline":"...",  "sub":"...",  "lede":"...",  "bullets":["Named archetype — use case","...","..."] },
-    "s8_market":       { "tag":"market",        "headline":"...",  "sub":"...",  "lede":"...",  "stats":[{"value":"$X","label":"TAM"},{"value":"$Y","label":"SAM"},{"value":"$Z","label":"SOM"}] },
-    "s10_competition": { "tag":"competition",   "headline":"...",  "sub":"...",  "matrix":{"columns":["Us","Competitor A","Competitor B"],"rows":[{"label":"...","cells":[true,false,true]}]} },
-    "s11_risks":       { "tag":"risks",         "headline":"...",  "sub":"...",  "lede":"...",  "pairs":[{"risk":"...","mitigation":"..."},{"risk":"...","mitigation":"..."}] },
-    "s12_team_ask":    { "tag":"team & ask",    "headline":"...",  "sub":"...",  "lede":"...",  "stats":[{"value":"$X","label":"raising"},{"value":"by Y","label":"milestone"}], "bullets":["use of funds","hiring","milestones","contact"] }
+    "s1_intro":    { "tag":"intro",       "headline":"...", "sub":"...", "lede":"...", "stats":[] },
+    "s3_problem":  { "tag":"the problem", "headline":"...", "sub":"...", "lede":"...", "cards":[{"num":"01","head":"...","body":"...","foot":"..."}] },
+    "s5_fix":      { "tag":"the fix",     "headline":"...", "sub":"...", "lede":"...", "checks":["..."] },
+    "s12_team_ask":{ "tag":"team & ask",  "headline":"...", "sub":"...", "lede":"...", "stats":[{"value":"$X","label":"raising"}], "bullets":["..."] }
   }
 }
 \`\`\`

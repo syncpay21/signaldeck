@@ -7,6 +7,7 @@ import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 import { critiqueAndFix } from '../../lib/pipeline/design-critic'
 import { inferArchetype } from '../../lib/design-library/archetypes'
 import { pickComposition } from '../../lib/design-library/composition'
+import { guardRequest } from '../../lib/api-guard'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -335,6 +336,8 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  const guard = guardRequest(req)
+  if (guard) return res.status(guard.status).json({ error: guard.error })
 
   try {
     const input = req.body

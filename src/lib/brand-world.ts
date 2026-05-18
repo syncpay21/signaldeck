@@ -161,6 +161,12 @@ export interface BrandWorld {
   compositionGrid?: string
 }
 
+// Design-library modules — imported at module level so they work in both
+// Node.js (API routes) and Next.js edge runtime. Using static imports avoids
+// the CommonJS require() which fails in edge contexts.
+import { designTokensToCss } from './design-library/design-tokens'
+import { getComposition, compositionToCssVars } from './design-library/composition'
+
 /* ─── CSS var emitter ───────────────────────────────────────────────
    Given a BrandWorld, produce the inline style string the workspace's
    root element consumes so EVERY component reads from the world.
@@ -205,22 +211,16 @@ export function brandWorldToCssVars(w: BrandWorld): Record<string, string> {
   // colour-role tokens. These don't override existing brand vars — they
   // sit alongside as a semantic vocabulary new layouts can opt into.
   try {
-    // Lazy require so this file remains importable in contexts that don't
-    // have the design-library on the path.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { designTokensToCss } = require('./design-library/design-tokens')
     const tokens = designTokensToCss(w.archetype?.id, w.density)
     Object.assign(out, tokens)
-  } catch { /* design-library optional */ }
+  } catch { /* non-fatal */ }
 
   // Composition tokens
   if (w.compositionGrid) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { getComposition, compositionToCssVars } = require('./design-library/composition')
       const comp = getComposition(w.compositionGrid)
       if (comp) Object.assign(out, compositionToCssVars(comp))
-    } catch { /* optional */ }
+    } catch { /* non-fatal */ }
   }
 
   return out

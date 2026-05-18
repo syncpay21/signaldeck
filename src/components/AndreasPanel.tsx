@@ -41,6 +41,16 @@ export interface AndreasPanelProps {
   vcData?:          any
   signalsData?:     any
   designCritique?:  any
+  /** LinkedIn + Crunchbase intel for deck recipients — feeds the conductor so
+   *  Andreas can reference investor focus and fund thesis in context without
+   *  calling a tool. */
+  recipientIntel?:  Array<{ recipient: any; fund: any; fetchedAt: string }>
+  /** ISO timestamps the workspace attaches when each signal was fetched, so
+   *  Andreas can reason about staleness. */
+  staleness?: {
+    auditFetchedAt?: string; claimsFetchedAt?: string; vcFetchedAt?: string;
+    signalsFetchedAt?: string; designFetchedAt?: string;
+  }
 }
 
 interface ChatMessage {
@@ -52,19 +62,76 @@ interface ChatMessage {
    *  as if it succeeded. */
   rawResults?: Array<{ tool: string; result?: any; error?: string }>
   error?:      string
+  /** Planner reasoning + detected intent — shown in an expandable "Why I did
+   *  this" footnote so the founder can audit Andreas's choices. */
+  plan?:       { reasoning?: string; intent?: any }
+  /** Critic's confidence score for this reply (0..1). Below 0.6 surfaces a
+   *  small "low-confidence" chip so the founder knows to double-check. */
+  confidence?: number
+}
+
+/** Per-deck localStorage key. Each company gets its own chat history so a
+ *  founder switching between decks doesn't see cross-talk. */
+function storageKeyFor(company?: string) {
+  const safe = (company || 'default').toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 40)
+  return `andreas_history_v2_${safe}`
 }
 
 export default function AndreasPanel(props: AndreasPanelProps) {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const storageKey = storageKeyFor(props.company)
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // Restore conversation from localStorage on first render.
+    // Per-deck key so switching companies gives a fresh thread.
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null
+      if (stored) return JSON.parse(stored) as ChatMessage[]
+    } catch {}
+    return []
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [expandedPlanIdx, setExpandedPlanIdx] = useState<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Reload history when the deck (company) changes
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      setMessages(stored ? JSON.parse(stored) : [])
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey])
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(messages)) } catch {}
+  }, [messages, storageKey])
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages, loading])
+
+  function clearChat() {
+    setMessages([])
+    try { localStorage.removeItem(storageKey) } catch {}
+  }
+
+  /** Pull tool dispatches from prior assistant messages so the planner sees
+   *  what we already ran. Bounded to last 10 to keep prompt cost predictable. */
+  function buildRecentToolResults(): Array<{ tool: string; result: any; turnIndex: number; args: any }> {
+    const out: Array<{ tool: string; result: any; turnIndex: number; args: any }> = []
+    messages.forEach((m, idx) => {
+      if (m.role !== 'andreas' || !m.rawResults) return
+      m.rawResults.forEach(r => {
+        if (r.error) return
+        const argsFromCall = m.toolsCalled?.find(t => t.tool === r.tool)
+        out.push({ tool: r.tool, result: r.result, turnIndex: idx, args: (argsFromCall as any)?.args || {} })
+      })
+    })
+    return out.slice(-10)
+  }
 
   async function send() {
     const instruction = input.trim()
@@ -102,6 +169,10 @@ export default function AndreasPanel(props: AndreasPanelProps) {
             vcData:         props.vcData,
             signalsData:    props.signalsData,
             designCritique: props.designCritique,
+            recipientIntel: props.recipientIntel,
+            staleness:      props.staleness,
+            // Tools we already ran in this chat — planner skips re-dispatch
+            recentToolResults: buildRecentToolResults(),
           },
         }),
       })
@@ -112,6 +183,8 @@ export default function AndreasPanel(props: AndreasPanelProps) {
         text:        data.reply || '',
         toolsCalled: data.toolsCalled || [],
         rawResults:  data.rawResults  || [],
+        plan:        data.plan,
+        confidence:  typeof data.confidence === 'number' ? data.confidence : undefined,
       }])
     } catch (e: any) {
       setMessages(m => [...m, {
@@ -198,6 +271,14 @@ export default function AndreasPanel(props: AndreasPanelProps) {
           <div style={{ fontSize: 14, fontWeight: 600 }}>Andreas</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted, #666)' }}>Your pitchdeck specialist</div>
         </div>
+        {messages.length > 0 && (
+          <button onClick={clearChat} title="Clear chat"
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted, #888)', fontSize: 11, padding: '2px 6px',
+              borderRadius: 6, fontFamily: 'var(--font-body, system-ui)',
+            }}>Clear</button>
+        )}
         <button onClick={() => setOpen(false)} title="Close"
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
@@ -240,18 +321,78 @@ export default function AndreasPanel(props: AndreasPanelProps) {
                   const result = m.rawResults?.find((r: any) => r.tool === t.tool)
                   const failed = result && result.error
                   return (
-                    <span key={j} title={failed ? `Failed: ${result.error}` : (t.why || t.tool)}
-                      style={{
-                        fontSize: 10, fontFamily: 'var(--font-mono, ui-monospace, monospace)',
-                        padding: '2px 8px', borderRadius: 999,
-                        background: failed ? 'rgba(176,50,43,0.12)' : 'var(--primary-soft, rgba(0,0,0,0.06))',
-                        color:      failed ? '#b0322b' : 'var(--primary, var(--text, #111))',
-                        letterSpacing: '0.04em',
-                      }}>
-                      {failed ? '⚠ ' : ''}{t.tool}
-                    </span>
+                    <div key={j} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span title={failed ? `Failed: ${result.error}` : (t.why || t.tool)}
+                        style={{
+                          fontSize: 10, fontFamily: 'var(--font-mono, ui-monospace, monospace)',
+                          padding: '2px 8px', borderRadius: 999,
+                          background: failed ? 'rgba(176,50,43,0.12)' : 'var(--primary-soft, rgba(0,0,0,0.06))',
+                          color:      failed ? '#b0322b' : 'var(--primary, var(--text, #111))',
+                          letterSpacing: '0.04em',
+                        }}>
+                        {failed ? '⚠ ' : ''}{t.tool}
+                      </span>
+                      {t.why && !failed && (
+                        <span style={{
+                          fontSize: 10, color: 'var(--text-muted, #888)',
+                          paddingLeft: 8, lineHeight: 1.35,
+                          fontFamily: 'var(--font-body, system-ui)',
+                        }}>{t.why}</span>
+                      )}
+                    </div>
                   )
                 })}
+              </div>
+            )}
+            {m.role === 'andreas' && (m.plan?.reasoning || m.plan?.intent || typeof m.confidence === 'number') && (
+              <div style={{ alignSelf: 'flex-start', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {m.plan?.intent?.intent && (
+                    <span title={`Detected intent: ${m.plan.intent.intent} (${Math.round((m.plan.intent.confidence || 0) * 100)}%)`}
+                      style={{
+                        fontSize: 10, padding: '1px 7px', borderRadius: 999,
+                        background: 'rgba(80,160,210,0.10)', color: 'var(--text-muted, #555)',
+                        fontFamily: 'var(--font-mono, ui-monospace, monospace)', letterSpacing: '0.04em',
+                      }}>{m.plan.intent.intent}</span>
+                  )}
+                  {m.plan?.intent?.domain && m.plan.intent.domain !== 'generic' && (
+                    <span style={{
+                      fontSize: 10, padding: '1px 7px', borderRadius: 999,
+                      background: 'rgba(130,90,200,0.10)', color: 'var(--text-muted, #555)',
+                      fontFamily: 'var(--font-mono, ui-monospace, monospace)', letterSpacing: '0.04em',
+                    }}>{m.plan.intent.domain}</span>
+                  )}
+                  {typeof m.confidence === 'number' && m.confidence < 0.6 && (
+                    <span title={`Self-rated confidence ${(m.confidence * 100).toFixed(0)}% — verify before quoting`}
+                      style={{
+                        fontSize: 10, padding: '1px 7px', borderRadius: 999,
+                        background: 'rgba(220,160,40,0.16)', color: '#a86a00',
+                        fontFamily: 'var(--font-mono, ui-monospace, monospace)', letterSpacing: '0.04em',
+                      }}>~{(m.confidence * 100).toFixed(0)}% conf</span>
+                  )}
+                  {m.plan?.reasoning && (
+                    <button
+                      onClick={() => setExpandedPlanIdx(expandedPlanIdx === i ? null : i)}
+                      style={{
+                        fontSize: 10, padding: '1px 7px', borderRadius: 999,
+                        background: 'transparent', border: '1px solid var(--border, rgba(0,0,0,0.10))',
+                        color: 'var(--text-muted, #777)', cursor: 'pointer',
+                        fontFamily: 'var(--font-body, system-ui)',
+                      }}>
+                      {expandedPlanIdx === i ? 'hide reasoning' : 'why?'}
+                    </button>
+                  )}
+                </div>
+                {expandedPlanIdx === i && m.plan?.reasoning && (
+                  <div style={{
+                    fontSize: 11, color: 'var(--text-muted, #666)',
+                    background: 'var(--surface-soft, rgba(0,0,0,0.04))',
+                    padding: '6px 9px', borderRadius: 8, maxWidth: '88%', lineHeight: 1.45,
+                    fontFamily: 'var(--font-body, system-ui)',
+                  }}>
+                    {m.plan.reasoning}
+                  </div>
+                )}
               </div>
             )}
           </div>

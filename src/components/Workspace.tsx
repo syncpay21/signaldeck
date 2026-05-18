@@ -557,11 +557,15 @@ export default function Workspace({
   }
 
   async function runAudit(contentOverride?: any) {
+    // Capture state NOW before any awaits — liveContent can change mid-flight
+    // (user edits while audit is running) and we want to audit what was visible
+    // when the founder clicked, not a mutated version.
+    const contentSnapshot = contentOverride || liveContent || generatedContent
     setAuditLoading(true); setError('')
     try {
       const res = await fetch('/api/audit', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: contentOverride || liveContent || generatedContent, company }),
+        body: JSON.stringify({ content: contentSnapshot, company }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -1663,7 +1667,7 @@ export default function Workspace({
               <iframe
                 srcDoc={livePreviewHtml}
                 title="Deck preview"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
               />
             </div>
@@ -2871,7 +2875,7 @@ export default function Workspace({
               <iframe
                 srcDoc={livePreviewHtml}
                 title="Deck preview"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
               />
             </div>

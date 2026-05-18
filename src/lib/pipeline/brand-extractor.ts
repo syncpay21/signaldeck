@@ -42,9 +42,34 @@ export interface ExtractedBrand {
 
 const EMPTY: ExtractedBrand = { colors: [], logoUrl: null, ogImage: null, extraImages: [], detectedFonts: [], domain: '', fetchedAt: 0 }
 
+/** Return true if hostname resolves to a private/loopback/link-local IP range.
+ *  Guards against SSRF attacks where an attacker passes a URL like
+ *  http://169.254.169.254/latest/meta-data/ or http://localhost:6379/ */
+function isSsrfHostname(hostname: string): boolean {
+  // Reject localhost variants
+  if (/^(localhost|127\.|0\.0\.0\.0|::1)/.test(hostname)) return true
+  // Reject private IPv4 ranges: 10.x, 172.16-31.x, 192.168.x, 169.254.x
+  if (/^10\./.test(hostname)) return true
+  if (/^172\.(1[6-9]|2[0-9]|3[01])\./.test(hostname)) return true
+  if (/^192\.168\./.test(hostname)) return true
+  if (/^169\.254\./.test(hostname)) return true
+  // Reject internal metadata endpoints
+  if (hostname === 'metadata.google.internal') return true
+  return false
+}
+
 export async function extractBrand(websiteUrl?: string): Promise<ExtractedBrand> {
   if (!websiteUrl) return EMPTY
   const base = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`
+
+  // SSRF guard — reject private IPs and loopback before any fetch
+  try {
+    const u = new URL(base)
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return EMPTY
+    if (isSsrfHostname(u.hostname)) return EMPTY
+  } catch {
+    return EMPTY
+  }
 
   let html = ''
   try {

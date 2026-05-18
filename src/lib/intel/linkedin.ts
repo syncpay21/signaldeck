@@ -103,9 +103,20 @@ export function parsePublicProfile(url: string, html: string): RecipientProfile 
 function normaliseLinkedinUrl(s: string): string {
   if (!s) return ''
   const t = s.trim()
-  if (!/linkedin\.com/i.test(t)) return ''
-  if (/^https?:\/\//i.test(t)) return t.split('?')[0]
-  return `https://${t}`.split('?')[0]
+  try {
+    const raw = /^https?:\/\//i.test(t) ? t : `https://${t}`
+    const u = new URL(raw)
+    // SSRF guard: only allow the exact linkedin.com domain (no subdomain tricks,
+    // no linkedin.com.evil.com, no private-IP redirects).
+    if (u.protocol !== 'https:') return ''
+    if (u.hostname !== 'www.linkedin.com' && u.hostname !== 'linkedin.com') return ''
+    // Strip query params / fragments — public profiles don't need them.
+    u.search = ''
+    u.hash = ''
+    return u.toString()
+  } catch {
+    return ''
+  }
 }
 
 function extractMeta(html: string, attr: string): string | null {
