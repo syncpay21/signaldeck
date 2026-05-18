@@ -1869,6 +1869,12 @@ export default function Workspace({
 
   /* ── SIGNALS ─────────────────────────────────────────────────── */
   const ScreenSignals = () => {
+    // Live viewership mode — we have a deckId AND the polling has returned
+    // a summary. Show real numbers, not the simulator.
+    const isLive = !!deckId && !!signalsData
+    const live = signalsData
+
+    // Simulator (legacy) — runs when no deckId yet OR data hasn't loaded.
     const seed = signalSeed
     const engagement = tpl.engagementLabels.map((_, i) => {
       const base = [92, 78, 96, 43, 61, 55, 88, 71][i] ?? 60
@@ -1881,6 +1887,117 @@ export default function Workspace({
       returns: [3, 2, 1][i],
       hot: i === 0,
     }))
+
+    // ── LIVE mode ─────────────────────────────────────────────────────
+    if (isLive) {
+      const fmtRel = (ts: number) => {
+        const s = Math.max(1, Math.floor((Date.now() - ts) / 1000))
+        if (s < 60) return `${s}s ago`
+        if (s < 3600) return `${Math.floor(s/60)}m ago`
+        if (s < 86400) return `${Math.floor(s/3600)}h ago`
+        return `${Math.floor(s/86400)}d ago`
+      }
+      const maxDur = Math.max(1, ...live.slides.map((s: any) => s.totalDurMs || 0))
+      return (
+        <div className="p-6 lg:p-8 space-y-5">
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div>
+                <div className="font-semibold tracking-tight">Investor signals — live</div>
+                <div className="text-[12px] ink-muted mt-0.5 font-mono">deck {deckId}</div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-full" style={{ background:'#dcfce7', color:'#137a4a' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background:'#137a4a' }}/>
+                {signalsLoading ? 'syncing…' : 'live · polls every 10s'}
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <Card className="p-4" style={{ background:'var(--surface)' }}>
+                <div className="text-[32px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{live.totalSessions ?? 0}</div>
+                <div className="font-medium text-[13px] mt-3">Unique sessions</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">Each viewer/tab counted once.</div>
+              </Card>
+              <Card className="p-4" style={{ background:'var(--surface)' }}>
+                <div className="text-[32px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{live.totalOpens ?? 0}</div>
+                <div className="font-medium text-[13px] mt-3">Total opens</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">Includes return visits.</div>
+              </Card>
+              <Card className="p-4" style={{ background:'var(--surface)' }}>
+                <div className="text-[32px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{live.reachedEnd ?? 0}</div>
+                <div className="font-medium text-[13px] mt-3">Reached the ask</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">Scrolled to the last slide.</div>
+              </Card>
+              <Card className="p-4" style={{ background:'var(--surface)' }}>
+                <div className="text-[32px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{live.lastSeenTs ? fmtRel(live.lastSeenTs) : '—'}</div>
+                <div className="font-medium text-[13px] mt-3">Last viewer</div>
+                <div className="text-[12px] ink-muted mt-1 leading-relaxed">Most recent in-view event.</div>
+              </Card>
+            </div>
+            {live.dropOffSlide && (
+              <Card className="p-3 mt-4" style={{ background: `${liveAccent}10`, borderColor: `${liveAccent}33` }}>
+                <div className="text-[12px]"><b style={{ color: liveAccent }}>Drop-off insight:</b> {live.dropOffSlide.sessions} session{live.dropOffSlide.sessions > 1 ? 's' : ''} stopped at <b>{live.dropOffSlide.label}</b> without reaching the end. Rework this slide first.</div>
+              </Card>
+            )}
+          </Card>
+
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card className="p-5">
+              <div className="font-semibold tracking-tight mb-1">Slide dwell time</div>
+              <div className="text-[12px] ink-muted mb-4">Where the viewer spent attention</div>
+              <div className="space-y-2.5">
+                {live.slides.length === 0 && (
+                  <div className="text-[12px] ink-muted">No slide views yet. Share the deployed deck URL with an investor.</div>
+                )}
+                {live.slides.map((s: any) => {
+                  const dwellSec = Math.round(s.totalDurMs / 1000)
+                  const pct = Math.min(99, Math.round((s.totalDurMs / maxDur) * 100))
+                  return (
+                    <div key={s.idx} className="grid grid-cols-[1fr_36px_64px] items-center gap-2 text-[12px] ink-muted">
+                      <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                        <span className="font-medium ink truncate">{s.label || `slide ${s.idx + 1}`}</span>
+                        <div className="h-2.5 rounded-full overflow-hidden" style={{ background:'var(--surface)' }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width:`${pct}%`, background:`linear-gradient(90deg,${liveAccent},${liveAccent}99)` }}/>
+                        </div>
+                      </div>
+                      <b className="text-right">{s.views}×</b>
+                      <span className="text-right font-mono">{dwellSec}s</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <div className="font-semibold tracking-tight mb-1">Sessions</div>
+              <div className="text-[12px] ink-muted mb-4">Per-viewer detail</div>
+              <div className="space-y-2.5">
+                {live.sessions.length === 0 && (
+                  <div className="text-[12px] ink-muted">No sessions yet. The deck reports back the moment someone opens it.</div>
+                )}
+                {live.sessions.slice(0, 8).map((sess: any) => (
+                  <div key={sess.sessionId} className="grid grid-cols-[42px_1fr_auto] gap-3 items-center p-3 rounded-xl hairline" style={{ background:'var(--paper)' }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[12px]" style={{ background:'var(--surface)', color: liveAccent }}>
+                      {sess.deviceHint === 'iPhone' ? '📱' : sess.deviceHint === 'Mac' ? '💻' : sess.deviceHint === 'Android' ? '📱' : sess.deviceHint === 'Windows' ? '🖥' : '·'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium text-[13px]">
+                        {sess.deviceHint} · {sess.slidesViewed} slide{sess.slidesViewed !== 1 ? 's' : ''} viewed
+                        {sess.reachedEnd && <span className="ml-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background:'#dcfce7', color:'#137a4a' }}>reached end</span>}
+                      </div>
+                      <div className="text-[11px] ink-muted mt-0.5 font-mono truncate">{sess.sessionId.slice(0, 8)} · opened {fmtRel(sess.openedTs)}</div>
+                    </div>
+                    <div className="text-[11px] font-mono ink-muted text-right">
+                      {fmtRel(sess.lastSeenTs)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )
+    }
+    // ── End live mode; fall through to existing simulator below ──────
     return (
       <div className="p-6 lg:p-8 space-y-5">
         <Card className="p-5">
