@@ -324,6 +324,51 @@ export default function Workspace({
     finally { setVcLoading(false) }
   }
 
+  // Design with Andreas — calls /api/design-deck, replaces the deck HTML with
+  // the Sonnet-handwritten cinematic version. Opt-in because it burns ~15k
+  // output tokens per run; never auto-fires.
+  const [designLoading, setDesignLoading] = useState(false)
+  const [designStatus,  setDesignStatus]  = useState('')
+  async function runDesignDeck() {
+    if (!brandWorld || !liveContent) return
+    setDesignLoading(true); setDesignStatus('')
+    try {
+      const res = await fetch('/api/design-deck', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandWorld,
+          content: liveContent,
+          founder: {
+            company, oneLiner: '', founderName, audience, stage, industry,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`)
+      if (typeof data.html === 'string' && data.html.length > 1000) {
+        // Update the in-flight deck HTML — Export PDF + Deploy both read
+        // refinedHtml so the designed version flows through every share path.
+        setRefinedHtml(data.html)
+        // Open the new deck in a fresh tab so the founder can see it now.
+        try {
+          const blob = new Blob([data.html], { type: 'text/html' })
+          const url  = URL.createObjectURL(blob)
+          window.open(url, '_blank', 'noopener,noreferrer')
+          // Revoke later so the tab has time to load.
+          setTimeout(() => URL.revokeObjectURL(url), 60000)
+        } catch {}
+        setDesignStatus(`Done — ${(data.html.length / 1024).toFixed(1)}KB · ${data.tokensUsed?.out || 0} tokens out. Opened in a new tab; Export PDF / Deploy now use this version.`)
+      } else {
+        throw new Error('Design returned empty HTML')
+      }
+    } catch (e: any) {
+      setDesignStatus(`Failed — ${e?.message || 'unknown error'}`)
+    } finally {
+      setDesignLoading(false)
+      setTimeout(() => setDesignStatus(''), 12000)
+    }
+  }
+
   async function runAudit(contentOverride?: any) {
     setAuditLoading(true); setError('')
     try {
@@ -975,6 +1020,32 @@ export default function Workspace({
     const cur = realSlides[activeSlide]
     return (
       <div className="p-4 lg:p-6 space-y-5">
+        {/* Design with Claude — premium opt-in. Calls /api/design-deck which
+            asks Sonnet to write the whole HTML deck cinematically (vs the
+            renderer slot-filling template). ~$0.20 / 15k tokens per run. */}
+        {brandWorld && liveContent && Object.keys(liveContent).length > 0 && (
+          <Card className="p-4 flex items-start justify-between gap-4" style={{ background: `${liveAccent}10`, borderColor: `${liveAccent}33` }}>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <div className="text-[13px] font-semibold tracking-tight">Design with Andreas <span className="ink-muted font-normal">(premium)</span></div>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: liveAccent, color:'#fff', letterSpacing:'0.04em', textTransform:'uppercase' }}>~$0.20 / deck</span>
+              </div>
+              <div className="text-[12px] ink-muted leading-relaxed">
+                {designLoading
+                  ? 'Andreas is hand-writing a brand-true cinematic HTML deck — bespoke per-slide layouts, scroll-snap, custom cursor, marquee bands…'
+                  : designStatus
+                    ? designStatus
+                    : 'Skip the renderer slot-fill — let Andreas hand-write the entire HTML deck. Brand-true colours, per-slide bespoke layouts, scroll-snap, custom cursor, marquee bands. ~15s.'}
+              </div>
+            </div>
+            <button onClick={runDesignDeck} disabled={designLoading}
+              className="h-9 px-4 rounded-xl text-[13px] font-medium text-white shadow-card inline-flex items-center gap-2 disabled:opacity-50 flex-shrink-0"
+              style={{ background: liveAccent }}>
+              {designLoading ? <><span className="sd-spinner">◐</span> Designing…</> : <>✦ Design with Andreas</>}
+            </button>
+          </Card>
+        )}
+
         {/* Slide map */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
