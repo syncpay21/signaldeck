@@ -6,6 +6,25 @@ import type { SlideVisual } from './pipeline/visual-mood'
 import type { BrandWorld } from './brand-world'
 import { brandWorldMotifBackground } from './motifs'
 import { pickAxes, axesToClasses } from './design-library/axes'
+import { planTransitions, planLayoutRhythm } from './design-library/transition-planner'
+
+/** Available variants per slide id — must stay in sync with the variant
+ *  pickers below. Used by the rhythm planner to avoid consecutive same
+ *  layout shapes across the deck. */
+const SLIDE_VARIANT_CATALOG: Record<string, string[]> = {
+  s1_intro:        ['massive-display','phone-mockup','split-editorial','minimal-centered'],
+  s2_situation:    ['why-now-triple','shift-timeline','convergence','before-after-world'],
+  s3_problem:      ['card-grid','stat-overlay','quote-evidence','before-state'],
+  s4_implication:  ['cost-counter','risk-fan','loss-frame','status-quo-failure'],
+  s5_fix:          ['checks-row','before-after','three-pillar','one-big-thing'],
+  s6_how:          ['step-flow','arch-stack','sequence-arrows','inputs-outputs'],
+  s7_validation:   ['hero-number','cohort-curve','logo-wall','quote-stack'],
+  s8_market:       ['tam-sam-som','waterfall-bars','verticals','growth-curve'],
+  s9_customers:    ['archetype-cards','persona-quotes','timeline-vertical','icon-grid'],
+  s10_competition: ['matrix','positioning-grid','comparison-radar','anti-positioning'],
+  s11_risks:       ['mitigation-pairs','risk-radar','risk-narrative','risk-timeline'],
+  s12_team_ask:    ['split-cta','team-grid','cap-table','milestone-road'],
+}
 
 // Transition durations (matched to design-reference.html demoTx timings)
 const TX_DUR: Record<string, number> = {
@@ -201,6 +220,7 @@ function pickProblemVariant(c: any): 'card-grid' | 'stat-overlay' | 'quote-evide
   if (c.heroStat && typeof c.heroStat === 'object') return 'stat-overlay'
   if (Array.isArray(c.painQuotes) && c.painQuotes.length) return 'quote-evidence'
   if (c.statusQuo && c.wished) return 'before-state'
+  if (c._rhythmHint === 'stat-overlay' || c._rhythmHint === 'quote-evidence' || c._rhythmHint === 'before-state' || c._rhythmHint === 'card-grid') return c._rhythmHint
   return 'card-grid'
 }
 
@@ -278,6 +298,7 @@ function pickFixVariant(c: any): 'checks-row' | 'before-after' | 'three-pillar' 
   if (c.before && c.after) return 'before-after'
   if (Array.isArray(c.pillars) && c.pillars.length === 3) return 'three-pillar'
   if (c.oneThing && typeof c.oneThing === 'string') return 'one-big-thing'
+  if (['checks-row','before-after','three-pillar','one-big-thing'].includes(c._rhythmHint)) return c._rhythmHint
   return 'checks-row'
 }
 
@@ -345,6 +366,7 @@ function pickSituationVariant(c: any): 'why-now-triple' | 'shift-timeline' | 'co
   if (Array.isArray(c.timeline) && c.timeline.length >= 3) return 'shift-timeline'
   if (Array.isArray(c.converging) && c.converging.length >= 2) return 'convergence'
   if (c.oldWorld && c.newWorld) return 'before-after-world'
+  if (['why-now-triple','shift-timeline','convergence','before-after-world'].includes(c._rhythmHint)) return c._rhythmHint
   return 'why-now-triple'
 }
 
@@ -423,6 +445,7 @@ function pickMarketVariant(c: any): 'tam-sam-som' | 'waterfall-bars' | 'vertical
   if (Array.isArray(c.verticals) && c.verticals.length >= 3) return 'verticals'
   if (Array.isArray(c.stats) && c.stats.length === 3 && /tam|sam|som/i.test(c.stats[0]?.label || '')) return 'tam-sam-som'
   if (Array.isArray(c.stats) && c.stats.length >= 3) return 'waterfall-bars'
+  if (['tam-sam-som','waterfall-bars','verticals','growth-curve'].includes(c._rhythmHint)) return c._rhythmHint
   return 'tam-sam-som'
 }
 
@@ -509,6 +532,7 @@ function pickHowVariant(c: any): 'step-flow' | 'arch-stack' | 'sequence-arrows' 
   if (Array.isArray(c.layers) && c.layers.length >= 2) return 'arch-stack'
   if (Array.isArray(c.sequence) && c.sequence.length >= 2) return 'sequence-arrows'
   if (c.inputs && c.outputs) return 'inputs-outputs'
+  if (['step-flow','arch-stack','sequence-arrows','inputs-outputs'].includes(c._rhythmHint)) return c._rhythmHint
   return 'step-flow'
 }
 
@@ -585,6 +609,7 @@ function pickImplicationVariant(c: any): 'cost-counter' | 'risk-fan' | 'loss-fra
   if (Array.isArray(c.cascading) && c.cascading.length >= 3) return 'risk-fan'
   if (c.lossFrame && Array.isArray(c.lossFrame) && c.lossFrame.length >= 2) return 'loss-frame'
   if (c.failureTable && Array.isArray(c.failureTable.rows)) return 'status-quo-failure'
+  if (['cost-counter','risk-fan','loss-frame','status-quo-failure'].includes(c._rhythmHint)) return c._rhythmHint
   return 'cost-counter'
 }
 
@@ -661,6 +686,7 @@ function pickRiskVariant(c: any): 'mitigation-pairs' | 'risk-radar' | 'risk-narr
   if (c.riskRadar && Array.isArray(c.riskRadar.risks)) return 'risk-radar'
   if (Array.isArray(c.riskTimeline) && c.riskTimeline.length >= 3) return 'risk-timeline'
   if (c.riskNarrative && Array.isArray(c.riskNarrative)) return 'risk-narrative'
+  if (['mitigation-pairs','risk-radar','risk-narrative','risk-timeline'].includes(c._rhythmHint)) return c._rhythmHint
   return 'mitigation-pairs'
 }
 
@@ -776,6 +802,7 @@ function pickValidationVariant(c: any, world: any): 'hero-number' | 'cohort-curv
   if (Array.isArray(c.stats) && c.stats.length >= 3) {
     if (world?.dataVizStyle === 'sparkline' || world?.dataVizStyle === 'editorial-chart') return 'cohort-curve'
   }
+  if (['hero-number','cohort-curve','logo-wall','quote-stack'].includes(c._rhythmHint)) return c._rhythmHint
   return 'hero-number'
 }
 
@@ -873,6 +900,7 @@ function pickCompetitionVariant(c: any, _world: any): 'matrix' | 'positioning-gr
   if (c.quadrant && c.quadrant.xAxis && c.quadrant.yAxis) return 'positioning-grid'
   if (c.radar && Array.isArray(c.radar.axes) && c.radar.axes.length >= 3) return 'comparison-radar'
   if (c.antiPositioning && Array.isArray(c.antiPositioning) && c.antiPositioning.length) return 'anti-positioning'
+  if (['matrix','positioning-grid','comparison-radar','anti-positioning'].includes(c._rhythmHint)) return c._rhythmHint
   return 'matrix'
 }
 
@@ -961,6 +989,7 @@ function pickCustomersVariant(c: any, _world: any): 'archetype-cards' | 'persona
   if (Array.isArray(c.quotes) && c.quotes.length) return 'persona-quotes'
   if (Array.isArray(c.journey) && c.journey.length >= 3) return 'timeline-vertical'
   if (Array.isArray(c.segments) && c.segments.length >= 5) return 'icon-grid'
+  if (['archetype-cards','persona-quotes','timeline-vertical','icon-grid'].includes(c._rhythmHint)) return c._rhythmHint
   return 'archetype-cards'
 }
 
@@ -1041,6 +1070,7 @@ function pickTeamAskVariant(c: any, _world: any): 'split-cta' | 'team-grid' | 'c
   if (Array.isArray(c.team) && c.team.length >= 2) return 'team-grid'
   if (c.capTable && (c.capTable.round || c.capTable.valuation)) return 'cap-table'
   if (Array.isArray(c.milestones) && c.milestones.length >= 3) return 'milestone-road'
+  if (['split-cta','team-grid','cap-table','milestone-road'].includes(c._rhythmHint)) return c._rhythmHint
   return 'split-cta'
 }
 
@@ -1201,6 +1231,15 @@ export function renderDeck(
   const world = opts?.brandWorld
   const hasDemo = opts?.includeDemo !== false && (input.demoUrl || input.demoDescription || input.productData)
 
+  // Plan the transitions for the whole deck — no back-to-back repeats,
+  // story-anchored affinities (explode on problem, vortex on ask, etc.).
+  // Honours any per-slide overrides the founder set; fills the rest.
+  const plannedTransitions = planTransitions(ids as string[], world, input.company || '', opts?.transitionOverrides || {})
+  // Plan layout rhythm — avoid consecutive slides with the same shape family
+  // (e.g. two 3-card grids in a row). Only kicks in when content + brand world
+  // both leave a slide's variant ambiguous; per-slide overrides still win.
+  const plannedLayouts = planLayoutRhythm(ids as string[], SLIDE_VARIANT_CATALOG, input.company || '', opts?.layoutOverrides || {})
+
   // Industry motif background — picked from BrandWorld.motifs. Applied to
   // every slide's bg layer at low opacity so it reads as texture, not
   // decoration. No motif → empty string (current visual unchanged).
@@ -1225,20 +1264,27 @@ export function renderDeck(
     const def = SLIDE_DEFS[id]
     if (!def) return
     const v   = visuals?.[id]
-    // Transition priority: per-slide override → content.transition →
-    // slideVisuals → SLIDE_DEFS default (industry-adapted).
+    // Transition priority: per-slide founder override → content.transition →
+    // slideVisuals → PLANNED (Andreas no-back-to-back planner) → SLIDE_DEFS.
     const tx  = opts?.transitionOverrides?.[id]
               || (content[id] && content[id].transition)
               || v?.transition
+              || plannedTransitions[id]
               || adaptTransition(id, def.tx, guide)
     const bgx = v?.bgx || def.bgx
     const bgy = v?.bgy || def.bgy
-    // Layout variant override → injected into content so each builder's
-    // variant picker sees it as if the founder picked it via content shape.
-    const ovVariant = opts?.layoutOverrides?.[id]
-    const c = ovVariant
-      ? { ...(content[id] || {}), variant: ovVariant }
-      : (content[id] || {})
+    // Layout variant priority:
+    //   1. founder explicit override (opts.layoutOverrides[id]) — HARD
+    //   2. content.variant set by writer prompt — HARD
+    //   3. content-shape pickers in the builder (e.g. painQuotes → quote-evidence)
+    //   4. rhythm-planner hint (soft, only consulted if pickers default)
+    //   5. final default in the picker
+    const rawContent = content[id] || {}
+    const hardOverride = opts?.layoutOverrides?.[id] || rawContent.variant
+    const rhythmHint  = plannedLayouts[id]
+    const c = hardOverride
+      ? { ...rawContent, variant: hardOverride }
+      : (rhythmHint ? { ...rawContent, _rhythmHint: rhythmHint } : rawContent)
     // Bespoke layout dispatch — falls through to the generic slide() shell
     // when the slide's content doesn't carry the layout-specific fields.
     let html = ''
