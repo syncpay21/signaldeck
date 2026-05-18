@@ -16,6 +16,12 @@ export interface TemplateVars {
   totalSlides: number
   slidesHtml: string
   dotNav: string
+  /** Unique deck identifier baked into the HTML for viewership tracking.
+   *  The beacon script reports open / slide-view / slide-leave / close
+   *  events to {trackUrl} keyed by this id. */
+  deckId?: string
+  /** Where to POST tracking beacons. Defaults to the SignalDeck app. */
+  trackUrl?: string
 }
 
 export function deckTemplate(v: TemplateVars): string {
