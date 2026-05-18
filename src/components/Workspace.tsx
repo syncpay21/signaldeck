@@ -78,6 +78,80 @@ const CLAIM_STYLES: Record<string, { bg: string; color: string; label: string }>
   'founder-thesis': { bg:'#eff6ff', color:'#1d4ed8', label:'Founder thesis' },
 }
 
+/* ─── Strengthen UI — per-field "✨ alternatives" picker ──────────────
+   Calls /api/strengthen (Haiku, ~300 output tokens) to generate N stronger
+   phrasings for one field. Founder picks one to apply. Small, cheap,
+   surgical — the founder doesn't have to retype anything when their
+   external AI's draft was weak. */
+function StrengthenInline({ field, slideKey, current, slideContext, onApply }:
+  { field: string; slideKey: string; current: string; slideContext?: any; onApply: (text: string) => void }) {
+  const [open,    setOpen]    = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [opts,    setOpts]    = useState<string[]>([])
+  const [error,   setError]   = useState('')
+
+  async function fetchAlternatives() {
+    if (!current?.trim()) return
+    setOpen(true); setLoading(true); setError(''); setOpts([])
+    try {
+      const r = await fetch('/api/strengthen', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slideId: slideKey, field, currentText: current, slideContext, count: 3,
+        }),
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`)
+      setOpts(Array.isArray(data.alternatives) ? data.alternatives : [])
+    } catch (e: any) {
+      setError(e?.message || 'Failed to generate')
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <span style={{ position: 'relative' }}>
+      <button onClick={fetchAlternatives} title="Generate 3 stronger alternatives"
+        className="h-9 w-9 flex-shrink-0 inline-flex items-center justify-center rounded-lg hairline text-[14px] hover:bg-[var(--surface)]"
+        style={{ background: 'var(--paper)' }}>
+        ✦
+      </button>
+      {open && (
+        <div onMouseLeave={() => setOpen(false)}
+          className="absolute right-0 top-[calc(100%+6px)] z-30 rounded-xl hairline shadow-card p-2 w-[min(360px,90vw)]"
+          style={{ background:'var(--surface)' }}>
+          <div className="flex items-center justify-between mb-1.5 px-1">
+            <div className="text-[11px] font-medium" style={{ letterSpacing:'0.04em', textTransform:'uppercase' }}>Stronger alternatives</div>
+            <button onClick={() => setOpen(false)} className="text-[14px] ink-muted leading-none">×</button>
+          </div>
+          {loading && <div className="text-[12px] ink-muted px-2 py-3">Andreas writing 3 alternatives…</div>}
+          {error && <div className="text-[12px] px-2 py-2" style={{ color:'#b0322b' }}>{error}</div>}
+          {!loading && !error && opts.map((alt, i) => (
+            <button key={i} onClick={() => { onApply(alt); setOpen(false) }}
+              className="block w-full text-left px-2.5 py-2 rounded-lg text-[12px] hover:bg-[var(--paper)] transition-colors leading-relaxed">
+              <div className="font-mono text-[9px] ink-muted mb-0.5">OPTION {i + 1}</div>
+              <div>{alt}</div>
+            </button>
+          ))}
+          {!loading && !error && opts.length === 0 && (
+            <div className="text-[12px] ink-muted px-2 py-2">No alternatives returned. Try a non-empty value.</div>
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
+
+/** Field heading row: small label + tiny ✦ button that wraps StrengthenInline. */
+function FieldHead({ label, field, slideKey, current, slideContext, onApply }:
+  { label: string; field: string; slideKey: string; current: string; slideContext?: any; onApply: (text: string) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="text-[10px] font-mono uppercase tracking-wider" style={{ color:'var(--ink-muted)' }}>{label}</div>
+      <StrengthenInline field={field} slideKey={slideKey} current={current} slideContext={slideContext} onApply={onApply} />
+    </div>
+  )
+}
+
 interface WorkspaceProps {
   onRegenerate?: (frameworkId: string) => Promise<void>
   company: string
@@ -1679,23 +1753,23 @@ export default function Workspace({
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="font-semibold tracking-tight">Inspector — slide {activeSlide+1}</div>
-            <div className="text-[11px] ink-muted">Edits save instantly. Use chat below for Andreas rewrites.</div>
+            <div className="text-[11px] ink-muted">Click ✨ on any field to get 3 SignalDeck-AI alternatives.</div>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <MiniLabel>Headline</MiniLabel>
+              <FieldHead label="Headline" field="headline" slideKey={cur?.key} current={cur?.val?.headline ?? cur?.title ?? ''} slideContext={cur?.val} onApply={text => patchSlide(cur.key, 'headline', text)} />
               <input value={cur?.val?.headline ?? cur?.title ?? ''}
                 onChange={e => patchSlide(cur.key, 'headline', e.target.value)}
                 className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div>
-              <MiniLabel>Tag</MiniLabel>
+              <FieldHead label="Tag" field="tag" slideKey={cur?.key} current={cur?.val?.tag ?? ''} slideContext={cur?.val} onApply={text => patchSlide(cur.key, 'tag', text)} />
               <input value={cur?.val?.tag ?? ''}
                 onChange={e => patchSlide(cur.key, 'tag', e.target.value)}
                 className="w-full h-9 px-3 mt-2 rounded-xl text-[13px] hairline" />
             </div>
             <div className="sm:col-span-2">
-              <MiniLabel>Lede / sub</MiniLabel>
+              <FieldHead label="Lede / sub" field={cur?.val?.lede !== undefined ? 'lede' : 'sub'} slideKey={cur?.key} current={cur?.val?.lede ?? cur?.val?.sub ?? cur?.body ?? ''} slideContext={cur?.val} onApply={text => patchSlide(cur.key, cur?.val?.lede !== undefined ? 'lede' : 'sub', text)} />
               <textarea
                 value={cur?.val?.lede ?? cur?.val?.sub ?? cur?.body ?? ''}
                 onChange={e => patchSlide(cur.key, cur?.val?.lede !== undefined ? 'lede' : 'sub', e.target.value)}
@@ -1706,12 +1780,19 @@ export default function Workspace({
                 <MiniLabel>Bullets</MiniLabel>
                 <div className="space-y-1.5 mt-2">
                   {cur.val.bullets.map((b: string, i: number) => (
-                    <input key={i} value={b}
-                      onChange={e => {
-                        const next = [...cur.val.bullets]; next[i] = e.target.value
-                        patchSlide(cur.key, 'bullets', next as any)
-                      }}
-                      className="w-full h-9 px-3 rounded-xl text-[13px] hairline" />
+                    <div key={i} className="flex gap-1.5 items-center">
+                      <input value={b}
+                        onChange={e => {
+                          const next = [...cur.val.bullets]; next[i] = e.target.value
+                          patchSlide(cur.key, 'bullets', next as any)
+                        }}
+                        className="flex-1 h-9 px-3 rounded-xl text-[13px] hairline" />
+                      <StrengthenInline field="bullet" slideKey={cur?.key} current={b} slideContext={cur?.val}
+                        onApply={text => {
+                          const next = [...cur.val.bullets]; next[i] = text
+                          patchSlide(cur.key, 'bullets', next as any)
+                        }} />
+                    </div>
                   ))}
                 </div>
               </div>
