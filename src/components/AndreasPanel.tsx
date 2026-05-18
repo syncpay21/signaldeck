@@ -96,6 +96,7 @@ export default function AndreasPanel(props: AndreasPanelProps) {
             auditData:      props.auditData,
             claimsData:     props.claimsData,
             vcData:         props.vcData,
+            signalsData:    props.signalsData,
             designCritique: props.designCritique,
           },
         }),
