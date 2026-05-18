@@ -45,6 +45,10 @@ interface FormData {
    *  research, screenshots, anything. Andreas references all of them when
    *  writing slides. Cap at 30 files total to keep payload reasonable. */
   supportingFiles?: Array<{ name: string; mime: string; data: string; size: number }>
+  /** Pre-drafted deck content from the founder's external AI. When present,
+   *  SignalDeck skips the heavy writer Sonnet call and runs only a Haiku
+   *  fact-check + rephrase pass. ~75% cost reduction. */
+  draftedDeck?: Record<string, any>
 }
 
 const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']

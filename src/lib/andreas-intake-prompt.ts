@@ -81,6 +81,10 @@ export interface IntakeJsonShape {
   channelMix?:           string  // current acquisition channels + cost split
   geographicPlay?:       string  // current geos + expansion plans
   pressQuotes?:          string  // verbatim press / analyst pull-quotes
+  /** The founder's OWN AI drafted the full deck content. When present,
+   *  SignalDeck skips the heavy writer Sonnet call and only runs a
+   *  Haiku fact-check + rephrase pass on top. ~75% cost reduction. */
+  draftedDeck?: Record<string, any>
 }
 
 export const ANDREAS_INTAKE_PROMPT = `I'm using SignalDeck (signaldeck-two.vercel.app) to build my investor pitch deck. Their AI assistant is named Andreas. I want to skip the multi-step intake form and just give you the questions — you ask me what's needed in conversation, then output the structured JSON I can paste back.
@@ -137,6 +141,41 @@ ASK ME ABOUT:
 29. Traction status — pre-revenue / paying-users / revenue / no-traction.
 30. Region — us / eu / uk / asia / latam / global.
 31. Team size — solo / co-founder / small-team-2-5 / team-6-15 / larger.
+
+═══ DRAFT THE FULL DECK CONTENT ═══
+
+After you've collected my answers, BEFORE you output the JSON, draft the
+full pitch deck content yourself. SignalDeck's Andreas will then fact-check
+your draft against the statlines and supporting docs, rephrase any weak
+stats, and design the visual layout — but YOU do the writing.
+
+For each of the 12 slides below, write punchy copy in MY voice. Use the
+exact statlines and named customers I gave you. Do NOT invent numbers or
+customer names. If a stat is weak ("we have some users"), say what's
+specifically known.
+
+Slide structure:
+  s1_intro       — company name + one-line hook
+  s2_situation   — why now, what shifted
+  s3_problem     — 3 concrete pain points with consequences
+  s4_implication — what it costs to leave unsolved
+  s5_fix         — the solution, 4-5 outcomes
+  s6_how         — 4-step mechanism (foundation → user surface)
+  s7_validation  — proof points (stats / customers / NPS)
+  s9_customers   — 3 named archetypes with use cases
+  s8_market      — TAM / SAM / SOM with real numbers if known
+  s10_competition— matrix or positioning vs 2 competitors
+  s11_risks      — 2-3 risk + mitigation pairs
+  s12_team_ask   — round size + use of funds + 2-3 milestones
+
+Writing rules:
+  - Headlines: 2-6 words, punchy, no buzzwords
+  - Bullets: outcome-led, never feature-led
+  - Stats: lift founder's exact numbers; mark "[needs founder data]" if missing
+  - Tone: match the founder's voice from realStory
+  - Never invent customer names, dollar amounts, or growth rates
+
+Output the drafted content as a "draftedDeck" object inside the JSON.
 
 ═══ EXTRA EVIDENCE (all optional — say "skip" if not applicable) ═══
 32. Customer testimonials — 1-3 verbatim quotes with name + role.
@@ -210,7 +249,21 @@ OUTPUT FORMAT — when you have all the answers, output ONLY this JSON, wrapped 
   "openRoles":            "key hires this round funds",
   "channelMix":           "channels + cost split",
   "geographicPlay":       "current + expansion",
-  "pressQuotes":          "verbatim press mentions"
+  "pressQuotes":          "verbatim press mentions",
+  "draftedDeck": {
+    "s1_intro":        { "tag":"intro",         "headline":"...",  "sub":"...",  "lede":"...",  "stats":[] },
+    "s2_situation":    { "tag":"why now",       "headline":"...",  "sub":"...",  "lede":"...",  "shifts":[{"name":"...","desc":"..."}] },
+    "s3_problem":      { "tag":"the problem",   "headline":"...",  "sub":"...",  "lede":"...",  "cards":[{"num":"01","head":"...","body":"...","foot":"..."},{"num":"02","head":"...","body":"...","foot":"..."},{"num":"03","head":"...","body":"...","foot":"..."}] },
+    "s4_implication":  { "tag":"cost of doing nothing", "headline":"...", "sub":"...", "lede":"...", "cost":{"value":"$X","label":"lost annually"}, "multipliers":[{"value":"3x","label":"compounding"}] },
+    "s5_fix":          { "tag":"the fix",       "headline":"...",  "sub":"...",  "lede":"...",  "checks":["...","...","...","...","..."] },
+    "s6_how":          { "tag":"how it works",  "headline":"...",  "sub":"...",  "lede":"...",  "steps":[{"head":"FOUNDATION","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."}] },
+    "s7_validation":   { "tag":"validation",    "headline":"...",  "sub":"...",  "lede":"...",  "stats":[{"value":"...","label":"..."},{"value":"...","label":"..."},{"value":"...","label":"..."}] },
+    "s9_customers":    { "tag":"customers",     "headline":"...",  "sub":"...",  "lede":"...",  "bullets":["Named archetype — use case","...","..."] },
+    "s8_market":       { "tag":"market",        "headline":"...",  "sub":"...",  "lede":"...",  "stats":[{"value":"$X","label":"TAM"},{"value":"$Y","label":"SAM"},{"value":"$Z","label":"SOM"}] },
+    "s10_competition": { "tag":"competition",   "headline":"...",  "sub":"...",  "matrix":{"columns":["Us","Competitor A","Competitor B"],"rows":[{"label":"...","cells":[true,false,true]}]} },
+    "s11_risks":       { "tag":"risks",         "headline":"...",  "sub":"...",  "lede":"...",  "pairs":[{"risk":"...","mitigation":"..."},{"risk":"...","mitigation":"..."}] },
+    "s12_team_ask":    { "tag":"team & ask",    "headline":"...",  "sub":"...",  "lede":"...",  "stats":[{"value":"$X","label":"raising"},{"value":"by Y","label":"milestone"}], "bullets":["use of funds","hiring","milestones","contact"] }
+  }
 }
 \`\`\`
 
@@ -308,6 +361,12 @@ export function parseIntakeJson(raw: string): ParseResult {
     'ipOrPatents','openRoles','channelMix','geographicPlay','pressQuotes',
     ] as Array<keyof IntakeJsonShape>)
     .forEach(k => str(k, false))
+
+  // draftedDeck — full slide content the founder's AI pre-wrote. Object,
+  // not string; just pass through any shape with valid slide ids.
+  if (parsed.draftedDeck && typeof parsed.draftedDeck === 'object') {
+    out.draftedDeck = parsed.draftedDeck
+  }
 
   return { ok: Object.keys(out).length > 0, data: out, warnings }
 }

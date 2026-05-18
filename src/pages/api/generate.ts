@@ -63,7 +63,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
        the deterministic pick — never block generation. */
     let strategistResult: any = null
     let strategistApplied = false
-    if (process.env.ENABLE_STRATEGIST !== 'false') {
+    // Lightweight detection — if the founder's AI drafted the deck, their
+    // framing is already locked in. Skip strategist + researcher.
+    const willUseLightweight = !!(input.draftedDeck && typeof input.draftedDeck === 'object' && Object.keys(input.draftedDeck).length >= 3)
+    if (process.env.ENABLE_STRATEGIST !== 'false' && !willUseLightweight) {
       strategistResult = await pickStrategicNarrative(anthropic, {
         company:   input.company,
         industry,
@@ -107,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
        slides land grounded in real comparables, not vague generalities.
        Failure is non-blocking. Gated by ENABLE_RESEARCHER=false. */
     let researchResult: any = null
-    if (process.env.ENABLE_RESEARCHER !== 'false') {
+    if (process.env.ENABLE_RESEARCHER !== 'false' && !willUseLightweight) {
       researchResult = await runResearch(anthropic, {
         company:     input.company,
         industry,
@@ -211,22 +214,104 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? [...attachmentBlocks, { type: 'text', text: userPrompt }]
       : userPrompt
 
-    const [sonnetMessage, extractedBrand, visionResult] = await Promise.all([
-      anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: sonnetUserMessage }],
-      }),
-      extractBrand(input.websiteUrl || input.domain).catch(() => null),
-      visionSource
-        ? analyzeBrand(anthropic, visionSource, { company: input.company, industry }).catch(() => null)
-        : Promise.resolve(null),
-    ])
-    const sonnetRaw = (sonnetMessage.content[0] as any).text.trim()
-    const sonnetJson = sonnetRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-    const sonnetContent: Record<string, any> = JSON.parse(sonnetJson)
-    const stage2TokensUsed = (sonnetMessage.usage?.input_tokens || 0) + (sonnetMessage.usage?.output_tokens || 0)
+    // ─── Cost-shift: when the founder's external AI drafted the deck,
+    // skip the heavy writer Sonnet call. Run ONLY a lightweight Haiku
+    // fact-check + rephrase pass instead (~75% cost reduction).
+    const draftedDeck = input.draftedDeck && typeof input.draftedDeck === 'object'
+      ? input.draftedDeck
+      : null
+    const useLightweightPath = !!draftedDeck && Object.keys(draftedDeck).length >= 3
+
+    let sonnetContent: Record<string, any>
+    let stage2TokensUsed = 0
+    let extractedBrand: any = null
+    let visionResult: any = null
+    let stage2LightweightApplied = false
+
+    if (useLightweightPath) {
+      // LIGHTWEIGHT PATH: founder's AI did the drafting. Just fact-check
+      // and rephrase weak stats. One Haiku call, ~500 output tokens.
+      const factCheckSystem = `You are Andreas, fact-checking and strengthening a pre-drafted pitch deck.
+
+The founder's external AI drafted the slides. You see:
+  - The drafted slide content
+  - The founder's verbatim statlines (the ONLY source of truth for numbers)
+  - Optional supporting documents (PDFs, CSVs, etc.)
+
+YOUR JOB
+1. For each slide, check every stat / number / customer name against the
+   statlines + attached docs.
+2. If a stat is INVENTED (not in statlines OR docs), replace with the
+   closest matching real stat OR mark as "[needs founder data]".
+3. If a stat is WEAK (vague like "many customers", "growing fast"),
+   rephrase using the strongest supporting evidence available.
+4. If the headline is buzzword-heavy or generic, tighten it. Otherwise leave it.
+5. Preserve the founder's voice and overall structure. Don't rewrite for the
+   sake of rewriting — only fix what's broken or weak.
+
+Return ONLY a JSON object with the same shape as the input draftedDeck.
+Slides you didn't change can be omitted from your output (we'll merge with
+the original). Wrap the JSON in a single \`\`\`json fence.`
+
+      const factCheckPrompt = `DRAFTED DECK
+${JSON.stringify(draftedDeck, null, 2)}
+
+FOUNDER STATLINES (the only truth source for numbers)
+${statlines.length ? statlines.join('\n') : '(none provided)'}
+
+Return the corrected slides as JSON.`
+
+      const factCheckMessage = await anthropic.messages.create({
+        model: 'claude-haiku-4-5',
+        max_tokens: 2000,
+        system: factCheckSystem,
+        messages: [{ role: 'user', content: attachmentBlocks.length
+          ? [...attachmentBlocks, { type: 'text', text: factCheckPrompt }]
+          : factCheckPrompt }],
+      })
+      const factRaw = (factCheckMessage.content[0] as any).text.trim()
+      const factJson = factRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+      let factCheckedSlides: Record<string, any> = {}
+      try {
+        const m = factJson.match(/\{[\s\S]*\}/)
+        if (m) factCheckedSlides = JSON.parse(m[0])
+      } catch {/* fall back to drafted as-is */}
+      // Merge: founder draft is the base, fact-check overlays only changed slides.
+      sonnetContent = { ...draftedDeck, ...factCheckedSlides }
+      stage2TokensUsed = (factCheckMessage.usage?.input_tokens || 0) + (factCheckMessage.usage?.output_tokens || 0)
+      stage2LightweightApplied = true
+
+      // Still run brand extraction + vision in parallel (no AI cost for extract,
+      // vision only fires if hero image present).
+      const [eb, vr] = await Promise.all([
+        extractBrand(input.websiteUrl || input.domain).catch(() => null),
+        visionSource
+          ? analyzeBrand(anthropic, visionSource, { company: input.company, industry }).catch(() => null)
+          : Promise.resolve(null),
+      ])
+      extractedBrand = eb
+      visionResult = vr
+    } else {
+      // FULL PATH: founder didn't pre-draft. Heavy writer Sonnet call.
+      const [sonnetMessage, eb, vr] = await Promise.all([
+        anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: sonnetUserMessage }],
+        }),
+        extractBrand(input.websiteUrl || input.domain).catch(() => null),
+        visionSource
+          ? analyzeBrand(anthropic, visionSource, { company: input.company, industry }).catch(() => null)
+          : Promise.resolve(null),
+      ])
+      const sonnetRaw = (sonnetMessage.content[0] as any).text.trim()
+      const sonnetJson = sonnetRaw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+      sonnetContent = JSON.parse(sonnetJson)
+      stage2TokensUsed = (sonnetMessage.usage?.input_tokens || 0) + (sonnetMessage.usage?.output_tokens || 0)
+      extractedBrand = eb
+      visionResult = vr
+    }
 
     /* ─── STAGE B2 — Theme synthesis (deterministic, no AI) ──────────── */
     // Priority chain for the final theme:
@@ -251,7 +336,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let haikuResult: any = null
     let haikuError: string | null = null
     let haikuApplied = false
-    if (process.env.ENABLE_HAIKU_VALIDATION !== 'false') {
+    // Skip in lightweight path — the founder's AI already shaped the narrative,
+    // and we've fact-checked. No more critique passes needed.
+    if (process.env.ENABLE_HAIKU_VALIDATION !== 'false' && !useLightweightPath) {
       try {
         const v = await validateNarrative(anthropic, {
           deckContent: sonnetContent,
@@ -282,7 +369,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let copyFeedback = ''
     let polishError: string | null = null
     let polishApplied = false
-    if (process.env.ENABLE_GPT_POLISH !== 'false' && process.env.OPENAI_API_KEY) {
+    if (process.env.ENABLE_GPT_POLISH !== 'false' && process.env.OPENAI_API_KEY && !useLightweightPath) {
       try {
         const polish = await polishDeck(openai, {
           deckContent:  sonnetContent,
@@ -309,7 +396,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
        content. Failure is non-blocking. Gated by ENABLE_CRITIC=false. */
     let criticResult: any = null
     let criticApplied = false
-    if (process.env.ENABLE_CRITIC !== 'false') {
+    if (process.env.ENABLE_CRITIC !== 'false' && !useLightweightPath) {
       try {
         criticResult = await critiqueAndRevise(anthropic, {
           deckContent:  polishedContent,
@@ -375,7 +462,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         stage_a0_5: { researcher: researchResult },
         stage_a1:   { narrative: narrative.id, slideOrder: originalSlideIds },
         stage_a1_5: { strategist: strategistResult, applied: strategistApplied },
-        stage_a2:   { model: 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed },
+        stage_a2:   { model: useLightweightPath ? 'claude-haiku-4-5 (fact-check)' : 'claude-sonnet-4-6', tokensUsed: stage2TokensUsed, lightweightPath: useLightweightPath, lightweightApplied: stage2LightweightApplied },
         stage_a3:   { model: 'claude-haiku-4-5', haiku: haikuResult, applied: haikuApplied, error: haikuError },
         stage_a4: { model: 'gpt-4o', statVerification, copyFeedback, applied: polishApplied, error: polishError },
         stage_a5: { model: 'claude-sonnet-4-6 (critic)', critic: criticResult, applied: criticApplied },
