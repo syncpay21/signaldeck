@@ -240,6 +240,12 @@ export function renderDeck(
     slideVisuals?:  Record<string, SlideVisual>
     brandWorld?:    BrandWorld | null
     includeDemo?:   boolean
+    /** Unique deck id baked into the HTML for viewership tracking.
+     *  When set, the rendered deck POSTs viewership beacons to
+     *  /api/track keyed by this id. */
+    deckId?:        string
+    /** Override beacon URL. Defaults to the production SignalDeck app. */
+    trackUrl?:      string
   },
 ): string {
   const ids: SlideId[] = slideIds ?? (Object.keys(SLIDE_DEFS) as SlideId[])
