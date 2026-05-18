@@ -357,10 +357,16 @@ export async function planSteps(
   catalog: ToolSpec[],
   prior: PriorTurn[] = [],
 ): Promise<ConductorPlan | null> {
-  // Stage 0 — deterministic intent classification. For chit-chat / pure-opinion
+  // Stage 0a — deterministic back-reference resolution. Turns "rewrite that
+  // slide" into "rewrite that slide [resolved: s3_problem]" so the planner
+  // emits the right slideId on the first try.
+  const backref = resolveBackReference(instruction, prior, ctx.slideIds || [], ctx.activeSlideId)
+  const resolvedInstruction = backref.rewritten
+
+  // Stage 0b — deterministic intent classification. For chit-chat / pure-opinion
   // questions we skip the planner entirely (saves a Haiku round-trip).
   const priorText = prior.slice(-2).map(t => t.text).join(' ')
-  const intent = classifyIntent(instruction, priorText)
+  const intent = classifyIntent(resolvedInstruction, priorText)
   if (intent.skipPlanner) {
     return { steps: [], reasoning: `(planner skipped — intent: ${intent.intent})`, intent }
   }
