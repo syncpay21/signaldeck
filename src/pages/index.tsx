@@ -288,6 +288,7 @@ export default function Home() {
         accentColor={form.accentColor}
         generatedHtml={generatedHtml}
         generatedContent={generatedContent}
+        deckId={deckId}
         logoUrl={form.logoData || logoUrl}
         audience={form.audience}
         websiteUrl={form.websiteUrl}
