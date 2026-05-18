@@ -44,6 +44,7 @@ export interface ConductorContext {
   auditData?:      any
   claimsData?:     any
   vcData?:         any
+  signalsData?:    any
   designCritique?: any
 }
 
