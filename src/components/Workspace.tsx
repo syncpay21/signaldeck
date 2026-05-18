@@ -113,7 +113,17 @@ export default function Workspace({
   // and renders in the default monochrome SignalDeck shell. Useful for resetting
   // a noisy brand world to a neutral baseline without re-running intake.
   const [plainTheme, setPlainTheme] = useState(false)
-  const brandWorld = plainTheme ? null : propBrandWorld
+  // Local overrides — sliders + toggles on the Theme screen mutate this. Merged
+  // over the generated brand world before render so the founder can dial it
+  // without burning API credits.
+  const [bwOverrides, setBwOverrides] = useState<Partial<BrandWorld>>({})
+  const brandWorld = plainTheme ? null : (propBrandWorld ? {
+    ...propBrandWorld,
+    ...bwOverrides,
+    colour:  { ...(propBrandWorld.colour),  ...((bwOverrides as any).colour  || {}) },
+    effects: { ...(propBrandWorld.effects), ...((bwOverrides as any).effects || {}) },
+    typography: { ...(propBrandWorld.typography), ...((bwOverrides as any).typography || {}) },
+  } as BrandWorld : null)
 
   /* Per-brand icon set — Luma gets duotone, fintech gets line, sports gets glyph.
      Falls back to line when no BrandWorld is generated yet (intake). */
@@ -359,6 +369,44 @@ export default function Workspace({
     const id = setInterval(poll, 10000)
     return () => { cancelled = true; clearInterval(id) }
   }, [deckId])
+
+  // Theme variants — fetches /api/brand-world-variants to show 3 alternative
+  // directions (loud/balanced/restrained) with per-variant contrast + fit
+  // scores. Opt-in because it costs a Sonnet call.
+  const [variants, setVariants] = useState<any[] | null>(null)
+  const [variantsLoading, setVariantsLoading] = useState(false)
+  const [variantsError, setVariantsError] = useState('')
+  async function fetchVariants() {
+    setVariantsLoading(true); setVariantsError('')
+    try {
+      const r = await fetch('/api/brand-world-variants', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company, industry, audience, stage,
+          oneLiner: realStory?.slice(0, 200) || '',
+          websiteUrl,
+        }),
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`)
+      setVariants(Array.isArray(data.variants) ? data.variants : [])
+    } catch (e: any) {
+      setVariantsError(e?.message || 'Variants failed')
+    } finally {
+      setVariantsLoading(false)
+    }
+  }
+  function applyVariant(v: any) {
+    if (!v?.brandWorld) return
+    // Apply the entire brand-world as an override — preserves prop, can be
+    // un-applied by clicking "Reset overrides".
+    setBwOverrides({
+      ...v.brandWorld,
+      colour:     v.brandWorld.colour,
+      effects:    v.brandWorld.effects,
+      typography: v.brandWorld.typography,
+    })
+  }
 
   // Design with Andreas — calls /api/design-deck, replaces the deck HTML with
   // the Sonnet-handwritten cinematic version. Opt-in because it burns ~15k
@@ -991,6 +1039,150 @@ export default function Workspace({
             </div>
           </Card>
         )}
+        {/* Theme variants — 3 alternative directions in one Sonnet call.
+            Scored on contrast + industry fit + boldness, ranked best-first. */}
+        {bw && (
+          <Card className="p-5 mb-5">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <MiniLabel>Explore directions</MiniLabel>
+                <div className="font-semibold tracking-tight mt-1">Three brand-world variants</div>
+                <div className="text-[12px] ink-muted mt-0.5">Loud, balanced, restrained. Andreas scores each on contrast + industry fit + boldness; best-fit leads.</div>
+              </div>
+              <button onClick={fetchVariants} disabled={variantsLoading}
+                className="h-9 px-4 rounded-xl text-[13px] font-medium text-white inline-flex items-center gap-2 disabled:opacity-50"
+                style={{ background: liveAccent }}>
+                {variantsLoading ? <><span className="sd-spinner">◐</span> Generating…</> : <>✦ Generate 3 variants</>}
+              </button>
+            </div>
+            {variantsError && <div className="text-[12px] mt-2" style={{ color:'#b0322b' }}>{variantsError}</div>}
+            {variants && variants.length > 0 && (
+              <div className="grid sm:grid-cols-3 gap-3 mt-3">
+                {variants.map((v: any, i: number) => {
+                  const c = v.brandWorld?.colour || {}
+                  return (
+                    <div key={v.id || i} className="rounded-xl hairline overflow-hidden flex flex-col">
+                      {/* Hero strip showing the variant's actual colours */}
+                      <div className="h-20 relative" style={{ background: c.background }}>
+                        <div className="absolute inset-3 rounded-lg" style={{ background: c.surface }}>
+                          <div className="absolute top-2 left-3 right-3 h-1.5 rounded-full" style={{ background: c.primary }}/>
+                          <div className="absolute top-5 left-3 w-2/3 h-1 rounded-full" style={{ background: c.text, opacity:.7 }}/>
+                          <div className="absolute bottom-2 right-3 w-12 h-3 rounded-full" style={{ background: c.primary }}/>
+                        </div>
+                      </div>
+                      <div className="p-3 flex-1 flex flex-col gap-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: liveAccent }}>{v.temperament}</span>
+                          {i === 0 && (
+                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full" style={{ background:'#dcfce7', color:'#137a4a', letterSpacing:'0.04em', textTransform:'uppercase' }}>Best fit</span>
+                          )}
+                        </div>
+                        <div className="text-[12px] ink-muted leading-snug">{v.why}</div>
+                        <div className="text-[10px] font-mono ink-muted">
+                          contrast {v.scores?.contrast}/100 · fit {v.scores?.fit}/100 · bold {v.scores?.boldness}/100
+                        </div>
+                        <div className="text-[10px] font-mono ink-muted truncate">
+                          {v.brandWorld?.typography?.heading} · {v.brandWorld?.typography?.body}
+                        </div>
+                        <button onClick={() => applyVariant(v)}
+                          className="mt-auto h-8 rounded-lg text-[12px] font-medium text-white"
+                          style={{ background: liveAccent }}>
+                          Apply this direction
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Live overrides — zero API cost. Tweak the active brand world via
+            sliders and toggles. Reset returns to the generated original. */}
+        {bw && (
+          <Card className="p-5 mb-5 space-y-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <MiniLabel>Live overrides</MiniLabel>
+                <div className="font-semibold tracking-tight mt-1">Dial the design without re-generating</div>
+                <div className="text-[12px] ink-muted mt-0.5">Changes apply to the workspace immediately, no API call.</div>
+              </div>
+              {Object.keys(bwOverrides).length > 0 && (
+                <button onClick={() => setBwOverrides({})}
+                  className="h-8 px-3 rounded-xl text-[12px] hairline ink-muted inline-flex items-center gap-1.5">
+                  <ic.refresh className="w-3 h-3"/> Reset overrides
+                </button>
+              )}
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Radius slider */}
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Card radius</MiniLabel>
+                <div className="mt-1 text-[13px] font-medium font-mono">{bw.radius}px</div>
+                <input type="range" min="4" max="32" step="2" value={bw.radius}
+                  onChange={e => setBwOverrides(o => ({ ...o, radius: Number(e.target.value) }))}
+                  className="w-full mt-2" style={{ accentColor: liveAccent }} />
+              </div>
+              {/* Density */}
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Density</MiniLabel>
+                <div className="grid grid-cols-3 gap-1 mt-2">
+                  {(['tight','normal','spacious'] as const).map(d => (
+                    <button key={d} onClick={() => setBwOverrides(o => ({ ...o, density: d }))}
+                      className="h-7 rounded-md text-[11px] font-medium"
+                      style={{ background: bw.density === d ? liveAccent : 'var(--surface)', color: bw.density === d ? '#fff' : 'var(--ink)' }}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Visual richness tier */}
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Richness</MiniLabel>
+                <div className="grid grid-cols-2 gap-1 mt-2">
+                  {(['restrained','balanced','rich','maximal'] as const).map(r => (
+                    <button key={r} onClick={() => setBwOverrides(o => ({ ...o, visualRichness: r }))}
+                      className="h-7 rounded-md text-[10px] font-medium px-1"
+                      style={{ background: bw.visualRichness === r ? liveAccent : 'var(--surface)', color: bw.visualRichness === r ? '#fff' : 'var(--ink)' }}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Deck mode */}
+              <div className="p-3 rounded-lg hairline">
+                <MiniLabel>Deck mode</MiniLabel>
+                <div className="grid grid-cols-2 gap-1 mt-2">
+                  {(['light','dark'] as const).map(m => (
+                    <button key={m} onClick={() => setBwOverrides(o => ({ ...o, deckMode: m }))}
+                      className="h-7 rounded-md text-[11px] font-medium"
+                      style={{ background: bw.deckMode === m ? liveAccent : 'var(--surface)', color: bw.deckMode === m ? '#fff' : 'var(--ink)' }}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Effect toggles — six on/off chips */}
+            <div className="p-3 rounded-lg hairline">
+              <MiniLabel>Effects</MiniLabel>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(['gridOverlay','radialAmbient','heroWatermark','monoLabels','glow','grainOverlay'] as const).map(k => {
+                  const on = Boolean((bw.effects as any)[k])
+                  return (
+                    <button key={k} onClick={() => setBwOverrides(o => ({ ...o, effects: { ...(bw.effects), ...((o as any).effects || {}), [k]: !on } }))}
+                      className="h-7 px-2.5 rounded-full text-[10px] font-medium"
+                      style={{ background: on ? liveAccent : 'var(--surface)', color: on ? '#fff' : 'var(--ink-muted)' }}>
+                      {on ? '✓ ' : ''}{k}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Plain-theme toggle — reset the workspace to the default SignalDeck
             monochrome shell. Useful when the generated brand world is too noisy
             or the founder just wants to focus on content. */}
