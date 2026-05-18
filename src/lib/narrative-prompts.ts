@@ -699,19 +699,35 @@ Return ONLY this JSON (no markdown):
 // ─── Slide JSON schemas ────────────────────────────────────────────────────────
 // Each slide type has a fixed output shape the renderer expects.
 
+// Structured shapes — the renderer dispatches bespoke per-slide layouts
+// (prob-grid, fix-checks, how-flow, comp-matrix) when these fields are
+// present. Generic shell still works when they're missing.
 const SLIDE_SCHEMA: Record<SlideId, string> = {
   s1_intro:        `{"tag":"string","headline":"COMPANY NAME","sub":"hook line"}`,
   s2_situation:    `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"string"}]}`,
-  s3_problem:      `{"tag":"string","headline":"string","lede":"string","bullets":["string","string","string"]}`,
+  // s3_problem renders as a 3-card grid — emit a CARDS array. Each card has
+  // num (e.g. "01"), head (short uppercase 2-4 words), body (1-2 sentences,
+  // concrete), and foot (one-line consequence, e.g. "→ no moat").
+  s3_problem:      `{"tag":"string","headline":"string","sub":"string","lede":"string","cards":[{"num":"01","head":"PAIN POINT","body":"specific, concrete pain in 1-2 sentences","foot":"→ one-line consequence"},{"num":"02","head":"...","body":"...","foot":"..."},{"num":"03","head":"...","body":"...","foot":"..."}]}`,
   s4_implication:  `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"string"}]}`,
-  s5_fix:          `{"tag":"string","headline":"string","sub":"string","lede":"string"}`,
-  s6_how:          `{"tag":"string","headline":"string","lede":"string","bullets":["string","string","string"]}`,
-  s7_validation:   `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"string"},{"value":"string","label":"string"},{"value":"string","label":"string"}]}`,
-  s8_market:       `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"TAM"},{"value":"string","label":"SAM"},{"value":"string","label":"SOM"}]}`,
-  s9_customers:    `{"tag":"string","headline":"string","lede":"string","bullets":["string","string","string"]}`,
-  s10_competition: `{"tag":"string","headline":"string","lede":"string","bullets":["string","string","string"]}`,
+  // s5_fix renders as a 5-check row — emit a CHECKS array of 4-6 short
+  // outcome statements (max 80 chars each). Treat them as "what changes
+  // when you have this", not feature names.
+  s5_fix:          `{"tag":"string","headline":"string","sub":"string","lede":"string","checks":["outcome statement, 80 chars max","outcome statement","outcome statement","outcome statement","outcome statement"]}`,
+  // s6_how renders as a 4-step flow — emit a STEPS array. Each step has
+  // head (4-word phase title) and body (1-line explanation). Order matters
+  // — step 1 is the foundation, step 4 the user-facing surface.
+  s6_how:          `{"tag":"string","headline":"string","sub":"string","lede":"string","steps":[{"head":"FOUNDATION","body":"1-sentence explanation"},{"head":"...","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."}]}`,
+  s7_validation:   `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"string"},{"value":"string","label":"string"},{"value":"string","label":"string"},{"value":"string","label":"string"}]}`,
+  s8_market:       `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"TAM"},{"value":"string","label":"SAM"},{"value":"string","label":"SOM"}]}`,
+  s9_customers:    `{"tag":"string","headline":"string","sub":"string","lede":"string","bullets":["named archetype + 1-line use case","named archetype + 1-line use case","named archetype + 1-line use case"]}`,
+  // s10_competition renders as a capability matrix — emit a MATRIX object
+  // with columns (3 names: you + 2 competitors) and rows (5-6 capabilities,
+  // each with cells of true/false/string). True means "✓", false "×".
+  // Use REAL competitor names from the founder's research, not placeholders.
+  s10_competition: `{"tag":"string","headline":"string","sub":"string","matrix":{"columns":["You","Competitor A","Competitor B"],"rows":[{"label":"Capability one","cells":[true,false,true]},{"label":"Capability two","cells":[true,true,false]},{"label":"Capability three","cells":[true,false,false]},{"label":"Capability four","cells":[true,true,true]},{"label":"Capability five","cells":[true,false,false]}]}}`,
   s11_risks:       `{"tag":"string","headline":"string","lede":"string","bullets":["Risk: X → Mitigation: Y","Risk: X → Mitigation: Y","Risk: X → Mitigation: Y"]}`,
-  s12_team_ask:    `{"tag":"string","headline":"string","lede":"string","stats":[{"value":"string","label":"raising"},{"value":"string","label":"runway"}],"bullets":["string","string"]}`,
+  s12_team_ask:    `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"raising"},{"value":"string","label":"milestone"}],"bullets":["use of funds line","milestone line","hiring line","contact line"]}`,
 }
 
 // Extend DeckInput to support free-form story (already used in codebase)

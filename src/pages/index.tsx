@@ -72,6 +72,14 @@ export default function Home() {
   // Per-generation deck id — flows from /api/generate response to the workspace
   // so the Signals tab can poll /api/signals?deckId=... for live viewership.
   const [deckId, setDeckId] = useState<string>('')
+  // Narrative + slide order Andreas picked (with strategist reasoning when it
+  // overrode the deterministic pick). Surfaces in the Workspace Overview so
+  // the founder sees WHY the spine is this and not another.
+  const [narrativeInfo, setNarrativeInfo] = useState<{
+    narrativeId: string
+    slideOrder: string[]
+    strategist?: { applied: boolean; reasoning: string; confidence: number; runnerUp?: string; runnerUpReason?: string }
+  } | null>(null)
   const [error, setError] = useState('')
   const [detecting, setDetecting] = useState(false)
   const [detectedColors, setDetectedColors] = useState<string[]>([])
@@ -249,6 +257,22 @@ export default function Home() {
       setGeneratedHtml(data.html)
       setGeneratedContent(data.content)
       if (typeof data.deckId === 'string') setDeckId(data.deckId)
+      // Capture the narrative + strategist reasoning so the workspace can show
+      // "Andreas picked spine X because Y" instead of hiding it in metadata.
+      if (data.narrative || data.slideOrder) {
+        const stage15 = data.metadata?.stage_a1_5
+        setNarrativeInfo({
+          narrativeId: data.narrative || '',
+          slideOrder:  Array.isArray(data.slideOrder) ? data.slideOrder : [],
+          strategist:  stage15?.strategist ? {
+            applied:        Boolean(stage15.applied),
+            reasoning:      String(stage15.strategist.reasoning || ''),
+            confidence:     Number(stage15.strategist.confidence || 0),
+            runnerUp:       stage15.strategist.runnerUp,
+            runnerUpReason: stage15.strategist.runnerUpReason,
+          } : undefined,
+        })
+      }
       if (!frameworkId) setStep('canvas')
       return data
     } catch (e: any) {
@@ -289,6 +313,7 @@ export default function Home() {
         generatedHtml={generatedHtml}
         generatedContent={generatedContent}
         deckId={deckId}
+        narrativeInfo={narrativeInfo}
         logoUrl={form.logoData || logoUrl}
         audience={form.audience}
         websiteUrl={form.websiteUrl}

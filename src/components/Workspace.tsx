@@ -83,6 +83,12 @@ interface WorkspaceProps {
   generatedContent: any
   /** Unique deck id from /api/generate — keys live viewership signals. */
   deckId?: string
+  /** What narrative spine Andreas picked + strategist override reasoning. */
+  narrativeInfo?: {
+    narrativeId: string
+    slideOrder:  string[]
+    strategist?: { applied: boolean; reasoning: string; confidence: number; runnerUp?: string; runnerUpReason?: string }
+  } | null
   onRestart: () => void
   logoUrl?: string
   audience?: string
@@ -98,7 +104,7 @@ interface WorkspaceProps {
    WORKSPACE — per-industry adaptation via templates engine
 ═══════════════════════════════════════════════════════════════════ */
 export default function Workspace({
-  company, accentColor, generatedHtml, generatedContent, deckId, onRestart, onRegenerate,
+  company, accentColor, generatedHtml, generatedContent, deckId, narrativeInfo, onRestart, onRegenerate,
   logoUrl, audience = 'Seed VC', websiteUrl, realStory, founderName = 'You', stage = 'Pre-seed', industry, brandWorld: propBrandWorld,
 }: WorkspaceProps) {
   const [active, setActive] = useState('overview')
@@ -556,6 +562,16 @@ export default function Workspace({
     const auditScore = auditData?.overall ?? Math.round(tpl.scoreBaseline.reduce((a,b)=>a+b,0)/4 * 10)
     const claimsCount = claimsData?.claims?.length ?? tpl.exampleClaims.length
     const claimsFix   = claimsData ? claimsData.claims.filter((c:any) => c.classification !== 'supported').length : tpl.exampleClaims.filter(c => c.classification !== 'supported').length
+    // Pretty labels for narrative IDs so the founder doesn't see kebab-case
+    const NARRATIVE_LABEL: Record<string, string> = {
+      'show-me-the-machine': 'Show me the machine',
+      'bet-on-founder':      'Bet on the founder',
+      'belief-driven':       'Belief-driven',
+      'precision-first':     'Precision-first',
+      'transformation':      'Transformation',
+      'category-creator':    'Category creator',
+      'efficient-default':   'Efficient default',
+    }
     return (
       <div className="p-6 lg:p-8 space-y-5">
         {/* Hero */}
@@ -621,6 +637,50 @@ export default function Workspace({
             </Card>
           ))}
         </div>
+
+        {/* Narrative spine — surfaces WHICH narrative Andreas picked and why.
+            Hidden until a real generation has run (no info from /?demo). */}
+        {narrativeInfo && narrativeInfo.narrativeId && (
+          <Card className="p-5">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <MiniLabel>Narrative spine</MiniLabel>
+                <div className="font-semibold text-[16px] mt-1.5">
+                  {NARRATIVE_LABEL[narrativeInfo.narrativeId] || narrativeInfo.narrativeId}
+                </div>
+                {narrativeInfo.strategist && narrativeInfo.strategist.applied && (
+                  <div className="text-[12px] ink-muted mt-1.5 leading-relaxed max-w-2xl">
+                    <span className="font-medium" style={{ color: liveAccent }}>Andreas overrode the default:</span> {narrativeInfo.strategist.reasoning}
+                    {narrativeInfo.strategist.runnerUp && (
+                      <span className="block mt-1 text-[11px]">
+                        Runner-up: <b>{NARRATIVE_LABEL[narrativeInfo.strategist.runnerUp] || narrativeInfo.strategist.runnerUp}</b>{narrativeInfo.strategist.runnerUpReason ? ` — ${narrativeInfo.strategist.runnerUpReason}` : ''}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {narrativeInfo.strategist && !narrativeInfo.strategist.applied && (
+                  <div className="text-[12px] ink-muted mt-1.5 leading-relaxed max-w-2xl">
+                    Confirmed by Andreas (confidence {narrativeInfo.strategist.confidence}/100). {narrativeInfo.strategist.reasoning}
+                  </div>
+                )}
+              </div>
+              {narrativeInfo.slideOrder.length > 0 && (
+                <div className="flex-shrink-0 min-w-0 max-w-full">
+                  <MiniLabel>Slides selected ({narrativeInfo.slideOrder.length})</MiniLabel>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {narrativeInfo.slideOrder.map((s, i) => (
+                      <span key={s} className="inline-flex items-center text-[10px] font-medium px-2 py-1 rounded-full hairline"
+                        style={{ background:'var(--surface)', letterSpacing:'0.02em' }}>
+                        <span className="font-mono mr-1.5 opacity-50">{String(i+1).padStart(2,'0')}</span>
+                        {s.replace(/^s\d+_/, '').replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Pipeline + AI workbench */}
         <div className="grid lg:grid-cols-2 gap-4">
@@ -1898,6 +1958,7 @@ export default function Workspace({
         return `${Math.floor(s/86400)}d ago`
       }
       const maxDur = Math.max(1, ...live.slides.map((s: any) => s.totalDurMs || 0))
+      const persistent = live.persistent === true
       return (
         <div className="p-6 lg:p-8 space-y-5">
           <Card className="p-5">
@@ -1911,6 +1972,14 @@ export default function Workspace({
                 {signalsLoading ? 'syncing…' : 'live · polls every 10s'}
               </span>
             </div>
+            {!persistent && (
+              <Card className="p-3 mb-4" style={{ background:'#fff4e0', borderColor:'#fbbf24' }}>
+                <div className="text-[12px]">
+                  <b style={{ color:'#92400e' }}>In-memory only.</b> Vercel KV isn't configured, so signals reset on cold starts and may split across lambda instances.
+                  Add <code className="px-1 py-0.5 rounded text-[11px]" style={{ background:'rgba(0,0,0,0.06)' }}>KV_REST_API_URL</code> + <code className="px-1 py-0.5 rounded text-[11px]" style={{ background:'rgba(0,0,0,0.06)' }}>KV_REST_API_TOKEN</code> in Vercel → Settings → Storage to make these persistent. Two clicks, free tier covers most use.
+                </div>
+              </Card>
+            )}
             <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-4">
               <Card className="p-4" style={{ background:'var(--surface)' }}>
                 <div className="text-[32px] font-semibold tracking-tight leading-none" style={{ color: liveAccent }}>{live.totalSessions ?? 0}</div>

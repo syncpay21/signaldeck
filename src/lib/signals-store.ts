@@ -43,6 +43,38 @@ function getStore(): SignalEvent[] {
   return globalThis.__signalEvents
 }
 
+/* ─── Persistence via Vercel KV REST API ─────────────────────────────
+   KV writes survive cold starts AND are visible across lambda instances —
+   the property the in-memory store lacks. If KV env vars are present we
+   use them; otherwise we fall back to in-memory so the feature still
+   "works" locally / in dev. Plain fetch() so no @vercel/kv dependency. */
+const KV_URL   = process.env.KV_REST_API_URL
+const KV_TOKEN = process.env.KV_REST_API_TOKEN
+export const KV_ENABLED = Boolean(KV_URL && KV_TOKEN)
+
+async function kvCall(path: string, body?: any): Promise<any> {
+  if (!KV_ENABLED) return null
+  const res = await fetch(`${KV_URL}${path}`, {
+    method: body ? 'POST' : 'GET',
+    headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: 'no-store' as any,
+  }).catch(() => null)
+  if (!res || !res.ok) return null
+  return res.json().catch(() => null)
+}
+
+async function kvLpush(key: string, value: string): Promise<void> {
+  await kvCall(`/lpush/${encodeURIComponent(key)}/${encodeURIComponent(value)}`)
+}
+async function kvLrange(key: string, start: number, stop: number): Promise<string[] | null> {
+  const r = await kvCall(`/lrange/${encodeURIComponent(key)}/${start}/${stop}`)
+  return Array.isArray(r?.result) ? r.result : null
+}
+async function kvLtrim(key: string, start: number, stop: number): Promise<void> {
+  await kvCall(`/ltrim/${encodeURIComponent(key)}/${start}/${stop}`)
+}
+
 /** Hash a string to a short hex digest for IP fingerprinting (no raw IPs). */
 export function shortHash(input: string): string {
   let h = 5381
@@ -51,13 +83,39 @@ export function shortHash(input: string): string {
 }
 
 export function recordEvent(ev: SignalEvent) {
+  // In-memory write — fast path, also kept as a hot cache in front of KV.
   const store = getStore()
   store.push(ev)
-  // Cap memory: keep the most recent 5000 events. Old ones drop off.
   if (store.length > 5000) store.splice(0, store.length - 5000)
-  // EXTENSION POINT: if (process.env.VERCEL_KV_URL) kvWrite(ev)
+  // KV write — fire-and-forget so the beacon endpoint stays fast. Keep
+  // the per-deck list capped at 2000 events so a viral share doesn't run
+  // up storage costs.
+  if (KV_ENABLED) {
+    const key = `sd:deck:${ev.deckId}:events`
+    kvLpush(key, JSON.stringify(ev))
+      .then(() => kvLtrim(key, 0, 1999))
+      .catch(() => {/* swallow — fall back to in-memory */})
+  }
 }
 
+export async function eventsForDeckAsync(deckId: string): Promise<SignalEvent[]> {
+  // KV first when configured (cross-instance + persistent). Fall back to
+  // in-memory if KV is off or the call fails for any reason.
+  if (KV_ENABLED) {
+    const raw = await kvLrange(`sd:deck:${deckId}:events`, 0, 1999)
+    if (raw) {
+      const parsed: SignalEvent[] = []
+      for (const s of raw) {
+        try { parsed.push(JSON.parse(s)) } catch {}
+      }
+      // KV returns newest-first via LPUSH/LRANGE; sort by ts for downstream.
+      return parsed.sort((a, b) => a.ts - b.ts)
+    }
+  }
+  return getStore().filter(e => e.deckId === deckId)
+}
+
+/** Sync sibling — in-memory only. Kept for callers that don't await. */
 export function eventsForDeck(deckId: string): SignalEvent[] {
   return getStore().filter(e => e.deckId === deckId)
 }
@@ -98,8 +156,8 @@ function deviceHint(ua: string | undefined): string {
   return 'unknown'
 }
 
-export function summariseDeck(deckId: string): SignalSummary {
-  const events = eventsForDeck(deckId)
+export async function summariseDeck(deckId: string): Promise<SignalSummary> {
+  const events = await eventsForDeckAsync(deckId)
   const bySession = new Map<string, SignalEvent[]>()
   for (const e of events) {
     const arr = bySession.get(e.sessionId) || []

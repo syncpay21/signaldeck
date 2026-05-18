@@ -8,7 +8,7 @@
 ═══════════════════════════════════════════════════════════════════ */
 
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { summariseDeck } from '../../lib/signals-store'
+import { summariseDeck, KV_ENABLED } from '../../lib/signals-store'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' })
@@ -16,5 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!deckId) return res.status(400).json({ error: 'deckId required' })
   // Cache disabled — counts must be live.
   res.setHeader('Cache-Control', 'no-store')
-  res.status(200).json(summariseDeck(deckId))
+  try {
+    const summary = await summariseDeck(deckId)
+    res.status(200).json({ ...summary, persistent: KV_ENABLED })
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'signals query failed' })
+  }
 }
