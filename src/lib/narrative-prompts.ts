@@ -718,16 +718,30 @@ const SLIDE_SCHEMA: Record<SlideId, string> = {
   // head (4-word phase title) and body (1-line explanation). Order matters
   // — step 1 is the foundation, step 4 the user-facing surface.
   s6_how:          `{"tag":"string","headline":"string","sub":"string","lede":"string","steps":[{"head":"FOUNDATION","body":"1-sentence explanation"},{"head":"...","body":"..."},{"head":"...","body":"..."},{"head":"...","body":"..."}]}`,
-  s7_validation:   `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"string"},{"value":"string","label":"string"},{"value":"string","label":"string"},{"value":"string","label":"string"}]}`,
+  // s7_validation renders one of 4 variants. Pick the right shape based on what the
+  // founder's proof actually is. If quotes exist: include "quotes"[{text,author,role}].
+  // If named customer logos: "customerLogos"[{name,url?}]. Otherwise emit stats[],
+  // with stats[0] as the HERO number (largest, most defensible).
+  s7_validation:   `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"700K+","label":"customers in 5yrs"},{"value":"70+","label":"NPS"},{"value":"100K","label":"shared accounts"},{"value":"$0","label":"paid acquisition"}],"quotes":[],"customerLogos":[]}`,
   s8_market:       `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"TAM"},{"value":"string","label":"SAM"},{"value":"string","label":"SOM"}]}`,
-  s9_customers:    `{"tag":"string","headline":"string","sub":"string","lede":"string","bullets":["named archetype + 1-line use case","named archetype + 1-line use case","named archetype + 1-line use case"]}`,
-  // s10_competition renders as a capability matrix — emit a MATRIX object
-  // with columns (3 names: you + 2 competitors) and rows (5-6 capabilities,
-  // each with cells of true/false/string). True means "✓", false "×".
-  // Use REAL competitor names from the founder's research, not placeholders.
-  s10_competition: `{"tag":"string","headline":"string","sub":"string","matrix":{"columns":["You","Competitor A","Competitor B"],"rows":[{"label":"Capability one","cells":[true,false,true]},{"label":"Capability two","cells":[true,true,false]},{"label":"Capability three","cells":[true,false,false]},{"label":"Capability four","cells":[true,true,true]},{"label":"Capability five","cells":[true,false,false]}]}}`,
+  // s9_customers renders one of 4 variants. Default to bullets[] for "archetype-cards".
+  // If you have real customer quotes, include "quotes". For a journey-style story,
+  // include "journey"[{when,what,detail?}]. For many segments, "segments"[{name,icon?}].
+  s9_customers:    `{"tag":"string","headline":"string","sub":"string","lede":"string","bullets":["Named archetype — 1-line use case","...","..."],"quotes":[],"journey":[],"segments":[]}`,
+  // s10_competition has 4 layout variants — pick the one that fits this founder's
+  // competitive story best, emit ONE of these shape blocks:
+  //   matrix:           when you have 5+ concrete capabilities to compare side by side
+  //   quadrant:         when 2 axes (e.g. enterprise/consumer × bank/wallet) place you
+  //   radar:            when you compete on 5-6 dimensions and beat competitors on some
+  //   antiPositioning:  when the story is what you DON'T do (Peloton-style framing)
+  s10_competition: `{"tag":"string","headline":"string","sub":"string","matrix":{"columns":["You","Competitor A","Competitor B"],"rows":[{"label":"Capability","cells":[true,false,true]}]},"quadrant":{"xAxis":"AXIS LABEL","yAxis":"AXIS LABEL","points":[{"label":"Us","x":85,"y":80,"isUs":true},{"label":"Competitor A","x":40,"y":60}]},"radar":{"youLabel":"Us","themLabel":"Average competitor","axes":[{"label":"Speed","you":85,"them":40},{"label":"Trust","you":92,"them":70}]},"antiPositioning":[{"are":"What we are","areNot":"What we are not"}]}`,
   s11_risks:       `{"tag":"string","headline":"string","lede":"string","bullets":["Risk: X → Mitigation: Y","Risk: X → Mitigation: Y","Risk: X → Mitigation: Y"]}`,
-  s12_team_ask:    `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"string","label":"raising"},{"value":"string","label":"milestone"}],"bullets":["use of funds line","milestone line","hiring line","contact line"]}`,
+  // s12_team_ask renders one of 4 variants. Pick the strongest framing:
+  //   split-cta:      raising X for milestone Y + use-of-funds bullets (default)
+  //   team-grid:      include "team"[{name, role, cred?, photo?}] when founders + credentials matter
+  //   cap-table:      include "capTable"{round, valuation, leadInvestor, leadCommittedPct} when round terms are public
+  //   milestone-road: include "milestones"[{when, what, detail?, isCurrent?}] when 3+ milestones make the story
+  s12_team_ask:    `{"tag":"string","headline":"string","sub":"string","lede":"string","stats":[{"value":"$X","label":"Series A"},{"value":"by Y","label":"milestone"}],"bullets":["use of funds","hiring plan","milestones","contact"],"team":[],"capTable":null,"milestones":[]}`,
 }
 
 // Extend DeckInput to support free-form story (already used in codebase)

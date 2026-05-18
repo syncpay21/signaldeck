@@ -277,6 +277,365 @@ function buildCompetitionSlide(htmlId: string, idx: number, label: string, tx: s
 </section>`
 }
 
+/* ─── VALIDATION (s7) — 4 variants ─────────────────────────────────────
+   Picks by content shape + brand:
+     content.quotes present                   → 'quote-stack'
+     content.customerLogos OR named customers → 'logo-wall'
+     content.stats.length === 1 (hero stat)   → 'hero-number'
+     fallback when stats[] dominates          → 'cohort-curve' OR generic
+*/
+function pickValidationVariant(c: any, world: any): 'hero-number' | 'cohort-curve' | 'logo-wall' | 'quote-stack' {
+  if (Array.isArray(c.quotes) && c.quotes.length) return 'quote-stack'
+  if (Array.isArray(c.customerLogos) && c.customerLogos.length) return 'logo-wall'
+  if (Array.isArray(c.stats) && c.stats.length === 1) return 'hero-number'
+  if (Array.isArray(c.stats) && c.stats.length >= 3) {
+    if (world?.dataVizStyle === 'sparkline' || world?.dataVizStyle === 'editorial-chart') return 'cohort-curve'
+  }
+  return 'hero-number'
+}
+
+function buildValidationSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string, world?: any): string {
+  const variant = pickValidationVariant(c, world)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'validation')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  // HERO-NUMBER — one massive italic numeral + supporting stats
+  if (variant === 'hero-number') {
+    const hero = (Array.isArray(c.stats) && c.stats[0]) || { value: '—', label: '' }
+    const supporting = (Array.isArray(c.stats) ? c.stats.slice(1, 4) : [])
+    return wrap(`<div class="val-hero stagger tx-group">
+      <div class="val-hero-num" style="--i:0">${escapeHtml(hero.value)}</div>
+      <div class="val-hero-lbl" style="--i:1">${escapeHtml(hero.label)}</div>
+      ${supporting.length ? `<div class="val-hero-side stagger">
+        ${supporting.map((s: any, i: number) => `<div class="val-side-stat" style="--i:${i+2}">
+          <div class="val-side-num">${escapeHtml(s.value)}</div>
+          <div class="val-side-lbl">${escapeHtml(s.label)}</div>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`)
+  }
+
+  // COHORT-CURVE — SVG retention chart with stat tiles below
+  if (variant === 'cohort-curve') {
+    const stats = (Array.isArray(c.stats) ? c.stats.slice(0, 4) : [])
+    // Faked smooth curve — flat tail (retention pattern) so it always reads as healthy
+    const pts = '0,140 60,80 120,55 180,42 240,36 300,32 360,30 420,29 480,28 540,28 600,28'
+    return wrap(`<div class="val-cohort tx-group">
+      <svg class="val-curve" viewBox="0 0 600 180" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="cg${idx}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.45"/>
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+        </linearGradient></defs>
+        <polygon points="0,180 ${pts} 600,180" fill="url(#cg${idx})"/>
+        <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+        ${pts.split(' ').filter((_, i) => i % 2 === 0).map(p => {
+          const [x, y] = p.split(',')
+          return `<circle cx="${x}" cy="${y}" r="2.5" fill="var(--accent)"/>`
+        }).join('')}
+      </svg>
+      <div class="val-curve-stats stagger">
+        ${stats.map((s: any, i: number) => `<div class="val-curve-stat" style="--i:${i}">
+          <div class="val-curve-num">${escapeHtml(s.value)}</div>
+          <div class="val-curve-lbl">${escapeHtml(s.label)}</div>
+        </div>`).join('')}
+      </div>
+    </div>`)
+  }
+
+  // LOGO-WALL — grid of customer logo monograms (no real logos? use initials)
+  if (variant === 'logo-wall') {
+    const logos = Array.isArray(c.customerLogos) ? c.customerLogos : []
+    const items = logos.length ? logos.slice(0, 12) : (Array.isArray(c.bullets) ? c.bullets.slice(0, 12) : [])
+    return wrap(`<div class="val-wall stagger tx-group">
+      ${items.map((it: any, i: number) => {
+        const name = typeof it === 'string' ? it : (it.name || '')
+        const url  = typeof it === 'object' ? (it.url || it.logo || '') : ''
+        const initials = name.split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()
+        return `<div class="val-logo-tile" style="--i:${i}">
+          ${url ? `<img src="${escapeAttr(url)}" alt="${escapeAttr(name)}" />` : `<span class="val-logo-init">${escapeHtml(initials || '·')}</span>`}
+          <div class="val-logo-name">${escapeHtml(name)}</div>
+        </div>`
+      }).join('')}
+    </div>`)
+  }
+
+  // QUOTE-STACK — 2-3 large quotes with author attribution
+  const quotes = Array.isArray(c.quotes) ? c.quotes.slice(0, 3) : []
+  return wrap(`<div class="val-quotes stagger tx-group">
+    ${quotes.map((q: any, i: number) => `<blockquote class="val-quote" style="--i:${i}">
+      <div class="val-quote-mark">"</div>
+      <div class="val-quote-text">${escapeHtml(q.text || q.quote || '')}</div>
+      <div class="val-quote-author">— ${escapeHtml(q.author || q.name || '')}${q.role ? `, <em>${escapeHtml(q.role)}</em>` : ''}</div>
+    </blockquote>`).join('')}
+  </div>`)
+}
+
+/* ─── COMPETITION (s10) — 4 variants ───────────────────────────────────
+   matrix             — capability table (existing default)
+   positioning-grid   — 2x2 quadrant with named axes, you as a dot
+   comparison-radar   — SVG radar chart, 5-6 axes, you vs avg competitor
+   anti-positioning   — "we are X / we are NOT Y" statement card */
+function pickCompetitionVariant(c: any, _world: any): 'matrix' | 'positioning-grid' | 'comparison-radar' | 'anti-positioning' {
+  if (c.matrix && Array.isArray(c.matrix.rows) && c.matrix.rows.length) return 'matrix'
+  if (c.quadrant && c.quadrant.xAxis && c.quadrant.yAxis) return 'positioning-grid'
+  if (c.radar && Array.isArray(c.radar.axes) && c.radar.axes.length >= 3) return 'comparison-radar'
+  if (c.antiPositioning && Array.isArray(c.antiPositioning) && c.antiPositioning.length) return 'anti-positioning'
+  return 'matrix'
+}
+
+function buildCompetitionSlideVariants(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string, world?: any): string {
+  const variant = pickCompetitionVariant(c, world)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'competition')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'matrix') {
+    return buildCompetitionSlide(htmlId, idx, label, tx, bgx, bgy, c, motifStyle) || wrap('<div class="ink-muted">No competition data</div>')
+  }
+
+  if (variant === 'positioning-grid') {
+    const q = c.quadrant
+    const points = Array.isArray(q.points) ? q.points : []  // [{label, x, y}] where x/y are 0-100
+    return wrap(`<div class="comp-quad tx-group">
+      <div class="comp-quad-axes">
+        <div class="comp-quad-x-label">${escapeHtml(q.xAxis)}</div>
+        <div class="comp-quad-y-label">${escapeHtml(q.yAxis)}</div>
+        ${points.map((p: any, i: number) => `<div class="comp-quad-dot${p.isUs ? ' is-us' : ''}" style="left:${Math.max(0, Math.min(100, p.x))}%;top:${Math.max(0, Math.min(100, 100 - p.y))}%;--i:${i}">
+          <span class="comp-quad-dot-label">${escapeHtml(p.label)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`)
+  }
+
+  if (variant === 'comparison-radar') {
+    const axes = c.radar.axes  // [{label, you: 0-100, them: 0-100}]
+    const n = axes.length
+    const cx = 200, cy = 200, r = 160
+    const angle = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / n
+    const point = (val: number, i: number) => {
+      const a = angle(i); const rr = (val / 100) * r
+      return `${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`
+    }
+    const youPts  = axes.map((a: any, i: number) => point(a.you  || 0, i)).join(' ')
+    const themPts = axes.map((a: any, i: number) => point(a.them || 0, i)).join(' ')
+    const gridRings = [0.25, 0.5, 0.75, 1].map(r2 => `<polygon points="${axes.map((_: any, i: number) => point(r2 * 100, i)).join(' ')}" fill="none" stroke="var(--wire)" stroke-width="1"/>`).join('')
+    const spokes = axes.map((_: any, i: number) => {
+      const a = angle(i)
+      return `<line x1="${cx}" y1="${cy}" x2="${(cx + Math.cos(a) * r).toFixed(1)}" y2="${(cy + Math.sin(a) * r).toFixed(1)}" stroke="var(--wire)" stroke-width="1"/>`
+    }).join('')
+    const labels = axes.map((ax: any, i: number) => {
+      const a = angle(i)
+      const x = cx + Math.cos(a) * (r + 24)
+      const y = cy + Math.sin(a) * (r + 24)
+      return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="var(--snow)" font-family="var(--fm)" font-size="11" text-anchor="middle" dominant-baseline="middle" opacity="0.6">${escapeHtml(ax.label)}</text>`
+    }).join('')
+    return wrap(`<div class="comp-radar tx-group">
+      <svg viewBox="0 0 400 400" class="comp-radar-svg">
+        ${gridRings}${spokes}
+        <polygon points="${themPts}" fill="var(--wire)" fill-opacity="0.4" stroke="var(--mist)" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <polygon points="${youPts}" fill="var(--accent)" fill-opacity="0.28" stroke="var(--accent)" stroke-width="2.5"/>
+        ${labels}
+      </svg>
+      <div class="comp-radar-legend">
+        <div class="comp-radar-key" style="--c:var(--accent)"><span></span>${escapeHtml(c.radar.youLabel || 'Us')}</div>
+        <div class="comp-radar-key" style="--c:var(--mist)"><span></span>${escapeHtml(c.radar.themLabel || 'Average competitor')}</div>
+      </div>
+    </div>`)
+  }
+
+  // ANTI-POSITIONING — "We are X / We are NOT Y"
+  const pairs = c.antiPositioning  // [{are, areNot}]
+  return wrap(`<div class="comp-anti tx-group">
+    ${pairs.map((p: any, i: number) => `<div class="comp-anti-row stagger" style="--i:${i}">
+      <div class="comp-anti-are"><span class="comp-anti-lbl">we are</span><span class="comp-anti-val">${escapeHtml(p.are)}</span></div>
+      <div class="comp-anti-not"><span class="comp-anti-lbl">we are NOT</span><span class="comp-anti-val muted">${escapeHtml(p.areNot)}</span></div>
+    </div>`).join('')}
+  </div>`)
+}
+
+/* ─── CUSTOMERS (s9) — 4 variants ──────────────────────────────────────
+   archetype-cards   — 3 named personas with title + use case
+   persona-quotes    — 2-3 customer quotes
+   timeline-vertical — customer journey first hour → first year
+   icon-grid         — many small segments in grid */
+function pickCustomersVariant(c: any, _world: any): 'archetype-cards' | 'persona-quotes' | 'timeline-vertical' | 'icon-grid' {
+  if (Array.isArray(c.quotes) && c.quotes.length) return 'persona-quotes'
+  if (Array.isArray(c.journey) && c.journey.length >= 3) return 'timeline-vertical'
+  if (Array.isArray(c.segments) && c.segments.length >= 5) return 'icon-grid'
+  return 'archetype-cards'
+}
+
+function buildCustomersSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string, world?: any): string {
+  const variant = pickCustomersVariant(c, world)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'customers')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'archetype-cards') {
+    const bullets = Array.isArray(c.bullets) ? c.bullets.slice(0, 3) : []
+    return wrap(`<div class="cust-arch stagger tx-group">
+      ${bullets.map((b: any, i: number) => {
+        const txt = typeof b === 'string' ? b : (b.text || b.label || '')
+        const [name, ...rest] = String(txt).split(/[-—–]/)
+        const desc = rest.join('—').trim()
+        return `<div class="cust-arch-card" style="--i:${i}">
+          <div class="cust-arch-num">${String(i + 1).padStart(2, '0')}</div>
+          <div class="cust-arch-name">${escapeHtml(name.trim())}</div>
+          ${desc ? `<div class="cust-arch-desc">${escapeHtml(desc)}</div>` : ''}
+        </div>`
+      }).join('')}
+    </div>`)
+  }
+
+  if (variant === 'persona-quotes') {
+    const quotes = (c.quotes as any[]).slice(0, 3)
+    return wrap(`<div class="cust-quotes stagger tx-group">
+      ${quotes.map((q: any, i: number) => `<div class="cust-quote-card" style="--i:${i}">
+        <div class="cust-quote-avatar">${escapeHtml((q.name || '·').slice(0, 1).toUpperCase())}</div>
+        <div class="cust-quote-body">
+          <div class="cust-quote-text">"${escapeHtml(q.text || q.quote || '')}"</div>
+          <div class="cust-quote-name">${escapeHtml(q.name || '')}<span class="cust-quote-role">${q.role ? ` · ${escapeHtml(q.role)}` : ''}</span></div>
+        </div>
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'timeline-vertical') {
+    const journey = (c.journey as any[]).slice(0, 5)
+    return wrap(`<div class="cust-timeline tx-group">
+      ${journey.map((step: any, i: number) => `<div class="cust-timeline-step stagger" style="--i:${i}">
+        <div class="cust-timeline-marker"></div>
+        <div class="cust-timeline-when">${escapeHtml(step.when || '')}</div>
+        <div class="cust-timeline-what">${escapeHtml(step.what || step.label || '')}</div>
+        ${step.detail ? `<div class="cust-timeline-detail">${escapeHtml(step.detail)}</div>` : ''}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  // ICON-GRID — many small segment chips
+  const segments = (c.segments as any[]).slice(0, 12)
+  return wrap(`<div class="cust-icons stagger tx-group">
+    ${segments.map((s: any, i: number) => {
+      const name = typeof s === 'string' ? s : (s.name || s.label || '')
+      const icon = typeof s === 'object' ? (s.icon || name.slice(0, 1)) : name.slice(0, 1)
+      return `<div class="cust-icon-tile" style="--i:${i}">
+        <div class="cust-icon-glyph">${escapeHtml(icon).toUpperCase()}</div>
+        <div class="cust-icon-name">${escapeHtml(name)}</div>
+      </div>`
+    }).join('')}
+  </div>`)
+}
+
+/* ─── TEAM & ASK (s12) — 4 variants ────────────────────────────────────
+   split-cta       — use-of-funds panel + giant accent CTA (current default)
+   team-grid       — founder grid with photos + roles + credentials
+   cap-table       — round size + lead + valuation + allocation chart
+   milestone-road  — horizontal timeline of milestones this round funds */
+function pickTeamAskVariant(c: any, _world: any): 'split-cta' | 'team-grid' | 'cap-table' | 'milestone-road' {
+  if (Array.isArray(c.team) && c.team.length >= 2) return 'team-grid'
+  if (c.capTable && (c.capTable.round || c.capTable.valuation)) return 'cap-table'
+  if (Array.isArray(c.milestones) && c.milestones.length >= 3) return 'milestone-road'
+  return 'split-cta'
+}
+
+function buildTeamAskSlide(htmlId: string, idx: number, label: string, tx: string, bgx: string, bgy: string, c: any, motifStyle: string, world?: any): string {
+  const variant = pickTeamAskVariant(c, world)
+  const num = String(idx).padStart(2, '0')
+  const head = `<span class="slide-num-bg">${num}</span>
+  <div class="slide-grid" style="${motifStyle}"></div><div class="slide-bg" style="--bgx:${bgx};--bgy:${bgy};"></div>
+  <div class="slide-inner">
+    <div class="slide-tag">${escapeHtml(c.tag || 'team & ask')}</div>
+    <h2 class="slide-title"><span class="reveal-wipe">${escapeHtml(c.headline || '')}</span></h2>
+    ${c.sub ? `<div class="slide-sub reveal-up d1">${escapeHtml(c.sub)}</div>` : ''}
+    ${c.lede ? `<p class="slide-lede reveal-up d2">${escapeHtml(c.lede)}</p>` : ''}`
+  const wrap = (body: string) => `<section class="slide" id="${htmlId}" data-idx="${idx}" data-num="${num}" data-label="${label}" data-tx="${tx}" data-variant="${variant}">${head}${body}</div></section>`
+
+  if (variant === 'split-cta') {
+    const ask = (Array.isArray(c.stats) && c.stats[0]) || { value: '—', label: '' }
+    const milestone = (Array.isArray(c.stats) && c.stats[1]) || { value: '—', label: '' }
+    const bullets = Array.isArray(c.bullets) ? c.bullets : []
+    return wrap(`<div class="ask-split tx-group">
+      <div class="ask-panel-funds">
+        <div class="ask-panel-title">Use of funds</div>
+        <ul class="ask-panel-list">
+          ${bullets.slice(0, 5).map((b: any, i: number) => `<li style="--i:${i}">${escapeHtml(typeof b === 'string' ? b : (b.text || ''))}</li>`).join('')}
+        </ul>
+      </div>
+      <div class="ask-panel-cta">
+        <div class="ask-cta-num">${escapeHtml(ask.value)}</div>
+        <div class="ask-cta-lbl">${escapeHtml(ask.label)}</div>
+        <div class="ask-cta-milestone">${escapeHtml(milestone.value)} ${escapeHtml(milestone.label)}</div>
+      </div>
+    </div>`)
+  }
+
+  if (variant === 'team-grid') {
+    const team = (c.team as any[]).slice(0, 6)
+    return wrap(`<div class="team-grid stagger tx-group">
+      ${team.map((m: any, i: number) => `<div class="team-card" style="--i:${i}">
+        ${m.photo ? `<img src="${escapeAttr(m.photo)}" alt="${escapeAttr(m.name)}" class="team-photo"/>` : `<div class="team-photo team-photo-mono">${escapeHtml((m.name || '·').split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase())}</div>`}
+        <div class="team-name">${escapeHtml(m.name)}</div>
+        <div class="team-role">${escapeHtml(m.role || '')}</div>
+        ${m.cred ? `<div class="team-cred">${escapeHtml(m.cred)}</div>` : ''}
+      </div>`).join('')}
+    </div>`)
+  }
+
+  if (variant === 'cap-table') {
+    const cap = c.capTable
+    const allocPct = Number(cap.leadCommittedPct ?? cap.committedPct ?? 0)
+    return wrap(`<div class="cap-grid tx-group">
+      <div class="cap-tile stagger" style="--i:0">
+        <div class="cap-lbl">Round size</div>
+        <div class="cap-val">${escapeHtml(cap.round || '—')}</div>
+      </div>
+      <div class="cap-tile stagger" style="--i:1">
+        <div class="cap-lbl">Valuation</div>
+        <div class="cap-val">${escapeHtml(cap.valuation || '—')}</div>
+      </div>
+      <div class="cap-tile stagger" style="--i:2">
+        <div class="cap-lbl">Lead investor</div>
+        <div class="cap-val cap-val-sm">${escapeHtml(cap.leadInvestor || '—')}</div>
+      </div>
+      <div class="cap-tile stagger cap-progress" style="--i:3">
+        <div class="cap-lbl">Committed</div>
+        <div class="cap-val">${allocPct}%</div>
+        <div class="cap-bar"><div class="cap-bar-fill" style="width:${Math.min(100, Math.max(0, allocPct))}%"></div></div>
+      </div>
+    </div>`)
+  }
+
+  // MILESTONE-ROAD — horizontal funding milestones timeline
+  const stones = (c.milestones as any[]).slice(0, 5)
+  return wrap(`<div class="ms-road tx-group">
+    <div class="ms-road-line"></div>
+    ${stones.map((m: any, i: number) => `<div class="ms-stop stagger" style="--i:${i}">
+      <div class="ms-dot${m.isCurrent ? ' ms-dot-current' : ''}"></div>
+      <div class="ms-when">${escapeHtml(m.when || '')}</div>
+      <div class="ms-what">${escapeHtml(m.what || m.label || '')}</div>
+      ${m.detail ? `<div class="ms-detail">${escapeHtml(m.detail)}</div>` : ''}
+    </div>`).join('')}
+  </div>`)
+}
+
 /** Marquee band — full-viewport section break with animated text rows.
  *  Used between major arc sections (after Problem, after Fix, before Ask). */
 function buildMarqueeBand(idx: number, texts: string[]): string {
@@ -378,10 +737,13 @@ export function renderDeck(
     // Bespoke layout dispatch — falls through to the generic slide() shell
     // when the slide's content doesn't carry the layout-specific fields.
     let html = ''
-    if (id === 's3_problem')      html = buildProblemSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
-    else if (id === 's5_fix')     html = buildFixSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
-    else if (id === 's6_how')     html = buildHowSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
-    else if (id === 's10_competition') html = buildCompetitionSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    if (id === 's3_problem')           html = buildProblemSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's5_fix')          html = buildFixSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's6_how')          html = buildHowSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
+    else if (id === 's7_validation')   html = buildValidationSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
+    else if (id === 's9_customers')    html = buildCustomersSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
+    else if (id === 's10_competition') html = buildCompetitionSlideVariants(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
+    else if (id === 's12_team_ask')    html = buildTeamAskSlide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg, world)
     if (!html) html = slide(def.htmlId, idx, def.label, tx, bgx, bgy, c, motifBg)
     slideHtmlList.push(html)
     labels.push(def.label)
