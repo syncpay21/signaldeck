@@ -4,6 +4,8 @@ import { brandWorldToCssVars, type BrandWorld } from '@/lib/brand-world'
 import { PALETTE_LIBRARY, suggestPalettes, type Palette } from '@/lib/design-library/palettes'
 import { TYPE_PAIRS, suggestTypePairs, googleFontsHref, type TypePair } from '@/lib/design-library/typography'
 import { pickAxes, axesToClasses, AXIS_OPTIONS, AXIS_COMBINATIONS, type StyleAxes } from '@/lib/design-library/axes'
+import { ARCHETYPES, getArchetype, inferArchetype } from '@/lib/design-library/archetypes'
+import { COMPOSITIONS, getComposition } from '@/lib/design-library/composition'
 import { getIconSet } from '@/lib/icons'
 import { brandWorldMotifBackground } from '@/lib/motifs'
 import AndreasPanel from '@/components/AndreasPanel'
@@ -1417,6 +1419,97 @@ export default function Workspace({
               </div>
               <div className="text-[11px] ink-muted font-mono pt-1">
                 {axesToClasses(currentAxes).split(' ').join(' · ')}
+              </div>
+            </Card>
+          )
+        })()}
+
+        {/* Brand Archetype — Jungian DNA. The brand-world API attaches an
+            archetype inference; founder can override here. Surfaces "why
+            this design works" in one click. */}
+        {(() => {
+          const inferred = (bw as any)?.archetype || (bw ? inferArchetype(bw) : null)
+          const inferredId = (inferred as any)?.archetype?.id || (inferred as any)?.id
+          const overrideId = (bwOverrides as any)?.archetype?.id
+          const activeId = overrideId || inferredId
+          const active = activeId ? getArchetype(activeId) : null
+          const confidence = (inferred as any)?.confidence ?? 100
+          const runnerUp = typeof (inferred as any)?.runnerUp === 'string'
+            ? (inferred as any).runnerUp
+            : (inferred as any)?.runnerUp?.id
+          return (
+            <Card className="p-5 mb-5">
+              <div className="flex items-baseline justify-between gap-3 mb-2">
+                <div>
+                  <MiniLabel>Brand Archetype</MiniLabel>
+                  <div className="font-semibold tracking-tight mt-1">
+                    {active ? `${active.name}` : 'Pick an archetype'}
+                    {active && (<span className="ml-2 text-[11px] ink-muted font-mono">{overrideId ? 'override' : `${confidence}% match`}{runnerUp && !overrideId ? ` · runner-up: ${runnerUp}` : ''}</span>)}
+                  </div>
+                  {active && (
+                    <div className="text-[12px] ink-muted mt-1.5 max-w-[640px]">
+                      <span className="font-medium" style={{ color: 'var(--ink)' }}>{active.promise}.</span> Voice: {active.voice}. Like {active.exemplarBrands.slice(0, 4).join(', ')}.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mt-3">
+                {ARCHETYPES.map(a => {
+                  const isActive = a.id === activeId
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => setBwOverrides(o => ({ ...o, archetype: { id: a.id, confidence: 100 } } as any))}
+                      className="text-left p-2.5 rounded-lg transition-all"
+                      style={{
+                        background: isActive ? `${liveAccent}15` : 'var(--surface)',
+                        border: `1.5px solid ${isActive ? liveAccent : 'var(--line)'}`,
+                        boxShadow: isActive ? `0 0 0 1px ${liveAccent}, 0 0 20px ${liveAccent}33` : 'none',
+                      }}
+                    >
+                      <div className="text-[11px] uppercase ink-muted font-mono">{a.axis}</div>
+                      <div className="text-[13px] font-semibold tracking-tight mt-0.5">{a.name}</div>
+                      <div className="text-[10px] ink-muted mt-0.5 truncate">{a.exemplarBrands.slice(0, 3).join(' · ')}</div>
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+          )
+        })()}
+
+        {/* Composition Grid — 6 classical layout grammars. Selecting one
+            sets the --composition CSS var on the deck root; advanced
+            layouts can opt-in. */}
+        {(() => {
+          const activeCompId = (bwOverrides as any)?.compositionGrid || (bw as any)?.compositionGrid || 'asymmetric-weight'
+          return (
+            <Card className="p-5 mb-5">
+              <div className="flex items-baseline justify-between gap-3 mb-3">
+                <div>
+                  <MiniLabel>Composition Grid</MiniLabel>
+                  <div className="font-semibold tracking-tight mt-1">{getComposition(activeCompId)?.name || 'Asymmetric Weight'}</div>
+                  <div className="text-[12px] ink-muted mt-1 max-w-[640px]">{getComposition(activeCompId)?.rationale}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {COMPOSITIONS.map(c => {
+                  const isActive = c.id === activeCompId
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setBwOverrides(o => ({ ...o, compositionGrid: c.id } as any))}
+                      className="text-left p-2.5 rounded-lg transition-all"
+                      style={{
+                        background: isActive ? `${liveAccent}15` : 'var(--surface)',
+                        border: `1.5px solid ${isActive ? liveAccent : 'var(--line)'}`,
+                      }}
+                    >
+                      <div className="text-[12px] font-semibold tracking-tight">{c.name}</div>
+                      <div className="text-[10px] font-mono ink-muted mt-0.5">{c.gridTemplate}</div>
+                    </button>
+                  )
+                })}
               </div>
             </Card>
           )

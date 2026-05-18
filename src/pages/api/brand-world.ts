@@ -5,6 +5,8 @@ import { extractBrand, type ExtractedBrand } from '../../lib/pipeline/brand-extr
 import { resolveLogoUrl } from '../../lib/pipeline/logo-resolver'
 import { ANDREAS_PERSONA } from '../../lib/andreas-persona'
 import { critiqueAndFix } from '../../lib/pipeline/design-critic'
+import { inferArchetype } from '../../lib/design-library/archetypes'
+import { pickComposition } from '../../lib/design-library/composition'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -487,6 +489,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Apply only the keys the critic actually returned; preserve everything else.
       brandWorld.colour = { ...brandWorld.colour, ...critique.fixedColour } as typeof brandWorld.colour
     }
+
+    // ARCHETYPE INFERENCE — post-model tag-match against the 12 Jungian
+    // archetypes. Deterministic; gives Andreas a vocabulary to reason
+    // about WHY this design works (e.g. "your brand is The Sage — that's
+    // why I picked a serif and a centred-axis layout").
+    try {
+      const { archetype, confidence, runnerUp } = inferArchetype(brandWorld)
+      ;(brandWorld as any).archetype = {
+        id: archetype.id,
+        confidence,
+        runnerUp: runnerUp?.id,
+      }
+      // Default composition grid for the deck's hero slide — workspace
+      // can override per-slide.
+      const { composition } = pickComposition('hero', archetype.id)
+      ;(brandWorld as any).compositionGrid = composition.id
+    } catch { /* archetype inference is non-fatal */ }
 
     // Resolve a logo URL the client can render in the workspace sidebar.
     // User-uploaded logoData wins on the client; this is the auto-sourced fallback.

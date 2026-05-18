@@ -144,6 +144,21 @@ export interface BrandWorld {
     primaryFrom:   'logo' | 'website' | 'screenshot' | 'industry-default' | 'user-override'
     fontsFrom:     'detected' | 'industry-default' | 'override'
   }
+
+  /* ─── Brand archetype (post-model inference) ───────────────── */
+  /* Inferred from the colour/typography/personality tags by
+   * inferArchetype() in src/lib/design-library/archetypes.ts. Optional
+   * because legacy worlds may not have it. */
+  archetype?: {
+    id:         string         // 'sage' | 'hero' | 'lover' | ...
+    confidence: number         // 0-100
+    runnerUp?:  string
+  }
+
+  /* Composition grid chosen for the deck (founder-overridable in
+   * Workspace Theme Lab). Optional — when present, renderer can
+   * opt-in via the --composition CSS var. */
+  compositionGrid?: string
 }
 
 /* ─── CSS var emitter ───────────────────────────────────────────────
@@ -185,6 +200,29 @@ export function brandWorldToCssVars(w: BrandWorld): Record<string, string> {
   // Components can reference var(--decorative) for non-primary flourishes.
   const tertiary = (w as any).colour?.tertiary as string | undefined
   if (tertiary) out['--decorative'] = tertiary
+
+  // Layer in canonical design tokens (type / spacing / radius scales) +
+  // colour-role tokens. These don't override existing brand vars — they
+  // sit alongside as a semantic vocabulary new layouts can opt into.
+  try {
+    // Lazy require so this file remains importable in contexts that don't
+    // have the design-library on the path.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { designTokensToCss } = require('./design-library/design-tokens')
+    const tokens = designTokensToCss(w.archetype?.id, w.density)
+    Object.assign(out, tokens)
+  } catch { /* design-library optional */ }
+
+  // Composition tokens
+  if (w.compositionGrid) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getComposition, compositionToCssVars } = require('./design-library/composition')
+      const comp = getComposition(w.compositionGrid)
+      if (comp) Object.assign(out, compositionToCssVars(comp))
+    } catch { /* optional */ }
+  }
+
   return out
 }
 

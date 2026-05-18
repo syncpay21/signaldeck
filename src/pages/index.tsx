@@ -49,6 +49,12 @@ interface FormData {
    *  SignalDeck skips the heavy writer Sonnet call and runs only a Haiku
    *  fact-check + rephrase pass. ~75% cost reduction. */
   draftedDeck?: Record<string, any>
+  /** Named recipients the deck link will be sent to. Each may have a LinkedIn
+   *  URL + VC firm name; /api/recipient-intel fetches both so the deck writer
+   *  can tailor the narrative to the actual reader's thesis + portfolio. */
+  recipients?: Array<{ name: string; linkedinUrl?: string; vcFirm?: string }>
+  /** Cached intel bundles, one per recipient — populated by Fetch intel UI. */
+  recipientIntel?: Array<{ recipient: any; fund: any; fetchedAt: string }>
 }
 
 const INDUSTRIES = ['Fintech', 'Climate', 'Health', 'AI', 'SaaS', 'Enterprise', 'Developer Tools', 'Consumer', 'Education', 'Other']
@@ -521,10 +527,21 @@ export default function Home() {
 
               {/* Supporting materials — unlimited */}
               <div className="mt-5">
-                <div className="text-[13px] mb-1.5">7. Supporting materials <span className="text-[11px] opacity-60">(optional — drop as many as you like)</span></div>
+                <div className="text-[13px] mb-1.5">7. Supporting materials <span className="text-[11px] opacity-60">(optional — drop as many as you like, up to 120 files, videos welcome)</span></div>
                 <SupportingFiles
                   value={form.supportingFiles}
                   onChange={next => set('supportingFiles', next)}
+                />
+              </div>
+
+              {/* Recipients — who's actually opening the link */}
+              <div className="mt-5">
+                <div className="text-[13px] mb-1.5">8. Who's receiving this? <span className="text-[11px] opacity-60">(optional — but unlocks reader-specific copy)</span></div>
+                <Recipients
+                  value={form.recipients}
+                  onChange={next => set('recipients', next)}
+                  intel={form.recipientIntel}
+                  onIntelChange={next => set('recipientIntel', next)}
                 />
               </div>
 
@@ -1166,6 +1183,95 @@ function DeckSlot({ value, name, onChange }:
    Founder drops any number of PDFs, images, CSVs, docs. Andreas reads
    them all when writing the deck. Cap is 30 files / 30MB total — past
    that Anthropic's context starts to suffer. */
+/* ─── Recipient repeater ────────────────────────────────────────────
+ * Founder names the people the deck link will be sent to + their VC firm.
+ * We hit /api/recipient-intel for each row to pull LinkedIn focus + the
+ * fund's recent investments. The bundles flow into /api/generate so the
+ * writer can tailor copy to the actual reader, not a generic audience.
+ */
+function Recipients({ value, onChange, intel, onIntelChange }: {
+  value?: Array<{ name: string; linkedinUrl?: string; vcFirm?: string }>
+  onChange: (next: Array<{ name: string; linkedinUrl?: string; vcFirm?: string }>) => void
+  intel?: Array<{ recipient: any; fund: any; fetchedAt: string }>
+  onIntelChange: (next: Array<{ recipient: any; fund: any; fetchedAt: string }>) => void
+}) {
+  const rows = value || []
+  const intelRows = intel || []
+  const [busyIdx, setBusyIdx] = useState<number | null>(null)
+
+  const update = (i: number, patch: Partial<{ name: string; linkedinUrl: string; vcFirm: string }>) => {
+    const next = rows.slice()
+    next[i] = { ...(next[i] || { name: '' }), ...patch }
+    onChange(next)
+  }
+  const add = () => onChange([...rows, { name: '', linkedinUrl: '', vcFirm: '' }])
+  const remove = (i: number) => {
+    const next = rows.slice(); next.splice(i, 1); onChange(next)
+    const nextI = intelRows.slice(); nextI.splice(i, 1); onIntelChange(nextI)
+  }
+  const fetchIntel = async (i: number) => {
+    const r = rows[i]
+    if (!r?.linkedinUrl && !r?.vcFirm) { alert('Need a LinkedIn URL or VC firm to fetch intel.'); return }
+    setBusyIdx(i)
+    try {
+      const res = await fetch('/api/recipient-intel', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ linkedinUrl: r.linkedinUrl, vcFirm: r.vcFirm }),
+      })
+      const json = await res.json()
+      const next = intelRows.slice()
+      next[i] = json
+      onIntelChange(next)
+    } catch (e) {
+      alert('Intel fetch failed — proceed without.')
+    } finally {
+      setBusyIdx(null)
+    }
+  }
+
+  return (
+    <div className="paper hairline rounded-xl p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-[13px] font-medium">Who's receiving this deck? <span className="ink-muted font-normal">— optional, named investors</span></div>
+          <div className="text-[11px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+            Add the people who'll open the link. We pull LinkedIn focus + Crunchbase investment history so the deck is tailored to them — their thesis, recent bets, portfolio language.
+          </div>
+        </div>
+        <button onClick={add} className="text-[11px] px-2 py-1 rounded hairline">+ Add recipient</button>
+      </div>
+
+      {rows.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {rows.map((r, i) => {
+            const b = intelRows[i]
+            return (
+              <div key={i} className="rounded-lg hairline p-2" style={{ background: 'var(--surface)' }}>
+                <div className="flex gap-2 items-center">
+                  <input value={r.name || ''} onChange={e => update(i, { name: e.target.value })} placeholder="Recipient name" className="flex-1 text-[12px] px-2 py-1 rounded hairline bg-transparent" />
+                  <input value={r.linkedinUrl || ''} onChange={e => update(i, { linkedinUrl: e.target.value })} placeholder="linkedin.com/in/…" className="flex-[2] text-[12px] px-2 py-1 rounded hairline bg-transparent" />
+                  <input value={r.vcFirm || ''} onChange={e => update(i, { vcFirm: e.target.value })} placeholder="VC firm" className="flex-1 text-[12px] px-2 py-1 rounded hairline bg-transparent" />
+                  <button onClick={() => fetchIntel(i)} disabled={busyIdx === i} className="text-[11px] px-2 py-1 rounded" style={{ background: 'var(--ink)', color: '#fff' }}>{busyIdx === i ? '…' : 'Fetch intel'}</button>
+                  <button onClick={() => remove(i)} className="w-6 h-6 rounded-full bg-black/40 text-white text-[11px] hover:bg-black/70 flex items-center justify-center" aria-label="Remove">×</button>
+                </div>
+                {b && (
+                  <div className="mt-2 text-[11px] font-mono" style={{ color: 'var(--ink-muted)' }}>
+                    {b.recipient?.name && (<div>· {b.recipient.name} — {b.recipient.role || ''} {b.recipient.firm ? `@ ${b.recipient.firm}` : ''} <span className="ink-muted">({b.recipient.source})</span></div>)}
+                    {b.recipient?.focus?.length > 0 && (<div>· Focus: {b.recipient.focus.slice(0, 5).join(', ')}</div>)}
+                    {b.fund?.recentDeals?.length > 0 && (<div>· Fund recent: {b.fund.recentDeals.slice(0, 5).map((d: any) => d.company).join(', ')}</div>)}
+                    {b.fund?.avgCheck && (<div>· Check band: {b.fund.avgCheck}</div>)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SupportingFiles({ value, onChange }:
   { value?: Array<{ name: string; mime: string; data: string; size: number }>; onChange: (next: Array<{ name: string; mime: string; data: string; size: number }>) => void }) {
   const [dragOver, setDragOver] = useState(false)
@@ -1173,18 +1279,21 @@ function SupportingFiles({ value, onChange }:
   const inputRef = useRef<HTMLInputElement>(null)
   const files = value || []
   const totalBytes = files.reduce((s, f) => s + (f.size || 0), 0)
-  const MAX_FILES = 30
-  const MAX_BYTES_PER_FILE = 8 * 1024 * 1024
-  const MAX_TOTAL_BYTES   = 30 * 1024 * 1024
+  // Founder said: "add product demo screenshots and videos a lot so we can
+  // really recreate it well" — caps raised to accommodate 10-screen onboarding
+  // flows + multi-minute demo videos. Each file becomes context for the writer.
+  const MAX_FILES = 120
+  const MAX_BYTES_PER_FILE = 40 * 1024 * 1024
+  const MAX_TOTAL_BYTES   = 200 * 1024 * 1024
 
-  const ACCEPT = 'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,image/*'
+  const ACCEPT = 'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,image/*,video/*'
 
   const ingest = async (incoming: File[]) => {
     setBusy(true)
     const next = [...files]
     for (const f of incoming) {
       if (next.length >= MAX_FILES) { alert(`Max ${MAX_FILES} files.`); break }
-      if (f.size > MAX_BYTES_PER_FILE) { alert(`"${f.name}" is too large (${(f.size / 1024 / 1024).toFixed(1)}MB). Max 8MB per file.`); continue }
+      if (f.size > MAX_BYTES_PER_FILE) { alert(`"${f.name}" is too large (${(f.size / 1024 / 1024).toFixed(1)}MB). Max ${MAX_BYTES_PER_FILE / 1024 / 1024}MB per file.`); continue }
       if (totalBytes + f.size > MAX_TOTAL_BYTES) { alert(`Total exceeds ${MAX_TOTAL_BYTES / 1024 / 1024}MB.`); break }
       try {
         const data = await new Promise<string>((res, rej) => {
@@ -1210,6 +1319,7 @@ function SupportingFiles({ value, onChange }:
     if (m) return m
     if (mime === 'application/pdf') return 'PDF'
     if (mime.startsWith('image/')) return 'IMG'
+    if (mime.startsWith('video/')) return 'VID'
     if (mime.includes('word')) return 'DOC'
     if (mime.includes('spreadsheet') || mime === 'text/csv') return 'CSV'
     if (mime === 'text/plain') return 'TXT'
@@ -1262,7 +1372,7 @@ function SupportingFiles({ value, onChange }:
           color: dragOver ? 'var(--ink)' : 'var(--ink-muted)',
           background: dragOver ? 'rgba(0,0,0,0.03)' : (busy ? 'var(--surface)' : 'transparent'),
         }}>
-        {busy ? 'Reading…' : files.length >= MAX_FILES ? `Max ${MAX_FILES} files reached` : (dragOver ? 'Drop files here' : files.length ? '+ Add more files' : '+ Drop or click to add files (PDF, DOC, CSV, IMG, TXT)')}
+        {busy ? 'Reading…' : files.length >= MAX_FILES ? `Max ${MAX_FILES} files reached` : (dragOver ? 'Drop files here' : files.length ? '+ Add more files' : '+ Drop or click to add files (PDF, DOC, CSV, IMG, VIDEO, TXT — up to 120)')}
       </button>
       <input ref={inputRef} type="file" accept={ACCEPT} multiple className="hidden"
         onChange={e => { const fs = Array.from(e.target.files || []); if (fs.length) ingest(fs); e.target.value = '' }} />

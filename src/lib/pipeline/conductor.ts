@@ -46,6 +46,10 @@ export interface ConductorContext {
   vcData?:         any
   signalsData?:    any
   designCritique?: any
+  /** Named recipients + their LinkedIn / Crunchbase intel bundles. When the
+   *  founder told us who's reading the deck, the planner uses this to bias
+   *  framework + objection-pre-answer recommendations. */
+  recipientIntel?: Array<{ recipient: any; fund: any; fetchedAt: string }>
 }
 
 export interface ToolStep {
@@ -145,6 +149,15 @@ function buildContextSummary(ctx: ConductorContext): string {
       lines.push(`Viewership: ${s.totalSessions} sessions, ${s.reachedEnd || 0} reached end${drop}`)
     } else {
       lines.push('Viewership: deck published, no opens yet')
+    }
+  }
+  if (Array.isArray(ctx.recipientIntel) && ctx.recipientIntel.length) {
+    const primary = ctx.recipientIntel.find(b => b?.recipient?.name || b?.fund?.recentDeals?.length)
+    if (primary) {
+      const r = primary.recipient || {}
+      const f = primary.fund || {}
+      const dealStr = Array.isArray(f.recentDeals) ? f.recentDeals.slice(0, 5).map((d: any) => d.company).join(', ') : ''
+      lines.push(`Recipient intel — Reader: ${r.name || '?'}${r.firm ? ` @ ${r.firm}` : ''}${r.focus?.length ? ` (focus: ${r.focus.join(', ')})` : ''}${dealStr ? `. Fund recent: ${dealStr}` : ''}${f.avgCheck ? ` ${f.avgCheck}` : ''}`)
     }
   }
 

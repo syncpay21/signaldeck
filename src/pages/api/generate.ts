@@ -167,10 +167,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const attachmentNote = (input.previousDeckData || supportingCount > 0)
       ? `\n\nATTACHED DOCUMENTS — read all of them as source-of-truth. Lift statlines, named customers, competitor names, team backgrounds, exact phrasings the founder is committed to. Never invent numbers that aren't in either the statlines above OR the attached documents. ${input.previousDeckData ? '1 previous pitch deck' : ''}${input.previousDeckData && supportingCount ? ' + ' : ''}${supportingCount ? `${supportingCount} supporting file${supportingCount === 1 ? '' : 's'}` : ''} attached.`
       : ''
+
+    // PRODUCT_SURFACE — when 5+ product screenshots come in, force the writer
+    // to reference specific UI surfaces in the Solution + How-it-Works slides.
+    // Otherwise the writer drifts back to generic "our product helps" copy.
+    const productScreenshots = Array.isArray(input.supportingFiles)
+      ? input.supportingFiles.filter((f: any) => typeof f?.mime === 'string' && f.mime.startsWith('image/')).length
+      : 0
+    const productSurfaceBlock = productScreenshots >= 5
+      ? `\n\nPRODUCT SURFACE — ${productScreenshots} product screenshots are attached. The Solution and How-it-Works slides MUST reference SPECIFIC UI surfaces visible in those screenshots (named buttons, panels, flows, charts). Generic "our product helps X" language is forbidden when screenshots are present. If you can see a dashboard with a spend heatmap, name it. If you can see a 3-step onboarding, walk through the steps.`
+      : ''
+
+    // RECIPIENT_CONTEXT — when the founder gave us named recipients with
+    // fetched intel, surface the primary reader's thesis + the fund's recent
+    // investments so the writer biases copy to them.
+    const recipientIntel = Array.isArray((input as any).recipientIntel) ? (input as any).recipientIntel : []
+    const primaryIntel = recipientIntel.find((b: any) => b?.recipient?.name || b?.fund?.recentDeals?.length) || null
+    const recipientBlock = primaryIntel
+      ? `\n\nRECIPIENT_CONTEXT — write THIS deck for THIS reader.
+PRIMARY READER: ${primaryIntel.recipient?.name || '(unknown)'}${primaryIntel.recipient?.firm ? ` (${primaryIntel.recipient.firm})` : ''}${primaryIntel.recipient?.role ? ` — ${primaryIntel.recipient.role}` : ''}
+${primaryIntel.recipient?.focus?.length ? `READER FOCUS: ${primaryIntel.recipient.focus.join(', ')}` : ''}
+${primaryIntel.fund?.recentDeals?.length ? `FUND RECENT BETS: ${primaryIntel.fund.recentDeals.slice(0, 8).map((d: any) => d.company + (d.stage ? ` (${d.stage})` : '')).join(', ')}` : ''}
+${primaryIntel.fund?.avgCheck ? `FUND CHECK BAND: ${primaryIntel.fund.avgCheck}` : ''}
+${Object.keys(primaryIntel.fund?.sectorDistribution || {}).length ? `FUND SECTOR SKEW: ${Object.entries(primaryIntel.fund.sectorDistribution).map(([k, v]) => `${k}=${v}`).join(', ')}` : ''}
+WRITE FOR THIS READER: open Why-Now with a wedge into their stated focus areas; pre-answer the objection their recent bets / passes signal; you may borrow portfolio-coherent language (e.g. "compounding", "wedge", "GTM motion") when natural. Never fabricate a relationship to the reader. Never invent quotes attributed to them.`
+      : ''
+
     const userPrompt = buildGenerationPrompt({ ...input, audience, goal, stage, industry }, narrative, originalSlideIds)
       + (researchBlock ? `\n\n${researchBlock}` : '')
       + statlineBlock
       + attachmentNote
+      + productSurfaceBlock
+      + recipientBlock
 
     /* ─── STAGE 2 (Sonnet) + STAGE B1 (Brand HTML) + STAGE B0.5 (Vision)
        — all run in parallel. Vision only fires when the user uploaded
