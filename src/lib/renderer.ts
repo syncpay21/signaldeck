@@ -339,5 +339,7 @@ export function renderDeck(
     totalSlides: slideHtmlList.length,
     slidesHtml:  slideHtmlList.join('\n'),
     dotNav:      labels.map((l,i) => `<button data-idx="${i}" data-label="${l}" aria-label="${l}"></button>`).join('\n'),
+    deckId:      opts?.deckId,
+    trackUrl:    opts?.trackUrl,
   })
 }
