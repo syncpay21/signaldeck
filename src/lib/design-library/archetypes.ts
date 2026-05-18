@@ -142,7 +142,7 @@ export const ARCHETYPES: Archetype[] = [
     paletteTags: ['balanced', 'b2c', 'humanist'],
     typeTags: ['humanist', 'geometric', 'balanced'],
     layoutBias: ['archetype-cards', 'checks-row', 'mitigation-pairs'],
-    exemplarBrands: ['IKEA', 'Levi's', 'Target', 'Toyota'],
+    exemplarBrands: ['IKEA', "Levi's", 'Target', 'Toyota'],
   },
   /* ─── STABILITY ────────────────────────────────────────── */
   {
