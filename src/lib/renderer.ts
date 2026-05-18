@@ -74,7 +74,8 @@ const SLIDE_DEFS: Record<string, { htmlId: string; label: string; tx: string; bg
 
 type IntroVariant = 'massive-display' | 'phone-mockup' | 'split-editorial' | 'minimal-centered'
 
-function pickIntroVariant(world: any, input: any): IntroVariant {
+function pickIntroVariant(world: any, input: any, c?: any): IntroVariant {
+  if (c?.variant === 'massive-display' || c?.variant === 'phone-mockup' || c?.variant === 'split-editorial' || c?.variant === 'minimal-centered') return c.variant
   if (input?.productData || input?.heroData) return 'phone-mockup'
   if (!world) return 'massive-display'
   if (world.cardStyle === 'editorial' || world.layoutStyle === 'editorial-spacious') return 'split-editorial'
@@ -88,7 +89,7 @@ function escapeAttr(s: any): string {
 }
 
 function buildIntroSlide(idx: number, input: any, c: any, world?: any): string {
-  const variant = pickIntroVariant(world, input)
+  const variant = pickIntroVariant(world, input, c)
   const num = String(idx).padStart(2, '0')
 
   // ── Variant 1: MASSIVE-DISPLAY — company name fills the viewport ────
@@ -196,6 +197,7 @@ function escapeHtml(s: any): string {
 /* ─── PROBLEM (s3) — 4 variants ────────────────────────────────────────
    3-card grid (default) / stat-overlay / quote-evidence / before-state */
 function pickProblemVariant(c: any): 'card-grid' | 'stat-overlay' | 'quote-evidence' | 'before-state' {
+  if (c.variant === 'card-grid' || c.variant === 'stat-overlay' || c.variant === 'quote-evidence' || c.variant === 'before-state') return c.variant
   if (c.heroStat && typeof c.heroStat === 'object') return 'stat-overlay'
   if (Array.isArray(c.painQuotes) && c.painQuotes.length) return 'quote-evidence'
   if (c.statusQuo && c.wished) return 'before-state'
@@ -272,6 +274,7 @@ function buildProblemSlide(htmlId: string, idx: number, label: string, tx: strin
 /* ─── FIX (s5) — 4 variants ────────────────────────────────────────────
    checks-row (default) / before-after / three-pillar / one-big-thing */
 function pickFixVariant(c: any): 'checks-row' | 'before-after' | 'three-pillar' | 'one-big-thing' {
+  if (c.variant === 'checks-row' || c.variant === 'before-after' || c.variant === 'three-pillar' || c.variant === 'one-big-thing') return c.variant
   if (c.before && c.after) return 'before-after'
   if (Array.isArray(c.pillars) && c.pillars.length === 3) return 'three-pillar'
   if (c.oneThing && typeof c.oneThing === 'string') return 'one-big-thing'
@@ -338,6 +341,7 @@ function buildFixSlide(htmlId: string, idx: number, label: string, tx: string, b
 /* ─── SITUATION (s2) — 4 variants ──────────────────────────────────────
    why-now-triple (3 shifts) / shift-timeline / convergence / before-after-world */
 function pickSituationVariant(c: any): 'why-now-triple' | 'shift-timeline' | 'convergence' | 'before-after-world' {
+  if (c.variant === 'why-now-triple' || c.variant === 'shift-timeline' || c.variant === 'convergence' || c.variant === 'before-after-world') return c.variant
   if (Array.isArray(c.timeline) && c.timeline.length >= 3) return 'shift-timeline'
   if (Array.isArray(c.converging) && c.converging.length >= 2) return 'convergence'
   if (c.oldWorld && c.newWorld) return 'before-after-world'
@@ -414,6 +418,7 @@ function buildSituationSlide(htmlId: string, idx: number, label: string, tx: str
 /* ─── MARKET (s8) — 4 variants ─────────────────────────────────────────
    tam-sam-som (concentric rings) / waterfall-bars / verticals / growth-curve */
 function pickMarketVariant(c: any): 'tam-sam-som' | 'waterfall-bars' | 'verticals' | 'growth-curve' {
+  if (c.variant === 'tam-sam-som' || c.variant === 'waterfall-bars' || c.variant === 'verticals' || c.variant === 'growth-curve') return c.variant
   if (Array.isArray(c.growthCurve) && c.growthCurve.length >= 3) return 'growth-curve'
   if (Array.isArray(c.verticals) && c.verticals.length >= 3) return 'verticals'
   if (Array.isArray(c.stats) && c.stats.length === 3 && /tam|sam|som/i.test(c.stats[0]?.label || '')) return 'tam-sam-som'
@@ -500,6 +505,7 @@ function buildMarketSlide(htmlId: string, idx: number, label: string, tx: string
 /* ─── HOW (s6) — 4 variants ────────────────────────────────────────────
    step-flow (default) / arch-stack / sequence-arrows / inputs-outputs */
 function pickHowVariant(c: any): 'step-flow' | 'arch-stack' | 'sequence-arrows' | 'inputs-outputs' {
+  if (c.variant === 'step-flow' || c.variant === 'arch-stack' || c.variant === 'sequence-arrows' || c.variant === 'inputs-outputs') return c.variant
   if (Array.isArray(c.layers) && c.layers.length >= 2) return 'arch-stack'
   if (Array.isArray(c.sequence) && c.sequence.length >= 2) return 'sequence-arrows'
   if (c.inputs && c.outputs) return 'inputs-outputs'
@@ -575,6 +581,7 @@ function buildHowSlide(htmlId: string, idx: number, label: string, tx: string, b
 /* ─── IMPLICATION (s4) — 4 variants ────────────────────────────────────
    cost-counter / risk-fan / loss-frame / status-quo-failure */
 function pickImplicationVariant(c: any): 'cost-counter' | 'risk-fan' | 'loss-frame' | 'status-quo-failure' {
+  if (c.variant === 'cost-counter' || c.variant === 'risk-fan' || c.variant === 'loss-frame' || c.variant === 'status-quo-failure') return c.variant
   if (Array.isArray(c.cascading) && c.cascading.length >= 3) return 'risk-fan'
   if (c.lossFrame && Array.isArray(c.lossFrame) && c.lossFrame.length >= 2) return 'loss-frame'
   if (c.failureTable && Array.isArray(c.failureTable.rows)) return 'status-quo-failure'
@@ -650,6 +657,7 @@ function buildImplicationSlide(htmlId: string, idx: number, label: string, tx: s
 /* ─── RISKS (s11) — 4 variants ─────────────────────────────────────────
    mitigation-pairs / risk-radar / risk-narrative / risk-timeline */
 function pickRiskVariant(c: any): 'mitigation-pairs' | 'risk-radar' | 'risk-narrative' | 'risk-timeline' {
+  if (c.variant === 'mitigation-pairs' || c.variant === 'risk-radar' || c.variant === 'risk-narrative' || c.variant === 'risk-timeline') return c.variant
   if (c.riskRadar && Array.isArray(c.riskRadar.risks)) return 'risk-radar'
   if (Array.isArray(c.riskTimeline) && c.riskTimeline.length >= 3) return 'risk-timeline'
   if (c.riskNarrative && Array.isArray(c.riskNarrative)) return 'risk-narrative'
@@ -761,6 +769,7 @@ function buildCompetitionSlide(htmlId: string, idx: number, label: string, tx: s
      fallback when stats[] dominates          → 'cohort-curve' OR generic
 */
 function pickValidationVariant(c: any, world: any): 'hero-number' | 'cohort-curve' | 'logo-wall' | 'quote-stack' {
+  if (c.variant === 'hero-number' || c.variant === 'cohort-curve' || c.variant === 'logo-wall' || c.variant === 'quote-stack') return c.variant
   if (Array.isArray(c.quotes) && c.quotes.length) return 'quote-stack'
   if (Array.isArray(c.customerLogos) && c.customerLogos.length) return 'logo-wall'
   if (Array.isArray(c.stats) && c.stats.length === 1) return 'hero-number'
@@ -859,6 +868,7 @@ function buildValidationSlide(htmlId: string, idx: number, label: string, tx: st
    comparison-radar   — SVG radar chart, 5-6 axes, you vs avg competitor
    anti-positioning   — "we are X / we are NOT Y" statement card */
 function pickCompetitionVariant(c: any, _world: any): 'matrix' | 'positioning-grid' | 'comparison-radar' | 'anti-positioning' {
+  if (c.variant === 'matrix' || c.variant === 'positioning-grid' || c.variant === 'comparison-radar' || c.variant === 'anti-positioning') return c.variant
   if (c.matrix && Array.isArray(c.matrix.rows) && c.matrix.rows.length) return 'matrix'
   if (c.quadrant && c.quadrant.xAxis && c.quadrant.yAxis) return 'positioning-grid'
   if (c.radar && Array.isArray(c.radar.axes) && c.radar.axes.length >= 3) return 'comparison-radar'
@@ -947,6 +957,7 @@ function buildCompetitionSlideVariants(htmlId: string, idx: number, label: strin
    timeline-vertical — customer journey first hour → first year
    icon-grid         — many small segments in grid */
 function pickCustomersVariant(c: any, _world: any): 'archetype-cards' | 'persona-quotes' | 'timeline-vertical' | 'icon-grid' {
+  if (c.variant === 'archetype-cards' || c.variant === 'persona-quotes' || c.variant === 'timeline-vertical' || c.variant === 'icon-grid') return c.variant
   if (Array.isArray(c.quotes) && c.quotes.length) return 'persona-quotes'
   if (Array.isArray(c.journey) && c.journey.length >= 3) return 'timeline-vertical'
   if (Array.isArray(c.segments) && c.segments.length >= 5) return 'icon-grid'
@@ -1026,6 +1037,7 @@ function buildCustomersSlide(htmlId: string, idx: number, label: string, tx: str
    cap-table       — round size + lead + valuation + allocation chart
    milestone-road  — horizontal timeline of milestones this round funds */
 function pickTeamAskVariant(c: any, _world: any): 'split-cta' | 'team-grid' | 'cap-table' | 'milestone-road' {
+  if (c.variant === 'split-cta' || c.variant === 'team-grid' || c.variant === 'cap-table' || c.variant === 'milestone-road') return c.variant
   if (Array.isArray(c.team) && c.team.length >= 2) return 'team-grid'
   if (c.capTable && (c.capTable.round || c.capTable.valuation)) return 'cap-table'
   if (Array.isArray(c.milestones) && c.milestones.length >= 3) return 'milestone-road'
@@ -1167,12 +1179,19 @@ export function renderDeck(
     slideVisuals?:  Record<string, SlideVisual>
     brandWorld?:    BrandWorld | null
     includeDemo?:   boolean
-    /** Unique deck id baked into the HTML for viewership tracking.
-     *  When set, the rendered deck POSTs viewership beacons to
-     *  /api/track keyed by this id. */
+    /** Unique deck id baked into the HTML for viewership tracking. */
     deckId?:        string
-    /** Override beacon URL. Defaults to the production SignalDeck app. */
+    /** Override beacon URL. */
     trackUrl?:      string
+    /** Per-slide transition override. Maps slideId → tx name. Any of:
+     *  zoom-passage / explode / fold / warp / glitch / dropzoom / prism / vortex.
+     *  Decouples transitions from SLIDE_DEFS hardcode — every slide can
+     *  use any transition the founder picks. */
+    transitionOverrides?: Record<string, string>
+    /** Per-slide layout variant override. Maps slideId → variant name.
+     *  e.g. { s3_problem: 'quote-evidence', s10_competition: 'positioning-grid' }.
+     *  Bypasses the auto-pick which is driven by content shape. */
+    layoutOverrides?: Record<string, string>
   },
 ): string {
   const ids: SlideId[] = slideIds ?? (Object.keys(SLIDE_DEFS) as SlideId[])
@@ -1206,10 +1225,20 @@ export function renderDeck(
     const def = SLIDE_DEFS[id]
     if (!def) return
     const v   = visuals?.[id]
-    const tx  = v?.transition || adaptTransition(id, def.tx, guide)
-    const bgx = v?.bgx        || def.bgx
-    const bgy = v?.bgy        || def.bgy
-    const c   = content[id] || {}
+    // Transition priority: per-slide override → content.transition →
+    // slideVisuals → SLIDE_DEFS default (industry-adapted).
+    const tx  = opts?.transitionOverrides?.[id]
+              || (content[id] && content[id].transition)
+              || v?.transition
+              || adaptTransition(id, def.tx, guide)
+    const bgx = v?.bgx || def.bgx
+    const bgy = v?.bgy || def.bgy
+    // Layout variant override → injected into content so each builder's
+    // variant picker sees it as if the founder picked it via content shape.
+    const ovVariant = opts?.layoutOverrides?.[id]
+    const c = ovVariant
+      ? { ...(content[id] || {}), variant: ovVariant }
+      : (content[id] || {})
     // Bespoke layout dispatch — falls through to the generic slide() shell
     // when the slide's content doesn't carry the layout-specific fields.
     let html = ''

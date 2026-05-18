@@ -373,6 +373,30 @@ export default function Workspace({
     return () => { cancelled = true; clearInterval(id) }
   }, [deckId])
 
+  // Per-slide layout + transition overrides. Built up locally as the founder
+  // picks variants; flow back into /api/generate on the next regenerate. Zero
+  // cost until they hit regenerate.
+  const [layoutOverrides, setLayoutOverrides]         = useState<Record<string, string>>({})
+  const [transitionOverrides, setTransitionOverrides] = useState<Record<string, string>>({})
+
+  // Catalog of available variants + transitions per slide id. Used to render
+  // the picker chips in ScreenDeck. Stays in sync with renderer's variant pickers.
+  const LAYOUT_VARIANTS: Record<string, string[]> = {
+    s1_intro:        ['massive-display','phone-mockup','split-editorial','minimal-centered'],
+    s2_situation:    ['why-now-triple','shift-timeline','convergence','before-after-world'],
+    s3_problem:      ['card-grid','stat-overlay','quote-evidence','before-state'],
+    s4_implication:  ['cost-counter','risk-fan','loss-frame','status-quo-failure'],
+    s5_fix:          ['checks-row','before-after','three-pillar','one-big-thing'],
+    s6_how:          ['step-flow','arch-stack','sequence-arrows','inputs-outputs'],
+    s7_validation:   ['hero-number','cohort-curve','logo-wall','quote-stack'],
+    s8_market:       ['tam-sam-som','waterfall-bars','verticals','growth-curve'],
+    s9_customers:    ['archetype-cards','persona-quotes','timeline-vertical','icon-grid'],
+    s10_competition: ['matrix','positioning-grid','comparison-radar','anti-positioning'],
+    s11_risks:       ['mitigation-pairs','risk-radar','risk-narrative','risk-timeline'],
+    s12_team_ask:    ['split-cta','team-grid','cap-table','milestone-road'],
+  }
+  const TRANSITIONS = ['zoom-passage','explode','fold','warp','glitch','dropzoom','prism','vortex']
+
   // Theme variants — fetches /api/brand-world-variants to show 3 alternative
   // directions (loud/balanced/restrained) with per-variant contrast + fit
   // scores. Opt-in because it costs a Sonnet call.
@@ -1513,17 +1537,64 @@ export default function Workspace({
               <ic.refresh className="w-3 h-3"/> Regenerate flow
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {realSlides.map((s, i) => (
-              <button key={s.key} onClick={() => setActiveSlide(i)}
-                className="text-left p-3 rounded-xl hairline transition-all hover:-translate-y-1"
-                style={i===activeSlide ? { background: liveAccent+'12', borderColor: liveAccent } : { background:'var(--paper)' }}>
-                <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: liveAccent }}>{s.kind}</div>
-                <div className="font-semibold text-[13px] leading-tight mb-1.5 line-clamp-2">{s.title}</div>
-                <div className="text-[11px] ink-muted leading-snug line-clamp-2">{s.body}</div>
-                <div className="text-[9px] font-mono ink-muted mt-2">{String(i+1).padStart(2,'0')}</div>
-              </button>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {realSlides.map((s, i) => {
+              const variants = LAYOUT_VARIANTS[s.key] || []
+              const curLayout = layoutOverrides[s.key] || variants[0] || ''
+              const curTx     = transitionOverrides[s.key] || ''
+              return (
+                <div key={s.key}
+                  className="text-left p-3 rounded-xl hairline transition-all flex flex-col gap-2"
+                  style={i===activeSlide ? { background: liveAccent+'12', borderColor: liveAccent } : { background:'var(--paper)' }}>
+                  <button onClick={() => setActiveSlide(i)} className="text-left">
+                    <div className="text-[10px] font-mono uppercase tracking-wider mb-1.5" style={{ color: liveAccent }}>{s.kind}</div>
+                    <div className="font-semibold text-[13px] leading-tight mb-1 line-clamp-2">{s.title}</div>
+                    <div className="text-[11px] ink-muted leading-snug line-clamp-2">{s.body}</div>
+                  </button>
+                  {variants.length > 0 && (
+                    <div>
+                      <MiniLabel>Layout</MiniLabel>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {variants.map(v => {
+                          const isActive = curLayout === v
+                          return (
+                            <button key={v} onClick={() => setLayoutOverrides(o => ({ ...o, [s.key]: v }))}
+                              className="text-[9px] font-medium px-1.5 py-0.5 rounded-full transition-colors"
+                              style={{
+                                background: isActive ? liveAccent : 'var(--surface)',
+                                color: isActive ? '#fff' : 'var(--ink-muted)',
+                                letterSpacing: '0.02em',
+                              }}>
+                              {v}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <MiniLabel>Transition</MiniLabel>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {TRANSITIONS.map(tx => {
+                        const isActive = curTx === tx
+                        return (
+                          <button key={tx} onClick={() => setTransitionOverrides(o => ({ ...o, [s.key]: tx }))}
+                            className="text-[9px] font-medium px-1.5 py-0.5 rounded-full transition-colors"
+                            style={{
+                              background: isActive ? liveAccent : 'var(--surface)',
+                              color: isActive ? '#fff' : 'var(--ink-muted)',
+                              letterSpacing: '0.02em',
+                            }}>
+                            {tx}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="text-[9px] font-mono ink-muted">{String(i+1).padStart(2,'0')}</div>
+                </div>
+              )
+            })}
           </div>
         </Card>
 
