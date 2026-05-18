@@ -62,28 +62,120 @@ const SLIDE_DEFS: Record<string, { htmlId: string; label: string; tx: string; bg
   s12_team_ask:    { htmlId: 's12', label: 'Team & Ask',   tx: 'prism',        bgx: '45%', bgy: '50%' },
 }
 
-function buildIntroSlide(idx: number, input: any, c: any): string {
-  // User-uploaded hero image becomes a soft background layer; logo appears
-  // above the company wordmark. If neither is uploaded the slide stays as it was.
-  const heroBg = input.heroData
-    ? `<div class="hero-image-bg" style="position:absolute;inset:0;background-image:url('${input.heroData}');background-size:cover;background-position:center;opacity:0.18;filter:blur(2px);"></div>`
-    : ''
-  const logoMark = input.logoData
-    ? `<img src="${input.logoData}" alt="${input.company} logo" style="max-height:72px;max-width:200px;object-fit:contain;margin-bottom:24px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));" class="reveal-up" />`
-    : ''
-  return `<section class="slide" id="s1" data-idx="${idx}" data-num="${String(idx).padStart(2,'0')}" data-label="Intro" data-tx="zoom-passage">
-  <span class="slide-num-bg">${String(idx).padStart(2,'0')}</span>
+/* ─── INTRO LAYOUT VARIANTS ──────────────────────────────────────────
+   Four distinct intro slide layouts. The renderer picks by brand world:
+     - cardStyle = 'statement' + visualRichness in [rich, maximal]  → 'massive-display'
+     - input.productData OR input.heroData present                  → 'phone-mockup'
+     - cardStyle = 'editorial' OR layoutStyle = 'editorial-spacious'→ 'split-editorial'
+     - cardStyle = 'minimal-line' OR visualRichness = 'restrained'  → 'minimal-centered'
+   Each variant has bespoke geometry — not the same content slotted into
+   different colours. */
+
+type IntroVariant = 'massive-display' | 'phone-mockup' | 'split-editorial' | 'minimal-centered'
+
+function pickIntroVariant(world: any, input: any): IntroVariant {
+  if (input?.productData || input?.heroData) return 'phone-mockup'
+  if (!world) return 'massive-display'
+  if (world.cardStyle === 'editorial' || world.layoutStyle === 'editorial-spacious') return 'split-editorial'
+  if (world.cardStyle === 'minimal-line' || world.visualRichness === 'restrained') return 'minimal-centered'
+  if (world.cardStyle === 'statement' && (world.visualRichness === 'rich' || world.visualRichness === 'maximal')) return 'massive-display'
+  return 'massive-display'
+}
+
+function escapeAttr(s: any): string {
+  return String(s ?? '').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+}
+
+function buildIntroSlide(idx: number, input: any, c: any, world?: any): string {
+  const variant = pickIntroVariant(world, input)
+  const num = String(idx).padStart(2, '0')
+
+  // ── Variant 1: MASSIVE-DISPLAY — company name fills the viewport ────
+  if (variant === 'massive-display') {
+    const heroBg = input.heroData
+      ? `<div style="position:absolute;inset:0;background-image:url('${escapeAttr(input.heroData)}');background-size:cover;background-position:center;opacity:0.16;filter:blur(2px);"></div>`
+      : ''
+    const logoMark = input.logoData
+      ? `<img src="${escapeAttr(input.logoData)}" alt="${escapeAttr(input.company)} logo" style="max-height:64px;max-width:200px;object-fit:contain;margin-bottom:28px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.3));" class="reveal-up" />`
+      : ''
+    return `<section class="slide" id="s1" data-idx="${idx}" data-num="${num}" data-label="Intro" data-tx="zoom-passage" data-variant="massive-display">
+  <span class="slide-num-bg">${num}</span>
   <div class="slide-grid"></div><div class="slide-bg" style="--bgx:20%;--bgy:30%;"></div>
   ${heroBg}
   <div class="slide-inner" style="position:relative;z-index:2;">
     ${logoMark}
-    <div class="hero-tag reveal-up">${c.tag||''}</div>
-    <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:900;font-size:clamp(80px,16vw,220px);line-height:0.88;letter-spacing:-4px;text-transform:uppercase;margin-bottom:12px;">${input.company}</div>
-    <h1 class="hero-title reveal-wipe d1">${c.sub||input.oneLiner}</h1>
+    <div class="hero-tag reveal-up">${c.tag || ''}</div>
+    <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:900;font-size:clamp(80px,16vw,240px);line-height:0.85;letter-spacing:-0.04em;text-transform:uppercase;margin-bottom:16px;color:var(--accent)">${input.company}</div>
+    <h1 class="hero-title reveal-wipe d1" style="max-width:780px">${c.sub || input.oneLiner}</h1>
     <div class="hero-divider"></div>
-    <div class="hero-signature reveal-up d3"><span class="h-name">${input.founderName}</span><span class="h-dot"></span><span class="h-role">${input.founderRole}</span></div>
-    <div class="hero-company reveal-up d4">${input.location||''} · ${input.domain}</div>
-    <div class="scroll-cue">Use ↑ / ↓ arrow keys</div>
+    <div class="hero-signature reveal-up d3"><span class="h-name">${input.founderName}</span><span class="h-dot"></span><span class="h-role">${input.founderRole || ''}</span></div>
+    <div class="hero-company reveal-up d4">${input.location || ''} · ${input.domain || ''}</div>
+    <div class="scroll-cue">scroll · or ↓</div>
+  </div>
+</section>`
+  }
+
+  // ── Variant 2: PHONE-MOCKUP — left text, right product screenshot ───
+  if (variant === 'phone-mockup') {
+    const productImg = input.productData || input.heroData || ''
+    const productPanel = productImg
+      ? `<div style="flex:0 0 38%;display:flex;align-items:center;justify-content:center;position:relative">
+           <div style="width:300px;max-width:90%;aspect-ratio:9/19;border-radius:36px;overflow:hidden;background:#000;box-shadow:0 30px 80px rgba(0,0,0,0.45),0 0 0 2px rgba(255,255,255,0.06);position:relative">
+             <img src="${escapeAttr(productImg)}" alt="${escapeAttr(input.company)} product" style="width:100%;height:100%;object-fit:cover;display:block"/>
+             <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);width:90px;height:24px;background:#000;border-radius:14px"></div>
+           </div>
+         </div>`
+      : ''
+    return `<section class="slide" id="s1" data-idx="${idx}" data-num="${num}" data-label="Intro" data-tx="fold" data-variant="phone-mockup">
+  <span class="slide-num-bg">${num}</span>
+  <div class="slide-grid"></div><div class="slide-bg" style="--bgx:75%;--bgy:50%;"></div>
+  <div class="slide-inner" style="position:relative;z-index:2;display:flex;gap:56px;align-items:center;flex-wrap:wrap">
+    <div style="flex:1 1 480px;min-width:320px">
+      <div class="hero-tag reveal-up">${c.tag || 'live product'}</div>
+      <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:900;font-size:clamp(56px,9vw,140px);line-height:0.88;letter-spacing:-0.03em;text-transform:uppercase;margin-bottom:14px;color:var(--accent)">${input.company}</div>
+      <h1 class="hero-title reveal-wipe d1" style="font-size:clamp(18px,2vw,26px);max-width:560px">${c.sub || input.oneLiner}</h1>
+      <div class="hero-divider"></div>
+      <div class="hero-signature reveal-up d3"><span class="h-name">${input.founderName}</span><span class="h-dot"></span><span class="h-role">${input.founderRole || ''}</span></div>
+    </div>
+    ${productPanel}
+  </div>
+</section>`
+  }
+
+  // ── Variant 3: SPLIT-EDITORIAL — magazine cover meets pitch ──────────
+  if (variant === 'split-editorial') {
+    return `<section class="slide" id="s1" data-idx="${idx}" data-num="${num}" data-label="Intro" data-tx="warp" data-variant="split-editorial">
+  <span class="slide-num-bg">${num}</span>
+  <div class="slide-grid"></div><div class="slide-bg" style="--bgx:50%;--bgy:50%;"></div>
+  <div class="slide-inner" style="position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 0.9fr;gap:64px;align-items:end">
+    <div>
+      <div class="hero-tag reveal-up" style="margin-bottom:64px">${c.tag || (input.location || '')} · ISSUE ${idx + 1}</div>
+      <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:900;font-size:clamp(72px,12vw,180px);line-height:0.92;letter-spacing:-0.02em;text-transform:none;font-style:italic;color:var(--accent);margin-bottom:24px">${input.company}</div>
+      <div style="height:2px;background:var(--accent);width:160px;margin-bottom:24px;transform:scaleX(0);transform-origin:left;transition:transform .9s .5s var(--ease-enter,cubic-bezier(.16,1,.3,1))" class="hero-divider"></div>
+      <h1 class="hero-title reveal-wipe d1" style="font-size:clamp(20px,2.2vw,30px);font-family:var(--font-heading);font-weight:700;max-width:560px">${c.sub || input.oneLiner}</h1>
+    </div>
+    <div style="padding-bottom:24px;border-left:1px solid var(--wire);padding-left:32px;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-end">
+      <div class="reveal-up d2" style="font-family:var(--font-mono,monospace);font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.55;margin-bottom:8px">Founder</div>
+      <div class="reveal-up d3" style="font-family:var(--font-heading);font-weight:800;font-size:24px;margin-bottom:32px">${input.founderName}</div>
+      <div class="reveal-up d4" style="font-family:var(--font-mono,monospace);font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.55;margin-bottom:8px">Stage</div>
+      <div class="reveal-up d4" style="font-family:var(--font-heading);font-weight:800;font-size:18px;margin-bottom:32px;text-transform:uppercase">${input.stage || ''}</div>
+      <div class="reveal-up d4" style="font-family:var(--font-mono,monospace);font-size:11px;letter-spacing:2px;opacity:.5">${input.domain || ''}</div>
+    </div>
+  </div>
+</section>`
+  }
+
+  // ── Variant 4: MINIMAL-CENTERED — quiet, premium, swiss ──────────────
+  return `<section class="slide" id="s1" data-idx="${idx}" data-num="${num}" data-label="Intro" data-tx="zoom-passage" data-variant="minimal-centered">
+  <span class="slide-num-bg" style="opacity:.04">${num}</span>
+  <div class="slide-grid" style="opacity:.18"></div>
+  <div class="slide-inner" style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;min-height:80vh">
+    <div class="hero-tag reveal-up" style="margin-bottom:48px">${c.tag || (input.industry || '')}</div>
+    <div class="reveal-wipe" style="font-family:var(--font-heading);font-weight:800;font-size:clamp(56px,8vw,128px);line-height:0.95;letter-spacing:-0.02em;text-transform:none;margin-bottom:20px;color:var(--accent)">${input.company}</div>
+    <h1 class="hero-title reveal-wipe d1" style="font-size:clamp(16px,1.6vw,22px);max-width:620px;opacity:.7">${c.sub || input.oneLiner}</h1>
+    <div class="hero-divider" style="margin:48px auto 24px"></div>
+    <div class="hero-signature reveal-up d3" style="justify-content:center"><span class="h-name">${input.founderName}</span><span class="h-dot"></span><span class="h-role">${input.founderRole || ''}</span></div>
+    <div class="scroll-cue">scroll</div>
   </div>
 </section>`
 }
@@ -272,7 +364,7 @@ export function renderDeck(
   ids.forEach((id) => {
     const idx = slideHtmlList.length
     if (id === 's1_intro') {
-      slideHtmlList.push(buildIntroSlide(idx, input, content.s1_intro || {}))
+      slideHtmlList.push(buildIntroSlide(idx, input, content.s1_intro || {}, world))
       labels.push(SLIDE_DEFS[id]?.label || id)
       return
     }
