@@ -259,11 +259,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       visionMood:   visionResult?.mood,
       visionLayout: visionResult?.layout,
     }
+    // Per-generation deck id for viewership tracking. Each /api/generate call
+    // produces a fresh id so signals are scoped to THIS version of the deck.
+    const deckId = 'sd_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
     const html = renderDeck(renderInput, polishedContent, activeSlideIds, {
       industryGuide,
       theme,
       slideVisuals,
       brandWorld: userBrandWorld,
+      deckId,
     })
 
     /* ─── STAGE C2 — Quality gate (deterministic, post-render) ───────── */
