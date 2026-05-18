@@ -395,14 +395,14 @@ export async function planSteps(
 ${formatHistory(prior)}
 
 LATEST FOUNDER INSTRUCTION:
-"${instruction}"
+"${resolvedInstruction}"${backref.rationale ? `\n(${backref.rationale})` : ''}
 
 DETECTED INTENT: ${intent.intent}${intent.isCompound ? ' (COMPOUND — plan in stages)' : ''}${intent.domain !== 'generic' ? ` | domain: ${intent.domain}` : ''}
 
 WORKSPACE CONTEXT:
 ${buildContextSummary(ctx)}
 
-Plan tools based on the LATEST instruction. Use prior turns to resolve back-references ("rewrite that slide", "the one you mentioned"). Call zero or more tools, or just reply with text if no tool is needed.${intent.isCompound ? '\n\nThis is a COMPOUND request. Emit tools in dependency order; the dispatcher will run them sequentially when stages differ.' : ''}`,
+Plan tools based on the LATEST instruction. The back-reference resolver has already disambiguated "that slide" / "it" when possible — trust the [resolved: ...] hint if present. Call zero or more tools, or just reply with text if no tool is needed.${intent.isCompound ? '\n\nThis is a COMPOUND request. Emit tools in dependency order; the dispatcher will run them sequentially when stages differ.' : ''}`,
       }],
     })
 
